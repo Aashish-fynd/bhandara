@@ -1,11 +1,14 @@
+import AuthForm from "@/screens/Auth";
+import OnBoarding from "@/screens/OnBoarding";
 import React from "react";
 import { Text, View } from "tamagui";
 
 const index = () => {
   return (
-    <View>
-      <Text>index</Text>
-    </View>
+    <>
+      {/* <AuthForm isLoginForm={true} /> */}
+      <OnBoarding />
+    </>
   );
 };
 

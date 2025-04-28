@@ -10,7 +10,8 @@ const animations = createAnimations({
     type: "spring",
     damping: 10,
     mass: 0.9,
-    stiffness: 100
+    stiffness: 100,
+    duration: 100
   },
   lazy: {
     type: "spring",
@@ -37,6 +38,14 @@ const config = createTamagui({
   fonts: {
     heading: headingFont,
     body: bodyFont
+  },
+  defaultProps: {
+    Label: {
+      lineHeight: "auto"
+    },
+    Paragraph: {
+      lineHeight: "auto"
+    }
   },
   media: {
     xs: { maxWidth: 660 },

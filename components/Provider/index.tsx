@@ -1,5 +1,6 @@
 import { useColorScheme } from "react-native";
 import { TamaguiProvider, TamaguiProviderProps } from "tamagui";
+import { PortalProvider } from "@tamagui/portal";
 
 const tamaguiConfig = require("@/tamagui.config").default;
 
@@ -14,7 +15,7 @@ const Provider = ({
       defaultTheme={colorScheme!}
       {...rest}
     >
-      {children}
+      <PortalProvider>{children}</PortalProvider>
     </TamaguiProvider>
   );
 };

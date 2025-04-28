@@ -5926,9 +5926,9 @@ var require_isWebColor = __commonJS({
   }
 });
 
-// node_modules/@react-native/normalize-colors/index.js
+// node_modules/react-native-web/node_modules/@react-native/normalize-colors/index.js
 var require_normalize_colors = __commonJS({
-  "node_modules/@react-native/normalize-colors/index.js"(exports2, module2) {
+  "node_modules/react-native-web/node_modules/@react-native/normalize-colors/index.js"(exports2, module2) {
     "use strict";
     function normalizeColor(color) {
       if (typeof color === "number") {
@@ -15578,9 +15578,9 @@ var require_VirtualizedList = __commonJS({
   }
 });
 
-// node_modules/memoize-one/dist/memoize-one.cjs.js
+// node_modules/react-native-web/node_modules/memoize-one/dist/memoize-one.cjs.js
 var require_memoize_one_cjs = __commonJS({
-  "node_modules/memoize-one/dist/memoize-one.cjs.js"(exports2, module2) {
+  "node_modules/react-native-web/node_modules/memoize-one/dist/memoize-one.cjs.js"(exports2, module2) {
     "use strict";
     var safeIsNaN = Number.isNaN || /* @__PURE__ */ __name(function ponyfill(value) {
       return typeof value === "number" && value !== value;
@@ -34893,23 +34893,26 @@ function error() {
   }
 }
 __name(error, "error");
-function createPubSub() {
+function createEventEmitter() {
   const map = /* @__PURE__ */ new Map();
   return {
     emit(event, data) {
       var _map$get;
-      (_map$get = map.get(event)) == null || _map$get.forEach((handler) => handler(data));
+      (_map$get = map.get(event)) == null || _map$get.forEach((listener) => listener(data));
     },
     on(event, listener) {
-      map.set(event, [...map.get(event) || [], listener]);
+      if (!map.has(event)) {
+        map.set(event, /* @__PURE__ */ new Set());
+      }
+      map.get(event).add(listener);
     },
     off(event, listener) {
       var _map$get2;
-      map.set(event, ((_map$get2 = map.get(event)) == null ? void 0 : _map$get2.filter((l) => l !== listener)) || []);
+      (_map$get2 = map.get(event)) == null || _map$get2.delete(listener);
     }
   };
 }
-__name(createPubSub, "createPubSub");
+__name(createEventEmitter, "createEventEmitter");
 var FloatingNodeContext = /* @__PURE__ */ React45.createContext(null);
 var FloatingTreeContext = /* @__PURE__ */ React45.createContext(null);
 var useFloatingParentNodeId = /* @__PURE__ */ __name(() => {
@@ -34944,9 +34947,23 @@ function getDelay(value, prop, pointerType) {
   if (typeof value === "number") {
     return value;
   }
+  if (typeof value === "function") {
+    const result = value();
+    if (typeof result === "number") {
+      return result;
+    }
+    return result == null ? void 0 : result[prop];
+  }
   return value == null ? void 0 : value[prop];
 }
 __name(getDelay, "getDelay");
+function getRestMs(value) {
+  if (typeof value === "function") {
+    return value();
+  }
+  return value;
+}
+__name(getRestMs, "getRestMs");
 function useHover(context2, props) {
   if (props === void 0) {
     props = {};
@@ -34971,6 +34988,7 @@ function useHover(context2, props) {
   const handleCloseRef = useLatestRef2(handleClose);
   const delayRef = useLatestRef2(delay);
   const openRef = useLatestRef2(open);
+  const restMsRef = useLatestRef2(restMs);
   const pointerTypeRef = React45.useRef();
   const timeoutRef = React45.useRef(-1);
   const handlerRef = React45.useRef();
@@ -35053,10 +35071,10 @@ function useHover(context2, props) {
   });
   React45.useEffect(() => {
     if (!enabled) return;
-    function onMouseEnter(event) {
+    function onReferenceMouseEnter(event) {
       clearTimeoutIfSet(timeoutRef);
       blockMouseMoveRef.current = false;
-      if (mouseOnly && !isMouseLikePointerType(pointerTypeRef.current) || restMs > 0 && !getDelay(delayRef.current, "open")) {
+      if (mouseOnly && !isMouseLikePointerType(pointerTypeRef.current) || getRestMs(restMsRef.current) > 0 && !getDelay(delayRef.current, "open")) {
         return;
       }
       const openDelay = getDelay(delayRef.current, "open", pointerTypeRef.current);
@@ -35070,9 +35088,12 @@ function useHover(context2, props) {
         onOpenChange(true, event, "hover");
       }
     }
-    __name(onMouseEnter, "onMouseEnter");
-    function onMouseLeave(event) {
-      if (isClickLikeOpenEvent()) return;
+    __name(onReferenceMouseEnter, "onReferenceMouseEnter");
+    function onReferenceMouseLeave(event) {
+      if (isClickLikeOpenEvent()) {
+        clearPointerEvents();
+        return;
+      }
       unbindMouseMoveRef.current();
       const doc = getDocument(elements.floating);
       clearTimeoutIfSet(restTimeoutRef);
@@ -35106,7 +35127,7 @@ function useHover(context2, props) {
         closeWithDelay(event);
       }
     }
-    __name(onMouseLeave, "onMouseLeave");
+    __name(onReferenceMouseLeave, "onReferenceMouseLeave");
     function onScrollMouseLeave(event) {
       if (isClickLikeOpenEvent()) return;
       if (!dataRef.current.floatingContext) return;
@@ -35125,26 +35146,51 @@ function useHover(context2, props) {
       })(event);
     }
     __name(onScrollMouseLeave, "onScrollMouseLeave");
+    function onFloatingMouseEnter() {
+      clearTimeoutIfSet(timeoutRef);
+    }
+    __name(onFloatingMouseEnter, "onFloatingMouseEnter");
+    function onFloatingMouseLeave(event) {
+      if (!isClickLikeOpenEvent()) {
+        closeWithDelay(event, false);
+      }
+    }
+    __name(onFloatingMouseLeave, "onFloatingMouseLeave");
     if (isElement(elements.domReference)) {
-      var _elements$floating;
-      const ref = elements.domReference;
-      open && ref.addEventListener("mouseleave", onScrollMouseLeave);
-      (_elements$floating = elements.floating) == null || _elements$floating.addEventListener("mouseleave", onScrollMouseLeave);
-      move && ref.addEventListener("mousemove", onMouseEnter, {
-        once: true
-      });
-      ref.addEventListener("mouseenter", onMouseEnter);
-      ref.addEventListener("mouseleave", onMouseLeave);
+      const reference2 = elements.domReference;
+      const floating = elements.floating;
+      if (open) {
+        reference2.addEventListener("mouseleave", onScrollMouseLeave);
+      }
+      if (move) {
+        reference2.addEventListener("mousemove", onReferenceMouseEnter, {
+          once: true
+        });
+      }
+      reference2.addEventListener("mouseenter", onReferenceMouseEnter);
+      reference2.addEventListener("mouseleave", onReferenceMouseLeave);
+      if (floating) {
+        floating.addEventListener("mouseleave", onScrollMouseLeave);
+        floating.addEventListener("mouseenter", onFloatingMouseEnter);
+        floating.addEventListener("mouseleave", onFloatingMouseLeave);
+      }
       return () => {
-        var _elements$floating2;
-        open && ref.removeEventListener("mouseleave", onScrollMouseLeave);
-        (_elements$floating2 = elements.floating) == null || _elements$floating2.removeEventListener("mouseleave", onScrollMouseLeave);
-        move && ref.removeEventListener("mousemove", onMouseEnter);
-        ref.removeEventListener("mouseenter", onMouseEnter);
-        ref.removeEventListener("mouseleave", onMouseLeave);
+        if (open) {
+          reference2.removeEventListener("mouseleave", onScrollMouseLeave);
+        }
+        if (move) {
+          reference2.removeEventListener("mousemove", onReferenceMouseEnter);
+        }
+        reference2.removeEventListener("mouseenter", onReferenceMouseEnter);
+        reference2.removeEventListener("mouseleave", onReferenceMouseLeave);
+        if (floating) {
+          floating.removeEventListener("mouseleave", onScrollMouseLeave);
+          floating.removeEventListener("mouseenter", onFloatingMouseEnter);
+          floating.removeEventListener("mouseleave", onFloatingMouseLeave);
+        }
       };
     }
-  }, [elements, enabled, context2, mouseOnly, restMs, move, closeWithDelay, cleanupMouseMoveHandler, clearPointerEvents, onOpenChange, open, openRef, tree, delayRef, handleCloseRef, dataRef, isClickLikeOpenEvent]);
+  }, [elements, enabled, context2, mouseOnly, move, closeWithDelay, cleanupMouseMoveHandler, clearPointerEvents, onOpenChange, open, openRef, tree, delayRef, handleCloseRef, dataRef, isClickLikeOpenEvent, restMsRef]);
   index2(() => {
     var _handleCloseRef$curre;
     if (!enabled) return;
@@ -35208,7 +35254,7 @@ function useHover(context2, props) {
         if (mouseOnly && !isMouseLikePointerType(pointerTypeRef.current)) {
           return;
         }
-        if (open || restMs === 0) {
+        if (open || getRestMs(restMsRef.current) === 0) {
           return;
         }
         if (restTimeoutPendingRef.current && event.movementX ** 2 + event.movementY ** 2 < 2) {
@@ -35219,25 +35265,14 @@ function useHover(context2, props) {
           handleMouseMove();
         } else {
           restTimeoutPendingRef.current = true;
-          restTimeoutRef.current = window.setTimeout(handleMouseMove, restMs);
+          restTimeoutRef.current = window.setTimeout(handleMouseMove, getRestMs(restMsRef.current));
         }
       }
     };
-  }, [mouseOnly, onOpenChange, open, openRef, restMs]);
-  const floating = React45.useMemo(() => ({
-    onMouseEnter() {
-      clearTimeoutIfSet(timeoutRef);
-    },
-    onMouseLeave(event) {
-      if (!isClickLikeOpenEvent()) {
-        closeWithDelay(event.nativeEvent, false);
-      }
-    }
-  }), [closeWithDelay, isClickLikeOpenEvent]);
+  }, [mouseOnly, onOpenChange, open, openRef, restMsRef]);
   return React45.useMemo(() => enabled ? {
-    reference,
-    floating
-  } : {}, [enabled, reference, floating]);
+    reference
+  } : {}, [enabled, reference]);
 }
 __name(useHover, "useHover");
 var NOOP = /* @__PURE__ */ __name(() => {
@@ -35500,7 +35535,7 @@ function applyAttributeToOthers(uncorrectedAvoidElements, body, ariaHidden, iner
           node.setAttribute(markerName, "");
         }
         if (!alreadyHidden && controlAttribute) {
-          node.setAttribute(controlAttribute, "true");
+          node.setAttribute(controlAttribute, controlAttribute === "inert" ? "" : "true");
         }
       }
     });
@@ -35564,12 +35599,12 @@ function getTabbableIn(container, direction) {
   return nextTabbableElements[0];
 }
 __name(getTabbableIn, "getTabbableIn");
-function getNextTabbable() {
-  return getTabbableIn(document.body, "next");
+function getNextTabbable(referenceElement) {
+  return getTabbableIn(getDocument(referenceElement).body, "next") || referenceElement;
 }
 __name(getNextTabbable, "getNextTabbable");
-function getPreviousTabbable() {
-  return getTabbableIn(document.body, "prev");
+function getPreviousTabbable(referenceElement) {
+  return getTabbableIn(getDocument(referenceElement).body, "prev") || referenceElement;
 }
 __name(getPreviousTabbable, "getPreviousTabbable");
 function isOutsideEvent(event, container) {
@@ -35758,7 +35793,8 @@ function FloatingPortal(props) {
           var _beforeInsideRef$curr;
           (_beforeInsideRef$curr = beforeInsideRef.current) == null || _beforeInsideRef$curr.focus();
         } else {
-          const prevTabbable = getPreviousTabbable() || (focusManagerState == null ? void 0 : focusManagerState.domReference);
+          const domReference = focusManagerState ? focusManagerState.domReference : null;
+          const prevTabbable = getPreviousTabbable(domReference);
           prevTabbable == null || prevTabbable.focus();
         }
       }, "onFocus")
@@ -35773,7 +35809,8 @@ function FloatingPortal(props) {
           var _afterInsideRef$curre;
           (_afterInsideRef$curre = afterInsideRef.current) == null || _afterInsideRef$curre.focus();
         } else {
-          const nextTabbable = getNextTabbable() || (focusManagerState == null ? void 0 : focusManagerState.domReference);
+          const domReference = focusManagerState ? focusManagerState.domReference : null;
+          const nextTabbable = getNextTabbable(domReference);
           nextTabbable == null || nextTabbable.focus();
           (focusManagerState == null ? void 0 : focusManagerState.closeOnFocusOut) && (focusManagerState == null ? void 0 : focusManagerState.onOpenChange(false, event.nativeEvent, "focus-out"));
         }
@@ -35810,7 +35847,7 @@ function addPreviouslyFocusedElement(element) {
   if (element && getNodeName(element) !== "body") {
     previouslyFocusedElements.push(element);
     if (previouslyFocusedElements.length > LIST_LIMIT) {
-      previouslyFocusedElements = previouslyFocusedElements.slice(-LIST_LIMIT);
+      previouslyFocusedElements = previouslyFocusedElements.slice(-20);
     }
   }
 }
@@ -35849,7 +35886,8 @@ function FloatingFocusManager(props) {
     modal = true,
     visuallyHiddenDismiss = false,
     closeOnFocusOut = true,
-    outsideElementsInert = false
+    outsideElementsInert = false,
+    getInsideElements: _getInsideElements = /* @__PURE__ */ __name(() => [], "_getInsideElements")
   } = props;
   const {
     open,
@@ -35865,6 +35903,7 @@ function FloatingFocusManager(props) {
     var _dataRef$current$floa;
     return (_dataRef$current$floa = dataRef.current.floatingContext) == null ? void 0 : _dataRef$current$floa.nodeId;
   });
+  const getInsideElements = useEffectEvent(_getInsideElements);
   const ignoreInitialFocus = typeof initialFocus === "number" && initialFocus < 0;
   const isUntrappedTypeableCombobox = isTypeableCombobox(domReference) && ignoreInitialFocus;
   const inertSupported = supportsInert();
@@ -36004,20 +36043,25 @@ function FloatingFocusManager(props) {
   const mergedBeforeGuardRef = useLiteMergeRefs([beforeGuardRef, portalContext == null ? void 0 : portalContext.beforeInsideRef]);
   const mergedAfterGuardRef = useLiteMergeRefs([afterGuardRef, portalContext == null ? void 0 : portalContext.afterInsideRef]);
   React45.useEffect(() => {
-    var _portalContext$portal;
+    var _portalContext$portal, _ancestors$find;
     if (disabled) return;
     if (!floating) return;
     const portalNodes = Array.from((portalContext == null || (_portalContext$portal = portalContext.portalNode) == null ? void 0 : _portalContext$portal.querySelectorAll("[" + createAttribute("portal") + "]")) || []);
-    const ancestorFloatingNodes = tree && !modal ? getAncestors(tree == null ? void 0 : tree.nodesRef.current, getNodeId()).map((node) => {
+    const ancestors = tree ? getAncestors(tree.nodesRef.current, getNodeId()) : [];
+    const ancestorFloatingNodes = tree && !modal ? ancestors.map((node) => {
       var _node$context6;
       return (_node$context6 = node.context) == null ? void 0 : _node$context6.elements.floating;
     }) : [];
-    const insideElements = [floating, ...portalNodes, ...ancestorFloatingNodes, startDismissButtonRef.current, endDismissButtonRef.current, beforeGuardRef.current, afterGuardRef.current, portalContext == null ? void 0 : portalContext.beforeOutsideRef.current, portalContext == null ? void 0 : portalContext.afterOutsideRef.current, orderRef.current.includes("reference") || isUntrappedTypeableCombobox ? domReference : null].filter((x) => x != null);
+    const rootAncestorComboboxDomReference = (_ancestors$find = ancestors.find((node) => {
+      var _node$context7;
+      return isTypeableCombobox(((_node$context7 = node.context) == null ? void 0 : _node$context7.elements.domReference) || null);
+    })) == null || (_ancestors$find = _ancestors$find.context) == null ? void 0 : _ancestors$find.elements.domReference;
+    const insideElements = [floating, rootAncestorComboboxDomReference, ...portalNodes, ...ancestorFloatingNodes, ...getInsideElements(), startDismissButtonRef.current, endDismissButtonRef.current, beforeGuardRef.current, afterGuardRef.current, portalContext == null ? void 0 : portalContext.beforeOutsideRef.current, portalContext == null ? void 0 : portalContext.afterOutsideRef.current, orderRef.current.includes("reference") || isUntrappedTypeableCombobox ? domReference : null].filter((x) => x != null);
     const cleanup2 = modal || isUntrappedTypeableCombobox ? markOthers(insideElements, !useInert, useInert) : markOthers(insideElements);
     return () => {
       cleanup2();
     };
-  }, [disabled, domReference, floating, modal, orderRef, portalContext, isUntrappedTypeableCombobox, guards, useInert, tree, getNodeId]);
+  }, [disabled, domReference, floating, modal, orderRef, portalContext, isUntrappedTypeableCombobox, guards, useInert, tree, getNodeId, getInsideElements]);
   index2(() => {
     if (disabled || !isHTMLElement(floatingFocusElement)) return;
     const doc = getDocument(floatingFocusElement);
@@ -36101,8 +36145,8 @@ function FloatingFocusManager(props) {
       events.off("openchange", onOpenChange2);
       const activeEl = activeElement(doc);
       const isFocusInsideFloatingTree = contains(floating, activeEl) || tree && getChildren(tree.nodesRef.current, getNodeId()).some((node) => {
-        var _node$context7;
-        return contains((_node$context7 = node.context) == null ? void 0 : _node$context7.elements.floating, activeEl);
+        var _node$context8;
+        return contains((_node$context8 = node.context) == null ? void 0 : _node$context8.elements.floating, activeEl);
       });
       if (isFocusInsideFloatingTree || !!openEvent && ["click", "mousedown"].includes(openEvent.type)) {
         focusReference = true;
@@ -36145,10 +36189,13 @@ function FloatingFocusManager(props) {
     };
   }, [disabled, portalContext, modal, open, onOpenChange, closeOnFocusOut, domReference]);
   index2(() => {
+    var _floatingFocusElement;
     if (disabled) return;
     if (!floatingFocusElement) return;
     if (typeof MutationObserver !== "function") return;
-    if (ignoreInitialFocus) return;
+    if (!orderRef.current.includes("floating") && !((_floatingFocusElement = floatingFocusElement.getAttribute("role")) != null && _floatingFocusElement.includes("dialog"))) {
+      return;
+    }
     const handleMutation = /* @__PURE__ */ __name(() => {
       const tabIndex = floatingFocusElement.getAttribute("tabindex");
       const tabbableContent = getTabbableContent();
@@ -36157,7 +36204,7 @@ function FloatingFocusManager(props) {
       if (tabbableIndex !== -1) {
         tabbableIndexRef.current = tabbableIndex;
       }
-      if (orderRef.current.includes("floating") || activeEl !== domReference && tabbableContent.length === 0) {
+      if (orderRef.current.includes("floating") || tabbableContent.length === 0) {
         if (tabIndex !== "0") {
           floatingFocusElement.setAttribute("tabindex", "0");
         }
@@ -36199,7 +36246,7 @@ function FloatingFocusManager(props) {
         } else if (portalContext != null && portalContext.preserveTabOrder && portalContext.portalNode) {
           preventReturnFocusRef.current = false;
           if (isOutsideEvent(event, portalContext.portalNode)) {
-            const nextTabbable = getNextTabbable() || domReference;
+            const nextTabbable = getNextTabbable(domReference);
             nextTabbable == null || nextTabbable.focus();
           } else {
             var _portalContext$before;
@@ -36218,7 +36265,7 @@ function FloatingFocusManager(props) {
             preventReturnFocusRef.current = true;
           }
           if (isOutsideEvent(event, portalContext.portalNode)) {
-            const prevTabbable = getPreviousTabbable() || domReference;
+            const prevTabbable = getPreviousTabbable(domReference);
             prevTabbable == null || prevTabbable.focus();
           } else {
             var _portalContext$afterO;
@@ -36309,6 +36356,10 @@ function isButtonTarget(event) {
   return isHTMLElement(event.target) && event.target.tagName === "BUTTON";
 }
 __name(isButtonTarget, "isButtonTarget");
+function isAnchorTarget(event) {
+  return isHTMLElement(event.target) && event.target.tagName === "A";
+}
+__name(isAnchorTarget, "isAnchorTarget");
 function isSpaceIgnored(element) {
   return isTypeableElement(element);
 }
@@ -36372,6 +36423,9 @@ function useClick(context2, props) {
       if (event.key === " " && !isSpaceIgnored(domReference)) {
         event.preventDefault();
         didKeyDownRef.current = true;
+      }
+      if (isAnchorTarget(event)) {
+        return;
       }
       if (event.key === "Enter") {
         if (open && toggle) {
@@ -36679,7 +36733,7 @@ function useFloatingRootContext(options) {
   } = options;
   const floatingId = useId6();
   const dataRef = React45.useRef({});
-  const [events] = React45.useState(() => createPubSub());
+  const [events] = React45.useState(() => createEventEmitter());
   const nested = useFloatingParentNodeId() != null;
   if (process.env.NODE_ENV !== "production") {
     const optionDomReference = elementsProp.reference;
@@ -36757,6 +36811,7 @@ function useFloating3(options) {
   const setPositionReference = React45.useCallback((node) => {
     const computedPositionReference = isElement(node) ? {
       getBoundingClientRect: /* @__PURE__ */ __name(() => node.getBoundingClientRect(), "getBoundingClientRect"),
+      getClientRects: /* @__PURE__ */ __name(() => node.getClientRects(), "getClientRects"),
       contextElement: node
     } : node;
     _setPositionReference(computedPositionReference);
@@ -36806,6 +36861,37 @@ function useFloating3(options) {
   }), [position, refs, elements, context2]);
 }
 __name(useFloating3, "useFloating");
+function getUserAgent2() {
+  const uaData = navigator.userAgentData;
+  if (uaData && Array.isArray(uaData.brands)) {
+    return uaData.brands.map((_ref) => {
+      let {
+        brand,
+        version
+      } = _ref;
+      return brand + "/" + version;
+    }).join(" ");
+  }
+  return navigator.userAgent;
+}
+__name(getUserAgent2, "getUserAgent");
+function isJSDOM2() {
+  return getUserAgent2().includes("jsdom/");
+}
+__name(isJSDOM2, "isJSDOM");
+function matchesFocusVisible(element) {
+  if (!element || isJSDOM2()) return true;
+  try {
+    return element.matches(":focus-visible");
+  } catch (_e) {
+    return true;
+  }
+}
+__name(matchesFocusVisible, "matchesFocusVisible");
+function isMacSafari() {
+  return isMac() && isSafari();
+}
+__name(isMacSafari, "isMacSafari");
 function useFocus(context2, props) {
   if (props === void 0) {
     props = {};
@@ -36837,11 +36923,21 @@ function useFocus(context2, props) {
       keyboardModalityRef.current = true;
     }
     __name(onKeyDown, "onKeyDown");
+    function onPointerDown() {
+      keyboardModalityRef.current = false;
+    }
+    __name(onPointerDown, "onPointerDown");
     win.addEventListener("blur", onBlur);
-    win.addEventListener("keydown", onKeyDown, true);
+    if (isMacSafari()) {
+      win.addEventListener("keydown", onKeyDown, true);
+      win.addEventListener("pointerdown", onPointerDown, true);
+    }
     return () => {
       win.removeEventListener("blur", onBlur);
-      win.removeEventListener("keydown", onKeyDown, true);
+      if (isMacSafari()) {
+        win.removeEventListener("keydown", onKeyDown, true);
+        win.removeEventListener("pointerdown", onPointerDown, true);
+      }
     };
   }, [elements.domReference, open, enabled]);
   React45.useEffect(() => {
@@ -36866,10 +36962,6 @@ function useFocus(context2, props) {
     };
   }, []);
   const reference = React45.useMemo(() => ({
-    onPointerDown(event) {
-      if (isVirtualPointerEvent(event.nativeEvent)) return;
-      keyboardModalityRef.current = false;
-    },
     onMouseLeave() {
       blockFocusRef.current = false;
     },
@@ -36877,13 +36969,12 @@ function useFocus(context2, props) {
       if (blockFocusRef.current) return;
       const target = getTarget(event.nativeEvent);
       if (visibleOnly && isElement(target)) {
-        try {
-          if (isSafari() && isMac()) throw Error();
-          if (!target.matches(":focus-visible")) return;
-        } catch (_e) {
+        if (isMacSafari() && !event.relatedTarget) {
           if (!keyboardModalityRef.current && !isTypeableElement(target)) {
             return;
           }
+        } else if (!matchesFocusVisible(target)) {
+          return;
         }
       }
       onOpenChange(true, event.nativeEvent, "focus");
@@ -37040,7 +37131,8 @@ function useListNavigation(context2, props) {
   const {
     open,
     onOpenChange,
-    elements
+    elements,
+    floatingId
   } = context2;
   const {
     listRef,
@@ -37107,6 +37199,10 @@ function useListNavigation(context2, props) {
   const focusItem = useEffectEvent(() => {
     function runFocus(item2) {
       if (virtual) {
+        var _item$id;
+        if ((_item$id = item2.id) != null && _item$id.endsWith("-fui-option")) {
+          item2.id = floatingId + "-" + Math.random().toString(16).slice(2, 10);
+        }
         setActiveId(item2.id);
         tree == null || tree.events.emit("virtualfocus", item2);
         if (virtualItemRef) {
@@ -37121,6 +37217,7 @@ function useListNavigation(context2, props) {
     }
     __name(runFocus, "runFocus");
     const initialItem = listRef.current[indexRef.current];
+    const forceScrollIntoView = forceScrollIntoViewRef.current;
     if (initialItem) {
       runFocus(initialItem);
     }
@@ -37132,7 +37229,7 @@ function useListNavigation(context2, props) {
         runFocus(waitedItem);
       }
       const scrollIntoViewOptions = scrollItemIntoViewRef.current;
-      const shouldScrollIntoView = scrollIntoViewOptions && item && (forceScrollIntoViewRef.current || !isPointerModalityRef.current);
+      const shouldScrollIntoView = scrollIntoViewOptions && item && (forceScrollIntoView || !isPointerModalityRef.current);
       if (shouldScrollIntoView) {
         waitedItem.scrollIntoView == null || waitedItem.scrollIntoView(typeof scrollIntoViewOptions === "boolean" ? {
           block: "nearest",
@@ -37290,6 +37387,10 @@ function useListNavigation(context2, props) {
     };
     return props2;
   }, [open, floatingFocusElementRef, focusItemOnHover, listRef, onNavigate, virtual]);
+  const getParentOrientation = React45.useCallback(() => {
+    var _tree$nodesRef$curren;
+    return tree == null || (_tree$nodesRef$curren = tree.nodesRef.current.find((node) => node.id === parentId)) == null || (_tree$nodesRef$curren = _tree$nodesRef$curren.context) == null || (_tree$nodesRef$curren = _tree$nodesRef$curren.dataRef) == null ? void 0 : _tree$nodesRef$curren.current.orientation;
+  }, [parentId, tree]);
   const commonOnKeyDown = useEffectEvent((event) => {
     isPointerModalityRef.current = false;
     forceSyncFocusRef.current = true;
@@ -37300,7 +37401,9 @@ function useListNavigation(context2, props) {
       return;
     }
     if (nested && isCrossOrientationCloseKey(event.key, orientation, rtl, cols)) {
-      stopEvent(event);
+      if (!isMainOrientationKey(event.key, getParentOrientation())) {
+        stopEvent(event);
+      }
       onOpenChange(false, event.nativeEvent, "list-navigation");
       if (isHTMLElement(elements.domReference)) {
         if (virtual) {
@@ -37441,15 +37544,13 @@ function useListNavigation(context2, props) {
     return {
       ...ariaActiveDescendantProp,
       onKeyDown(event) {
-        var _tree$nodesRef$curren;
         isPointerModalityRef.current = false;
         const isArrowKey = event.key.startsWith("Arrow");
         const isHomeOrEndKey = ["Home", "End"].includes(event.key);
         const isMoveKey = isArrowKey || isHomeOrEndKey;
-        const parentOrientation = tree == null || (_tree$nodesRef$curren = tree.nodesRef.current.find((node) => node.id === parentId)) == null || (_tree$nodesRef$curren = _tree$nodesRef$curren.context) == null || (_tree$nodesRef$curren = _tree$nodesRef$curren.dataRef) == null ? void 0 : _tree$nodesRef$curren.current.orientation;
         const isCrossOpenKey = isCrossOrientationOpenKey(event.key, orientation, rtl);
         const isCrossCloseKey = isCrossOrientationCloseKey(event.key, orientation, rtl, cols);
-        const isParentCrossOpenKey = isCrossOrientationOpenKey(event.key, parentOrientation, rtl);
+        const isParentCrossOpenKey = isCrossOrientationOpenKey(event.key, getParentOrientation(), rtl);
         const isMainKey = isMainOrientationKey(event.key, orientation);
         const isNavigationKey = (nested ? isParentCrossOpenKey : isMainKey) || event.key === "Enter" || event.key.trim() === "";
         if (virtual && open) {
@@ -37485,7 +37586,7 @@ function useListNavigation(context2, props) {
           return;
         }
         if (isNavigationKey) {
-          const isParentMainKey = isMainOrientationKey(event.key, parentOrientation);
+          const isParentMainKey = isMainOrientationKey(event.key, getParentOrientation());
           keyRef.current = nested && isParentMainKey ? null : event.key;
         }
         if (nested) {
@@ -37526,7 +37627,7 @@ function useListNavigation(context2, props) {
       onMouseDown: checkVirtualMouse,
       onClick: checkVirtualMouse
     };
-  }, [activeId, ariaActiveDescendantProp, cols, commonOnKeyDown, disabledIndicesRef, focusItemOnOpen, listRef, nested, onNavigate, onOpenChange, open, openOnArrowKeyDown, orientation, parentId, rtl, selectedIndex, tree, virtual, virtualItemRef]);
+  }, [activeId, ariaActiveDescendantProp, cols, commonOnKeyDown, disabledIndicesRef, focusItemOnOpen, listRef, nested, onNavigate, onOpenChange, open, openOnArrowKeyDown, orientation, getParentOrientation, rtl, selectedIndex, tree, virtual, virtualItemRef]);
   return React45.useMemo(() => enabled ? {
     reference,
     floating,
@@ -37536,20 +37637,26 @@ function useListNavigation(context2, props) {
 __name(useListNavigation, "useListNavigation");
 var componentRoleToAriaRoleMap = /* @__PURE__ */ new Map([["select", "listbox"], ["combobox", "listbox"], ["label", false]]);
 function useRole(context2, props) {
-  var _componentRoleToAriaR;
+  var _elements$domReferenc, _componentRoleToAriaR;
   if (props === void 0) {
     props = {};
   }
   const {
     open,
-    floatingId
+    elements,
+    floatingId: defaultFloatingId
   } = context2;
   const {
     enabled = true,
     role = "dialog"
   } = props;
+  const defaultReferenceId = useId6();
+  const referenceId = ((_elements$domReferenc = elements.domReference) == null ? void 0 : _elements$domReferenc.id) || defaultReferenceId;
+  const floatingId = React45.useMemo(() => {
+    var _getFloatingFocusElem;
+    return ((_getFloatingFocusElem = getFloatingFocusElement(elements.floating)) == null ? void 0 : _getFloatingFocusElem.id) || defaultFloatingId;
+  }, [elements.floating, defaultFloatingId]);
   const ariaRole = (_componentRoleToAriaR = componentRoleToAriaRoleMap.get(role)) != null ? _componentRoleToAriaR : role;
-  const referenceId = useId6();
   const parentId = useFloatingParentNodeId();
   const isNested = parentId != null;
   const reference = React45.useMemo(() => {
@@ -37604,7 +37711,7 @@ function useRole(context2, props) {
     const commonProps = {
       role: "option",
       ...active && {
-        id: floatingId + "-option"
+        id: floatingId + "-fui-option"
       }
     };
     switch (role) {
@@ -37616,9 +37723,7 @@ function useRole(context2, props) {
       case "combobox": {
         return {
           ...commonProps,
-          ...active && {
-            "aria-selected": true
-          }
+          "aria-selected": selected
         };
       }
     }
