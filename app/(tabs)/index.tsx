@@ -1,4 +1,4 @@
-import AuthForm from "@/screens/Auth";
+import Auth from "@/screens/Auth";
 import OnBoarding from "@/screens/OnBoarding";
 import React from "react";
 import { Text, View } from "tamagui";

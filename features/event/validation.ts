@@ -1,5 +1,5 @@
 import { validateSchema } from "@/helpers/validations";
-import EventService from "./service";
+import { EVENT_TABLE_NAME } from "./constants";
 
 const locationSchema = {
   type: "object",
@@ -45,8 +45,7 @@ const participantSchema = {
     status: {
       type: "string",
       enum: ["confirmed", "pending", "declined"],
-      errorMessage:
-        "Status must be one of 'confirmed', 'pending', or 'declined'"
+      errorMessage: "Status must be one of 'confirmed', 'pending', or 'declined'"
     }
   },
   required: ["userId", "status"],
@@ -103,8 +102,7 @@ const eventSchema = {
     status: {
       type: "string",
       enum: ["upcoming", "ongoing", "completed", "cancelled"],
-      errorMessage:
-        "Status must be one of 'upcoming', 'ongoing', 'completed', or 'cancelled'"
+      errorMessage: "Status must be one of 'upcoming', 'ongoing', 'completed', or 'cancelled'"
     },
     capacity: {
       type: "integer",
@@ -142,14 +140,8 @@ const eventSchema = {
   }
 };
 
-const validateEventCreate = validateSchema(
-  `${EventService.TABLE_NAME}_CREATE`,
-  eventSchema
-);
+const validateEventCreate = validateSchema(`${EVENT_TABLE_NAME}_CREATE`, eventSchema);
 
-const validateEventUpdate = validateSchema(
-  `${EventService.TABLE_NAME}_UPDATE`,
-  eventSchema
-);
+const validateEventUpdate = validateSchema(`${EVENT_TABLE_NAME}_UPDATE`, eventSchema);
 
 export { validateEventCreate, validateEventUpdate };

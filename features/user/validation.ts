@@ -1,6 +1,5 @@
 import { validateSchema } from "@/helpers/validations";
-import UserService from "./service";
-
+import { USER_TABLE_NAME } from "./constants";
 const createSchema = {
   type: "object",
   properties: {
@@ -64,14 +63,7 @@ const updateSchema = {
   }
 };
 
-const validateUserCreate = validateSchema(
-  `${UserService.TABLE_NAME}_CREATE`,
-  createSchema
-);
-
-const validateUserUpdate = validateSchema(
-  `${UserService.TABLE_NAME}_UPDATE`,
-  updateSchema
-);
+const validateUserCreate = validateSchema(`${USER_TABLE_NAME}_CREATE`, createSchema);
+const validateUserUpdate = validateSchema(`${USER_TABLE_NAME}_UPDATE`, updateSchema);
 
 export { validateUserCreate, validateUserUpdate };

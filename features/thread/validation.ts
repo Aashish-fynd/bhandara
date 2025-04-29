@@ -1,7 +1,6 @@
 import { validateSchema } from "@/helpers/validations";
-import ThreadsService from "./service";
 import { EAccessLevel, EThreadType } from "@/definitions/enums";
-
+import { THREAD_TABLE_NAME } from "./constants";
 export const threadSchema = {
   type: "object",
   properties: {
@@ -89,14 +88,8 @@ export const updateSchema = {
   }
 };
 
-const validateThreadCreate = validateSchema(
-  `${ThreadsService.TABLE_NAME}_CREATE`,
-  threadSchema
-);
+const validateThreadCreate = validateSchema(`${THREAD_TABLE_NAME}_CREATE`, threadSchema);
 
-const validateThreadUpdate = validateSchema(
-  `${ThreadsService.TABLE_NAME}_UPDATE`,
-  updateSchema
-);
+const validateThreadUpdate = validateSchema(`${THREAD_TABLE_NAME}_UPDATE`, updateSchema);
 
 export { validateThreadCreate, validateThreadUpdate };

@@ -4,24 +4,12 @@ import { Github, ChevronDown } from "@tamagui/lucide-icons";
 import GoogleIcon from "@/assets/svg/GoogleIcon";
 import Label from "@/components/ui/Label";
 import { Controller, useForm } from "react-hook-form";
+import AuthForm from "./Form";
 
 // Simple Google SVG icon component
 
-function AuthForm({ isLogin }: { isLogin?: boolean }) {
+function Auth({ isLogin }: { isLogin?: boolean }) {
   const [isSignUp, setIsSignUp] = useState(!isLogin);
-  const {
-    control,
-    handleSubmit,
-    formState: { errors }
-  } = useForm({
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: ""
-    }
-  });
-  const onSubmit = (data: any) => console.log(data);
 
   return (
     <YStack
@@ -93,130 +81,7 @@ function AuthForm({ isLogin }: { isLogin?: boolean }) {
       </XStack>
 
       {/* Form Fields */}
-      <YStack gap="$5">
-        {/* TODO: Try fixing one more time if not discard */}
-        {/* <AnimatePresence
-          onExitComplete={() => {
-            console.log("exit complete");
-          }}
-        > */}
-        {isSignUp ? (
-          <XStack
-            gap="$4"
-            animation={"quick"}
-            enterStyle={{ opacity: 0, y: 15 }}
-            exitStyle={{ opacity: 0, y: -15 }}
-            key="signup-fields"
-            width="100%"
-            height={"auto"}
-          >
-            <YStack
-              flex={1}
-              gap="$2"
-            >
-              <XStack
-                gap="$2"
-                justify="space-between"
-                items="center"
-              >
-                <Label minH={0}>First name</Label>
-                <Paragraph
-                  size="$1"
-                  color="$color8"
-                >
-                  Optional
-                </Paragraph>
-              </XStack>
-              <Controller
-                control={control}
-                name="firstName"
-                render={({ field }) => (
-                  <Input
-                    placeholder="First name"
-                    value={field.value}
-                    onChangeText={field.onChange}
-                  />
-                )}
-              />
-            </YStack>
-            <YStack
-              flex={1}
-              gap="$2"
-            >
-              <XStack
-                gap="$2"
-                justify="space-between"
-                items="center"
-              >
-                <Label>Last name</Label>
-                <Paragraph
-                  size="$1"
-                  color="$color8"
-                >
-                  Optional
-                </Paragraph>
-              </XStack>
-              <Controller
-                control={control}
-                name="lastName"
-                render={({ field }) => (
-                  <Input
-                    placeholder="Last name"
-                    value={field.value}
-                    onChangeText={field.onChange}
-                  />
-                )}
-              />
-            </YStack>
-          </XStack>
-        ) : null}
-        {/* </AnimatePresence> */}
-
-        <YStack
-          gap="$2"
-          position="relative"
-        >
-          <Label>Email address</Label>
-          <Controller
-            control={control}
-            name="email"
-            render={({ field }) => (
-              <Input
-                placeholder="Enter your email address"
-                value={field.value}
-                onChangeText={field.onChange}
-                keyboardType="email-address"
-              />
-            )}
-          />
-        </YStack>
-
-        <YStack gap="$2">
-          <Label>Password</Label>
-          <Controller
-            control={control}
-            name="password"
-            render={({ field }) => (
-              <Input
-                placeholder="Enter your password"
-                secureTextEntry
-                value={field.value}
-                onChangeText={field.onChange}
-              />
-            )}
-          />
-        </YStack>
-      </YStack>
-
-      {/* Submit Button */}
-      <Button
-        onPress={handleSubmit(onSubmit)}
-        animation="quick"
-        enterStyle={{ opacity: 0, scale: 0.9 }}
-        exitStyle={{ opacity: 0, scale: 0.9 }}
-      >
-        {isSignUp ? "Continue" : "Sign in"}
-      </Button>
+      <AuthForm isSignUp={isSignUp} />
 
       {/* Form Toggle */}
       <XStack
@@ -242,4 +107,4 @@ function AuthForm({ isLogin }: { isLogin?: boolean }) {
   );
 }
 
-export default AuthForm;
+export default Auth;

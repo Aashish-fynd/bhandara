@@ -1,5 +1,5 @@
 import { validateSchema } from "@/helpers/validations";
-import TagService from "./service";
+import { TAG_TABLE_NAME } from "./constants";
 
 const tagSchema = {
   type: "object",
@@ -63,14 +63,7 @@ const updateSchema = {
   }
 };
 
-const validateTagCreate = validateSchema(
-  `${TagService.TABLE_NAME}_CREATE`,
-  tagSchema
-);
-
-const validateTagUpdate = validateSchema(
-  `${TagService.TABLE_NAME}_UPDATE`,
-  updateSchema
-);
+const validateTagCreate = validateSchema(`${TAG_TABLE_NAME}_CREATE`, tagSchema);
+const validateTagUpdate = validateSchema(`${TAG_TABLE_NAME}_UPDATE`, updateSchema);
 
 export { validateTagCreate, validateTagUpdate };

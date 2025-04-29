@@ -1,9 +1,4 @@
-import {
-  IBaseUser,
-  IDiscussionThread,
-  IEvent,
-  IQnAThread
-} from "@/definitions/types/global";
+import { IBaseUser, IDiscussionThread, IEvent, IQnAThread } from "@/definitions/types/global";
 import ThreadsService from "../thread/service";
 import MessageService from "../message/service";
 import Base from "../Base";
@@ -12,9 +7,9 @@ import TagService from "../tag/service";
 import MediaService from "../media/service";
 import UserService from "../user/service";
 import { validateEventCreate, validateEventUpdate } from "./validation";
+import { EVENT_TABLE_NAME } from "./constants";
 
 class EventService extends Base<IEvent> {
-  public static readonly TABLE_NAME = "Events";
   private readonly threadService: ThreadsService;
   private readonly messageService: MessageService;
   private readonly tagService: TagService;
@@ -22,7 +17,7 @@ class EventService extends Base<IEvent> {
   private readonly userService: UserService;
 
   constructor() {
-    super(EventService.TABLE_NAME);
+    super(EVENT_TABLE_NAME);
     this.threadService = new ThreadsService();
     this.messageService = new MessageService();
     this.tagService = new TagService();
@@ -66,13 +61,9 @@ class EventService extends Base<IEvent> {
     }
 
     // Separate QnA and Discussion threads
-    const qnaThread = threadData.data.items?.filter(
-      (thread) => thread.type === EThreadType.QnA
-    );
+    const qnaThread = threadData.data.items?.filter((thread) => thread.type === EThreadType.QnA);
 
-    const discussionThread = threadData.data.items?.filter(
-      (thread) => thread.type === EThreadType.Discussion
-    );
+    const discussionThread = threadData.data.items?.filter((thread) => thread.type === EThreadType.Discussion);
 
     // Create promises for fetching related data
     const promises: Record<string, Promise<any>> = {};
@@ -108,9 +99,7 @@ class EventService extends Base<IEvent> {
     // Wait for all promises to settle
     const settledResults = await Promise.allSettled(Object.values(promises));
 
-    const userIds = eventData.participants.flatMap(
-      (participant) => participant.userId
-    );
+    const userIds = eventData.participants.flatMap((participant) => participant.userId);
     userIds.push(...eventData.verifiers);
 
     const { data: userProfiles, error } = await this.userService.getAll({
@@ -165,15 +154,7 @@ class EventService extends Base<IEvent> {
     };
   }
 
-  async createEvent({
-    body,
-    tagIds,
-    mediaIds
-  }: {
-    body: Partial<IEvent>;
-    tagIds: string[];
-    mediaIds: string[];
-  }) {
+  async createEvent({ body, tagIds, mediaIds }: { body: Partial<IEvent>; tagIds: string[]; mediaIds: string[] }) {
     return validateEventCreate(body, (data) =>
       super.supabaseClient.rpc("create_event", {
         event_data: data,

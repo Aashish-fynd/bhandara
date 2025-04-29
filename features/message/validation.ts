@@ -1,5 +1,5 @@
 import { validateSchema } from "@/helpers/validations";
-import MessageService from "./service";
+import { MESSAGE_TABLE_NAME } from "./constants";
 
 const messageContentSchema = {
   oneOf: [
@@ -113,14 +113,8 @@ const updateSchema = {
   }
 };
 
-const validateMessageCreate = validateSchema(
-  `${MessageService.TABLE_NAME}_CREATE`,
-  messageSchema
-);
+const validateMessageCreate = validateSchema(`${MESSAGE_TABLE_NAME}_CREATE`, messageSchema);
 
-const validateMessageUpdate = validateSchema(
-  `${MessageService.TABLE_NAME}_UPDATE`,
-  updateSchema
-);
+const validateMessageUpdate = validateSchema(`${MESSAGE_TABLE_NAME}_UPDATE`, updateSchema);
 
 export { validateMessageCreate, validateMessageUpdate };

@@ -1,14 +1,12 @@
 import { validateSchema } from "@/helpers/validations";
-import MediaService from "./service";
-
+import { MEDIA_TABLE_NAME } from "./constants";
 const mediaStorageSchema = {
   type: "object",
   properties: {
     provider: {
       type: "string",
       enum: ["local", "s3", "gcs", "cloudinary", "supabase"],
-      errorMessage:
-        "Provider must be one of 'local', 's3', 'gcs', 'cloudinary', or 'supabase'"
+      errorMessage: "Provider must be one of 'local', 's3', 'gcs', 'cloudinary', or 'supabase'"
     },
     path: { type: "string", errorMessage: "Path must be a valid string" },
     metadata: {
@@ -56,8 +54,7 @@ const mediaSchema = {
         type: {
           type: "string",
           enum: ["image", "video", "audio", "document"],
-          errorMessage:
-            "Type must be one of 'image', 'video', 'audio', or 'document'"
+          errorMessage: "Type must be one of 'image', 'video', 'audio', or 'document'"
         },
         caption: {
           type: ["string", "null"],
@@ -85,8 +82,7 @@ const mediaSchema = {
         accessLevel: {
           type: "string",
           enum: ["public", "private", "restricted"],
-          errorMessage:
-            "Access level must be one of 'public', 'private', or 'restricted'"
+          errorMessage: "Access level must be one of 'public', 'private', or 'restricted'"
         },
         metadata: {
           type: ["object", "null"],
@@ -129,8 +125,7 @@ const updateSchema = {
     accessLevel: {
       type: "string",
       enum: ["public", "private", "restricted"],
-      errorMessage:
-        "Access level must be one of 'public', 'private', or 'restricted'"
+      errorMessage: "Access level must be one of 'public', 'private', or 'restricted'"
     },
     metadata: {
       type: "object",
@@ -144,14 +139,7 @@ const updateSchema = {
   }
 };
 
-const validateMediaCreate = validateSchema(
-  `${MediaService.TABLE_NAME}_CREATE`,
-  mediaSchema
-);
-
-const validateMediaUpdate = validateSchema(
-  `${MediaService.TABLE_NAME}_UPDATE`,
-  updateSchema
-);
+const validateMediaCreate = validateSchema(`${MEDIA_TABLE_NAME}_CREATE`, mediaSchema);
+const validateMediaUpdate = validateSchema(`${MEDIA_TABLE_NAME}_UPDATE`, updateSchema);
 
 export { validateMediaCreate, validateMediaUpdate };

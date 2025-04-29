@@ -1,21 +1,16 @@
 import { IPaginationParams, ITag } from "@/definitions/types/global";
 import Base from "../Base";
 import { validateTagCreate, validateTagUpdate } from "./validation";
+import { TAG_TABLE_NAME, TAG_EVENT_JUNCTION_TABLE_NAME } from "./constants";
 
 class TagService extends Base<ITag> {
-  public static readonly TABLE_NAME = "Tag";
-  public static readonly JUNCTION_TABLE_NAME = "EventTags";
-
   constructor() {
-    super(TagService.TABLE_NAME);
+    super(TAG_TABLE_NAME);
   }
 
-  async getAllEventTags(
-    eventId: string,
-    pagination: Partial<IPaginationParams> = {}
-  ) {
+  async getAllEventTags(eventId: string, pagination: Partial<IPaginationParams> = {}) {
     const { data: eventTags, error: eventTagsError } = await this.supabaseClient
-      .from(TagService.JUNCTION_TABLE_NAME)
+      .from(TAG_EVENT_JUNCTION_TABLE_NAME)
       .select("tagId")
       .eq("eventId", eventId);
 
@@ -23,8 +18,7 @@ class TagService extends Base<ITag> {
 
     const { data, error } = await super.getAll(
       {
-        modifyQuery: (qb) =>
-          qb.in("id", eventTags?.map((tag) => tag.tagId) || [])
+        modifyQuery: (qb) => qb.in("id", eventTags?.map((tag) => tag.tagId) || [])
       },
       pagination
     );
@@ -46,29 +40,22 @@ class TagService extends Base<ITag> {
   }
 
   async create<U extends Partial<Omit<ITag, "id" | "updatedAt">>>(data: U) {
-    return validateTagCreate(data, (validatedData: U) =>
-      super.create(validatedData)
-    );
+    return validateTagCreate(data, (validatedData: U) => super.create(validatedData));
   }
 
   async update<U extends Partial<ITag>>(id: string, data: U) {
-    return validateTagUpdate(data, (validatedData: U) =>
-      super.update(id, validatedData)
-    );
+    return validateTagUpdate(data, (validatedData: U) => super.update(id, validatedData));
   }
 
   async associateTagToEvent(eventId: string, tagId: string) {
-    return this.supabaseClient.from(TagService.JUNCTION_TABLE_NAME).insert({
+    return this.supabaseClient.from(TAG_EVENT_JUNCTION_TABLE_NAME).insert({
       eventId,
       tagId
     });
   }
 
   async dissociateTagFromEvent(junctionId: string) {
-    return this.supabaseClient
-      .from(TagService.JUNCTION_TABLE_NAME)
-      .delete()
-      .eq("id", junctionId);
+    return this.supabaseClient.from(TAG_EVENT_JUNCTION_TABLE_NAME).delete().eq("id", junctionId);
   }
 }
 

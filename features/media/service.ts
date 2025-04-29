@@ -3,34 +3,23 @@ import Base from "../Base";
 import { EMediaProvider } from "@/definitions/enums";
 import * as FileSystem from "expo-file-system";
 import { validateMediaCreate, validateMediaUpdate } from "./validation";
-import { PostgrestError } from "@supabase/supabase-js";
-
+import { MEDIA_TABLE_NAME, MEDIA_EVENT_JUNCTION_TABLE_NAME, MEDIA_FILE_BUCKET_NAME } from "./constants";
 class MediaService extends Base<IMedia> {
-  public static readonly TABLE_NAME = "Media";
-  public static readonly JUNCTION_TABLE_NAME = "EventMedia";
-  public static readonly PROFILES_BUCKET_NAME = "avatars";
-  public static readonly FILE_BUCKET_NAME = "files";
-
   constructor() {
-    super(MediaService.TABLE_NAME);
+    super(MEDIA_TABLE_NAME);
   }
 
-  async getAllEventMedia(
-    eventId: string,
-    pagination: Partial<IPaginationParams> = {}
-  ) {
-    const { data: eventMedia, error: eventMediaError } =
-      await this.supabaseClient
-        .from(MediaService.JUNCTION_TABLE_NAME)
-        .select("mediaId")
-        .eq("eventId", eventId);
+  async getAllEventMedia(eventId: string, pagination: Partial<IPaginationParams> = {}) {
+    const { data: eventMedia, error: eventMediaError } = await this.supabaseClient
+      .from(MEDIA_EVENT_JUNCTION_TABLE_NAME)
+      .select("mediaId")
+      .eq("eventId", eventId);
 
     if (eventMediaError) return { error: eventMediaError };
     const { data, error } = await super.getAll(
       {
         select: `*`,
-        modifyQuery: (qb) =>
-          qb.in("id", eventMedia?.map((media) => media.mediaId) || [])
+        modifyQuery: (qb) => qb.in("id", eventMedia?.map((media) => media.mediaId) || [])
       },
       pagination
     );
@@ -64,59 +53,50 @@ class MediaService extends Base<IMedia> {
     mimeType: string;
     options?: Record<string, any>;
   }) {
-    return validateMediaCreate(
-      { uploadPath, bucket, fileUri, mimeType, options },
-      async () => {
-        const base64 = await FileSystem.readAsStringAsync(fileUri, {
-          encoding: FileSystem.EncodingType.Base64
-        });
+    return validateMediaCreate({ uploadPath, bucket, fileUri, mimeType, options }, async () => {
+      const base64 = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64
+      });
 
-        const { data, error } = await this.supabaseService.uploadFile({
-          bucket,
-          base64FileData: base64,
-          mimeType,
-          path: uploadPath,
-          options
-        });
+      const { data, error } = await this.supabaseService.uploadFile({
+        bucket,
+        base64FileData: base64,
+        mimeType,
+        path: uploadPath,
+        options
+      });
 
-        if (error) {
-          return { error };
-        }
-        const fileName = data?.path.split("/").pop() || "";
-
-        // create media record
-        return this.create({
-          storage: {
-            metadata: data,
-            path: data.fullPath,
-            provider: EMediaProvider.Supabase
-          },
-          metadata: { ...data, ...options?.metadata },
-          mimeType,
-          name: fileName,
-          ...options
-        });
+      if (error) {
+        return { error };
       }
-    );
+      const fileName = data?.path.split("/").pop() || "";
+
+      // create media record
+      return this.create({
+        storage: {
+          metadata: data,
+          path: data.fullPath,
+          provider: EMediaProvider.Supabase
+        },
+        metadata: { ...data, ...options?.metadata },
+        mimeType,
+        name: fileName,
+        ...options
+      });
+    });
   }
 
   async deleteFile(path: string) {
     const { error } = await this.supabaseService.deleteFile({
-      bucket: MediaService.FILE_BUCKET_NAME,
+      bucket: MEDIA_FILE_BUCKET_NAME,
       paths: [path]
     });
     if (error) return { error };
     return { data: { path, deleted: true }, error: null };
   }
 
-  async update<U extends Partial<IMedia>>(
-    id: string,
-    data: U,
-    useTransaction?: boolean
-  ) {
-    return validateMediaUpdate(data, () =>
-      super.update(id, data, useTransaction)
-    );
+  async update<U extends Partial<IMedia>>(id: string, data: U, useTransaction?: boolean) {
+    return validateMediaUpdate(data, () => super.update(id, data, useTransaction));
   }
 }
 

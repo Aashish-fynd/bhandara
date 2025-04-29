@@ -17,6 +17,7 @@ class Base<T extends Record<string, any>> {
   private readonly tableName: string;
 
   constructor(table: string) {
+    console.log("table", table);
     this.tableName = table;
     this.supabaseService = new SupabaseService();
   }
@@ -67,10 +68,7 @@ class Base<T extends Record<string, any>> {
         pagination: {
           limit: _pagination.limit,
           page: _pagination.page,
-          next:
-            data?.length > _pagination.limit
-              ? (data as T[])[data?.length - 1]?.createdAt
-              : null,
+          next: data?.length > _pagination.limit ? (data as T[])[data?.length - 1]?.createdAt : null,
           hasNext: data?.length > _pagination.limit
         }
       },
@@ -78,9 +76,7 @@ class Base<T extends Record<string, any>> {
     };
   }
 
-  getById(
-    id: string
-  ): Promise<{ data: T | null; error: PostgrestError | null }> {
+  getById(id: string): Promise<{ data: T | null; error: PostgrestError | null }> {
     return this.supabaseService.querySupabase<T>({
       table: this.tableName,
       query: [{ column: "id", operator: EQueryOperator.Eq, value: id }],
@@ -94,15 +90,11 @@ class Base<T extends Record<string, any>> {
    * @param useTransaction Whether to use transaction
    */
   private async handleOperation<U>(
-    operation: (
-      client: typeof this.supabaseClient
-    ) => Promise<{ data: U[] | null; error: PostgrestError | null }>,
+    operation: (client: typeof this.supabaseClient) => Promise<{ data: U[] | null; error: PostgrestError | null }>,
     useTransaction: boolean = false
   ): Promise<{ data: U[] | null; error: PostgrestError | null }> {
     if (useTransaction) {
-      const result = await this.supabaseService.transaction((client) =>
-        operation(client)
-      );
+      const result = await this.supabaseService.transaction((client) => operation(client));
       return {
         data: result?.data?.data ?? null,
         error: result?.error ?? null
@@ -130,18 +122,12 @@ class Base<T extends Record<string, any>> {
     error: PostgrestError | null;
   }> {
     return this.handleOperation<U>(async (client) => {
-      const result = await client
-        .from(this.tableName)
-        .update(data)
-        .eq("id", id)
-        .select();
+      const result = await client.from(this.tableName).update(data).eq("id", id).select();
       return result;
     }, useTransaction);
   }
 
-  delete(
-    id: string
-  ): Promise<{ data: T[] | null; error: PostgrestError | null }> {
+  delete(id: string): Promise<{ data: T[] | null; error: PostgrestError | null }> {
     return this.supabaseService.deleteById({
       table: this.tableName,
       id

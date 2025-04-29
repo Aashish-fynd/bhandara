@@ -1,5 +1,6 @@
 -- Enable UUID generation
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Enums
 CREATE TYPE "ThreadType" AS ENUM ('discussion', 'qna');
@@ -34,7 +35,7 @@ COMMENT ON COLUMN "Media"."storage" IS '{
 }';
 
 -- User Table
-CREATE TABLE "User" (
+CREATE TABLE "Users" (
     "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL UNIQUE,
@@ -48,11 +49,11 @@ CREATE TABLE "User" (
 );
 
 -- Add foreign key constraints for User and Media after both tables are created
-ALTER TABLE "Media" ADD CONSTRAINT "Media_uploader_fkey" FOREIGN KEY ("uploader") REFERENCES "User"("id");
-ALTER TABLE "User" ADD CONSTRAINT "User_profilePic_fkey" FOREIGN KEY ("profilePic") REFERENCES "Media"("id");
+ALTER TABLE "Media" ADD CONSTRAINT "Media_uploader_fkey" FOREIGN KEY ("uploader") REFERENCES "Users"("id");
+ALTER TABLE "Users" ADD CONSTRAINT "Users_profilePic_fkey" FOREIGN KEY ("profilePic") REFERENCES "Media"("id");
 
 -- Thread Table
-CREATE TABLE "Thread" (
+CREATE TABLE "Threads" (
     "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     "type" "ThreadType" NOT NULL,
     "status" "AccessLevel" NOT NULL,
@@ -64,13 +65,13 @@ CREATE TABLE "Thread" (
     "deletedAt" TIMESTAMPTZ NULL -- Soft delete column
 );
 
-COMMENT ON COLUMN "Thread"."lockHistory" IS '{
+COMMENT ON COLUMN "Threads"."lockHistory" IS '{
 "lockedBy": "string", -- ID of the user who locked the thread
 "lockedAt": "string" -- Timestamp of when the thread was locked
 }';
 
 -- Event Table
-CREATE TABLE "Event" (
+CREATE TABLE "Events" (
     "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL,
@@ -78,7 +79,7 @@ CREATE TABLE "Event" (
     "participants" JSONB NOT NULL DEFAULT '[]'::JSONB,
     "verifiers" JSONB NOT NULL DEFAULT '[]'::JSONB,
     "type" "EventType" NOT NULL,
-    "createdBy" UUID NOT NULL REFERENCES "User"("id"),
+    "createdBy" UUID NOT NULL REFERENCES "Users"("id"),
     "status" "EventStatus" NOT NULL,
     "capacity" INTEGER NOT NULL,
     "createdAt" TIMESTAMPTZ DEFAULT NOW(),
@@ -86,7 +87,7 @@ CREATE TABLE "Event" (
     "deletedAt" TIMESTAMPTZ NULL -- Soft delete column
 );
 
-COMMENT ON COLUMN "Event"."location" IS '{
+COMMENT ON COLUMN "Events"."location" IS '{
 "address": "string",
 "coordinates": {
 "latitude": "number",
@@ -95,29 +96,28 @@ COMMENT ON COLUMN "Event"."location" IS '{
 "venue": "string | null"
 }';
 
-COMMENT ON COLUMN "Event"."participants" IS '{
+COMMENT ON COLUMN "Events"."participants" IS '{
 "userId": "string",
 "status": "confirmed | pending | declined"
 }[]';
 
--- Add foreign key constraints for Event and Thread after both tables are created
-ALTER TABLE "Thread" ADD CONSTRAINT "Thread_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id");
-ALTER TABLE "Event" ADD CONSTRAINT "Event_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "Thread"("id");
+-- Add foreign key constraint for Thread after both tables are created
+ALTER TABLE "Threads" ADD CONSTRAINT "Threads_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Events"("id");
 
 -- Message Table
-CREATE TABLE "Message" (
+CREATE TABLE "Messages" (
     "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    "userId" UUID NOT NULL REFERENCES "User"("id"),
-    "parentId" UUID NULL REFERENCES "Message"("id"),
+    "userId" UUID NOT NULL REFERENCES "Users"("id"),
+    "parentId" UUID NULL REFERENCES "Messages"("id"),
     "content" JSONB NOT NULL, -- Unified field for text or richObject
     "isEdited" BOOLEAN NOT NULL DEFAULT FALSE,
-    "threadId" UUID NOT NULL REFERENCES "Thread"("id"),
+    "threadId" UUID NOT NULL REFERENCES "Threads"("id"),
     "createdAt" TIMESTAMPTZ DEFAULT NOW(),
     "updatedAt" TIMESTAMPTZ DEFAULT NOW(),
     "deletedAt" TIMESTAMPTZ NULL -- Soft delete column
 );
 
-COMMENT ON COLUMN "Message"."content" IS '{
+COMMENT ON COLUMN "Messages"."content" IS '{
 "text": "string", -- Always present (for plain text or as optional caption)
 "images": "string[] | null", -- Optional array of image URLs
 "videos": "string[] | null", -- Optional array of video URLs
@@ -128,15 +128,15 @@ COMMENT ON COLUMN "Message"."content" IS '{
 }';
 
 -- Tag Table
-CREATE TABLE "Tag" (
+CREATE TABLE "Tags" (
     "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     "name" TEXT NOT NULL,
     "value" TEXT NOT NULL UNIQUE,
     "description" TEXT NULL,
     "icon" TEXT NULL,
     "color" TEXT NULL,
-    "parentId" UUID NULL REFERENCES "Tag"("id"),
-    "createdBy" UUID NULL REFERENCES "User"("id"),
+    "parentId" UUID NULL REFERENCES "Tags"("id"),
+    "createdBy" UUID NULL REFERENCES "Users"("id"),
     "createdAt" TIMESTAMPTZ DEFAULT NOW(),
     "updatedAt" TIMESTAMPTZ DEFAULT NOW(),
     "deletedAt" TIMESTAMPTZ NULL -- Soft delete column
@@ -144,21 +144,21 @@ CREATE TABLE "Tag" (
 
 -- Junction Table: Event-Tags
 CREATE TABLE "EventTags" (
-    "eventId" UUID NOT NULL REFERENCES "Event"("id") ON DELETE CASCADE,
-    "tagId" UUID NOT NULL REFERENCES "Tag"("id") ON DELETE CASCADE,
+    "eventId" UUID NOT NULL REFERENCES "Events"("id") ON DELETE CASCADE,
+    "tagId" UUID NOT NULL REFERENCES "Tags"("id") ON DELETE CASCADE,
     PRIMARY KEY ("eventId", "tagId"),
     "createdAt" TIMESTAMPTZ DEFAULT NOW(),
     "updatedAt" TIMESTAMPTZ DEFAULT NOW(),
     "deletedAt" TIMESTAMPTZ NULL -- Soft delete column
 );
 
-COMMENT ON TABLE "EventTags" IS 'Junction table for many-to-many relationship between Event and Tag';
+COMMENT ON TABLE "EventTags" IS 'Junction table for many-to-many relationship between Events and Tags';
 COMMENT ON COLUMN "EventTags"."eventId" IS 'ID of the event';
 COMMENT ON COLUMN "EventTags"."tagId" IS 'ID of the tag';
 
 -- Junction Table: Event-Media
 CREATE TABLE "EventMedia" (
-    "eventId" UUID NOT NULL REFERENCES "Event"("id") ON DELETE CASCADE,
+    "eventId" UUID NOT NULL REFERENCES "Events"("id") ON DELETE CASCADE,
     "mediaId" UUID NOT NULL REFERENCES "Media"("id") ON DELETE CASCADE,
     PRIMARY KEY ("eventId", "mediaId"),
     "createdAt" TIMESTAMPTZ DEFAULT NOW(),
@@ -166,6 +166,6 @@ CREATE TABLE "EventMedia" (
     "deletedAt" TIMESTAMPTZ NULL -- Soft delete column
 );
 
-COMMENT ON TABLE "EventMedia" IS 'Junction table for many-to-many relationship between Event and Media';
+COMMENT ON TABLE "EventMedia" IS 'Junction table for many-to-many relationship between Events and Media';
 COMMENT ON COLUMN "EventMedia"."eventId" IS 'ID of the event';
 COMMENT ON COLUMN "EventMedia"."mediaId" IS 'ID of the media';
