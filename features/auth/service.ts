@@ -1,8 +1,16 @@
 import * as QueryParams from "expo-auth-session/build/QueryParams";
-import { supabase } from "@/lib";
 import * as WebBrowser from "expo-web-browser";
+import redis from "../../connections/redis";
+import { Redis } from "@upstash/redis";
+import { supabase } from "@/connections";
 
 class Auth {
+  protected readonly redis: Redis;
+
+  constructor() {
+    this.redis = redis;
+  }
+
   createSessionFromUrl = async (url: string) => {
     const { params, errorCode } = QueryParams.getQueryParams(url);
 
@@ -13,7 +21,7 @@ class Auth {
 
     const { data, error } = await supabase.auth.setSession({
       access_token,
-      refresh_token,
+      refresh_token
     });
     if (error) throw error;
     return data.session;
@@ -24,15 +32,12 @@ class Auth {
       provider,
       options: {
         redirectTo,
-        skipBrowserRedirect: true,
-      },
+        skipBrowserRedirect: true
+      }
     });
     if (error) throw error;
 
-    const res = await WebBrowser.openAuthSessionAsync(
-      data?.url ?? "",
-      redirectTo
-    );
+    const res = await WebBrowser.openAuthSessionAsync(data?.url ?? "", redirectTo);
 
     if (res.type === "success") {
       const { url } = res;
@@ -44,10 +49,55 @@ class Auth {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: redirectTo,
-      },
+        emailRedirectTo: redirectTo
+      }
     });
 
     if (error) throw error;
   };
+
+  signUpNewUser = async (email: string, password: string, redirectTo: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectTo
+      }
+    });
+    if (error) throw error;
+    return { data };
+  };
+
+  signInWithEmail = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (error) throw error;
+    return { data };
+  };
+
+  sendResetPasswordEmail = async (email: string, redirectTo: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo
+    });
+    if (error) throw error;
+  };
+
+  updatePassword = async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  };
+
+  signOut = async (scope: "global" | "local" | "others") => {
+    if (scope === "global") {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.auth.signOut({ scope });
+      if (error) throw error;
+    }
+  };
 }
+
+export default Auth;

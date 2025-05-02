@@ -17,7 +17,6 @@ class Base<T extends Record<string, any>> {
   private readonly tableName: string;
 
   constructor(table: string) {
-    console.log("table", table);
     this.tableName = table;
     this.supabaseService = new SupabaseService();
   }

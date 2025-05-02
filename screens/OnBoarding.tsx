@@ -2,16 +2,33 @@ import GoogleIcon from "@/assets/svg/GoogleIcon";
 import { BaseButton, FilledButton } from "@/components/ui/Buttons";
 import { ArrowLeft, ChevronDown, Github, Mail } from "@tamagui/lucide-icons";
 import React, { memo, useState } from "react";
-import { Button, H3, Image, Input, Sheet, Spinner, StackProps, styled, Text, View, XStack, YStack } from "tamagui";
+import {
+  Button,
+  H3,
+  Image,
+  Input,
+  Paragraph,
+  Sheet,
+  Spinner,
+  StackProps,
+  styled,
+  Text,
+  View,
+  XStack,
+  YStack
+} from "tamagui";
 import AuthForm from "./Auth/Form";
 import { Controller, useForm } from "react-hook-form";
 import { UserService } from "@/features";
+import { useUserService } from "@/hooks";
+import { Mapbox } from "@/features/maps";
 
 type FormData = {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
+  verifyPassword?: string;
 };
 
 const OvalCard = ({ image, width, height }: { image: string; width: number; height?: number }) => {
@@ -131,7 +148,7 @@ const SignUpCard = ({
   </>
 );
 const GetStartedContents = ({ setPosition }: { setPosition: (position: number) => void }) => {
-  const userService = new UserService();
+  const userService = useUserService();
   const tabs = [
     {
       title: "Explore Nearby Events",
@@ -154,6 +171,7 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
   const {
     control,
     handleSubmit,
+    watch,
     formState: { errors }
   } = useForm<FormData>({
     defaultValues: {
@@ -162,11 +180,13 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
     mode: "all"
   });
 
+  const allValues = watch();
+
   const onSubmit = (data: FormData) => {
     console.log(data);
   };
 
-  const [authStage, setAuthStage] = useState<"emailCheck" | "signup" | "otp">("emailCheck");
+  const [authStage, setAuthStage] = useState<"emailCheck" | "signup" | "location" | "avatarAndUsername">("location");
 
   // TODO: Implement login user common functionality
   const loginUser = async () => {};
@@ -174,15 +194,19 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
   const stageHandlers = {
     emailCheck: async ({ data }: { data: FormData }) => {
       const res = (await userService.getUserByEmail(data.email)) || {};
-      if (res.error) {
+      if (res.error) throw new Error(res.error.message);
+      if (!res.data?.length) {
         // user doesn't exist, create user
         setAuthStage("signup");
       } else {
         await loginUser();
       }
     },
-    signup: async () => {},
-    otp: async () => {}
+    signup: async () => {
+      const res = await userService.create({});
+    },
+    location: async () => {},
+    avatarAndUsername: async () => {}
   };
 
   const handleContinueClick = async (data: FormData) => {
@@ -193,6 +217,25 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
       console.log(error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const stageTexts: Record<keyof typeof stageHandlers, { title: string; description: string }> = {
+    emailCheck: {
+      title: "Continue with Email",
+      description: "Sign in or Sign up with your email"
+    },
+    signup: {
+      title: "Let's get started",
+      description: "Please fill out the details to continue"
+    },
+    location: {
+      title: "Location",
+      description: "Please select your location to continue"
+    },
+    avatarAndUsername: {
+      title: "One more step",
+      description: "Choose an avatar and username"
     }
   };
 
@@ -213,15 +256,117 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
           }}
         />
         <YStack gap={"$2"}>
-          <H3>Continue with Email</H3>
+          <H3>{stageTexts[authStage].title}</H3>
           <Text
             fontSize={"$2"}
             fontWeight={"100"}
             color={"$accent9"}
           >
-            Sign in or Sign up with your email
+            {stageTexts[authStage].description}
           </Text>
         </YStack>
+
+        {authStage === "signup" && (
+          <XStack
+            gap="$4"
+            animation={"quick"}
+            enterStyle={{ opacity: 0, y: 15 }}
+            exitStyle={{ opacity: 0, y: -15 }}
+            key="signup-fields"
+            width="100%"
+            height={"auto"}
+          >
+            <YStack
+              flex={1}
+              gap="$2"
+            >
+              <XStack
+                gap="$2"
+                justify="space-between"
+                items="center"
+              >
+                <Text minH={0}>First name</Text>
+                <Paragraph
+                  size="$1"
+                  color="$color8"
+                >
+                  Required
+                </Paragraph>
+              </XStack>
+              <Controller
+                control={control}
+                name="firstName"
+                rules={{
+                  minLength: { value: 2, message: "First name must be at least 2 characters" },
+                  pattern: { value: /^[A-Za-z]+$/, message: "Please enter valid characters" }
+                }}
+                render={({ field }) => (
+                  <>
+                    <Input
+                      placeholder="First name"
+                      value={field.value}
+                      onChangeText={field.onChange}
+                      borderColor={errors.firstName ? "$red8" : undefined}
+                    />
+                    {errors.firstName && (
+                      <Text
+                        color="$red10"
+                        fontSize="$1"
+                      >
+                        {errors.firstName.message}
+                      </Text>
+                    )}
+                  </>
+                )}
+              />
+            </YStack>
+            <YStack
+              flex={1}
+              gap="$2"
+            >
+              <XStack
+                gap="$2"
+                justify="space-between"
+                items="center"
+              >
+                <Text>Last name</Text>
+                <Paragraph
+                  size="$1"
+                  color="$color8"
+                >
+                  Required
+                </Paragraph>
+              </XStack>
+              <Controller
+                control={control}
+                name="lastName"
+                rules={{
+                  minLength: { value: 2, message: "Last name must be at least 2 characters" },
+                  pattern: { value: /^[A-Za-z]+$/, message: "Please enter valid characters" }
+                }}
+                render={({ field }) => (
+                  <>
+                    <Input
+                      placeholder="Last name"
+                      value={field.value}
+                      onChangeText={field.onChange}
+                      borderColor={errors.lastName ? "$red8" : undefined}
+                    />
+                    {errors.lastName && (
+                      <Text
+                        color="$red10"
+                        fontSize="$1"
+                        width={"auto"}
+                      >
+                        {errors.lastName.message}
+                      </Text>
+                    )}
+                  </>
+                )}
+              />
+            </YStack>
+          </XStack>
+        )}
 
         <YStack
           gap="$2.5"
@@ -246,6 +391,10 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
                   onChangeText={field.onChange}
                   keyboardType="email-address"
                   borderColor={errors.email ? "$red8" : undefined}
+                  disabled={authStage !== "emailCheck"}
+                  opacity={authStage !== "emailCheck" ? 0.5 : 1}
+                  bg={authStage !== "emailCheck" ? "$accent11" : undefined}
+                  cursor={authStage !== "emailCheck" ? "not-allowed" : "auto"}
                 />
                 {errors.email && (
                   <Text
@@ -259,6 +408,92 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
             )}
           />
         </YStack>
+
+        {authStage === "signup" && (
+          <>
+            <YStack gap="$2">
+              <Text fontSize={"$3"}>Password</Text>
+              <Controller
+                control={control}
+                name="password"
+                rules={{
+                  required: "Password is required",
+                  minLength: {
+                    value: 8,
+                    message: "Password must be at least 8 characters"
+                  },
+                  pattern: {
+                    value: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/,
+                    message: "Password must contain at least one letter and one number"
+                  }
+                }}
+                render={({ field }) => (
+                  <>
+                    <Input
+                      placeholder="Enter your password"
+                      secureTextEntry
+                      value={field.value}
+                      onChangeText={field.onChange}
+                      borderColor={errors.password ? "$red8" : undefined}
+                    />
+                    {errors.password && (
+                      <Text
+                        color="$red10"
+                        fontSize="$1"
+                      >
+                        {errors.password.message}
+                      </Text>
+                    )}
+                  </>
+                )}
+              />
+            </YStack>
+            <YStack gap="$2">
+              <Text fontSize={"$3"}>Verify Password</Text>
+              <Controller
+                control={control}
+                name="verifyPassword"
+                rules={{
+                  required: "Verify password is required",
+                  validate: (value) => {
+                    if (value !== allValues.password) {
+                      return "Passwords do not match";
+                    }
+                    return true;
+                  }
+                }}
+                render={({ field }) => (
+                  <>
+                    <Input
+                      placeholder="Re-enter your password"
+                      secureTextEntry
+                      value={field.value}
+                      onChangeText={field.onChange}
+                      borderColor={errors.verifyPassword ? "$red8" : undefined}
+                    />
+                    {errors.verifyPassword && (
+                      <Text
+                        color="$red10"
+                        fontSize="$1"
+                      >
+                        {errors.verifyPassword.message}
+                      </Text>
+                    )}
+                  </>
+                )}
+              />
+            </YStack>
+          </>
+        )}
+
+        {authStage === "location" && (
+          <Mapbox.MapView
+            style={{
+              width: "100%",
+              height: 200
+            }}
+          />
+        )}
         <BaseButton
           onPress={handleSubmit(handleContinueClick)}
           animation="quick"

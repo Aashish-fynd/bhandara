@@ -3,9 +3,12 @@ import Base from "../Base";
 import { validateUserCreate, validateUserUpdate } from "./validation";
 import { EQueryOperator } from "@/definitions/enums";
 import { USER_TABLE_NAME } from "./constants";
+// import { RedisCache } from "../cache";
 class UserService extends Base<IBaseUser> {
+  // redisCache: RedisCache;
   constructor() {
     super(USER_TABLE_NAME);
+    // this.redisCache = new RedisCache({ cacheNamespace: "users" });
   }
 
   async create<U extends Partial<Omit<IBaseUser, "id" | "updatedAt">>>(data: U, useTransaction?: boolean) {

@@ -1,11 +1,8 @@
-import supabase from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
-import {
-  PostgrestBuilder,
-  PostgrestFilterBuilder
-} from "@supabase/postgrest-js";
+import { PostgrestBuilder, PostgrestFilterBuilder } from "@supabase/postgrest-js";
 import { EQueryOperator } from "@/definitions/enums";
 import { decode } from "base64-arraybuffer";
+import { supabase } from "@/connections";
 
 export type SimpleFilter = {
   column: string;
@@ -13,10 +10,7 @@ export type SimpleFilter = {
   value: string | number | boolean | null | Array<string | number | boolean>;
 };
 
-export type QueryFilter =
-  | SimpleFilter
-  | { And: QueryFilter[] }
-  | { Or: QueryFilter[] };
+export type QueryFilter = SimpleFilter | { And: QueryFilter[] } | { Or: QueryFilter[] };
 
 export class SupabaseService {
   public readonly supabaseClient = supabase;
@@ -27,13 +21,7 @@ export class SupabaseService {
    * @param {string} params.table - The table name
    | {string} params.selectionQuery - The selection query string
    */
-  async getResultsFromDB({
-    table,
-    selectionQuery
-  }: {
-    table: string;
-    selectionQuery: string;
-  }) {
+  async getResultsFromDB({ table, selectionQuery }: { table: string; selectionQuery: string }) {
     return this.querySupabase({ table, select: selectionQuery });
   }
 
@@ -56,11 +44,9 @@ export class SupabaseService {
     select?: string;
     modifyQuery?: (
       qb: PostgrestFilterBuilder<any, T, T[]>
-    ) => PostgrestFilterBuilder<any, T, T[]> | PostgrestBuilder<T>;
+    ) => PostgrestFilterBuilder<any, T, T[]> | PostgrestBuilder<T | T[] | null>;
   }): Promise<{ data: T | T[] | null; error: PostgrestError | null }> {
-    let queryBuilder = this.supabaseClient
-      .from(table)
-      .select(select) as PostgrestFilterBuilder<any, T, T[]>;
+    let queryBuilder = this.supabaseClient.from(table).select(select) as PostgrestFilterBuilder<any, T, T[]>;
 
     if (query && query.length > 0) {
       query.forEach((filter) => {
@@ -98,7 +84,8 @@ export class SupabaseService {
     }
 
     if (modifyQuery) {
-      queryBuilder = modifyQuery(queryBuilder) as any;
+      const modifiedQuery = modifyQuery(queryBuilder);
+      queryBuilder = modifiedQuery as any;
     }
 
     return queryBuilder;
@@ -218,14 +205,12 @@ export class SupabaseService {
     options?: Record<string, any>;
     base64FileData: string;
   }) {
-    return this.supabaseClient.storage
-      .from(bucket)
-      .upload(path, decode(base64FileData), {
-        contentType: mimeType,
-        cacheControl: "3600",
-        upsert: true,
-        ...options
-      });
+    return this.supabaseClient.storage.from(bucket).upload(path, decode(base64FileData), {
+      contentType: mimeType,
+      cacheControl: "3600",
+      upsert: true,
+      ...options
+    });
   }
 
   /**
@@ -269,11 +254,7 @@ export class SupabaseService {
     };
     return this.supabaseClient.storage
       .from(bucket)
-      .createSignedUrl(
-        path,
-        _options?.expiresIn,
-        _options?.transformations || {}
-      );
+      .createSignedUrl(path, _options?.expiresIn, _options?.transformations || {});
   }
 
   /**

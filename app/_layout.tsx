@@ -9,10 +9,10 @@ import { useEffect } from "react";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { AppState } from "react-native";
-import { supabase } from "@/lib";
 
 import Provider from "@/components/Provider";
 import { Theme } from "tamagui";
+import { supabase } from "@/connections";
 
 AppState.addEventListener("change", async (state) => {
   if (state === "active") {
