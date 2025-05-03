@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+      "target": "ES6",
+      "module": "commonjs",
+      "sourceMap": true,
+      "outDir": "dist",
+      "sourceRoot": ".",
+      "baseUrl": "./",
+      "paths": {
+        "*": [
+          "node_modules/*"
+        ],
+        "@*": [
+          "./*"
+        ]
+      }
+    },
+    "include": [
+      "**/*.ts"
+    ],
+    "exclude": [
+      "node_modules",
+      "misc"
+    ]
+  }
