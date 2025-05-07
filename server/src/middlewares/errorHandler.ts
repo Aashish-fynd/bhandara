@@ -10,7 +10,7 @@ import { NextFunction, Request, Response } from "express";
  * @param {Response} res - The Express response object.
  * @param {NextFunction} next - The Express next function.
  */
-export const errorHandler = (
+const errorHandler = (
   err: any,
   req: Request,
   res: Response,
@@ -32,6 +32,8 @@ export const errorHandler = (
     let response = { message: customError.message } as {
       message: string;
       additionalInfo?: any;
+      type?: string;
+      status?: number;
     };
 
     // Include additional information in the response if available
@@ -39,10 +41,15 @@ export const errorHandler = (
       response.additionalInfo = customError.additionalInfo;
     }
 
+    if (customError.name) response.type = customError.name;
+    if (customError.status) response.status = customError.status;
+
     // Send a JSON response with the appropriate status code and error message
-    res
+    return res
       .status(customError.status)
       .type("json")
       .send(JSON.stringify({ error: response, success: false }));
   }
 };
+
+export default errorHandler;

@@ -84,7 +84,7 @@ class Base<T extends Record<string, any>> {
     return this.supabaseService.querySupabase<T>({
       table: this.tableName,
       query: [{ column: "id", operator: EQueryOperator.Eq, value: id }],
-      modifyQuery: (qb: any) => qb.single(),
+      modifyQuery: (qb) => qb.maybeSingle(),
     }) as Promise<{ data: T | null; error: PostgrestError | null }>;
   }
 

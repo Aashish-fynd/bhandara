@@ -1,6 +1,5 @@
-import { IRequestPagination } from "@definitions/interfaces";
-import { jnstringify } from "@lib/utils";
-import logger from "@src/logger";
+import { IRequestPagination } from "@definitions/types";
+import logger from "@logger";
 import { NextFunction, Response } from "express";
 
 const paginationParser = (
@@ -12,13 +11,11 @@ const paginationParser = (
     limit,
     sortBy,
     sortOrder,
-    populate,
+    next: _next,
     pageNumber,
-    fieldsToPopulate,
     startDate,
     endDate,
   } = req.query;
-  const parsedPopulateFields = (fieldsToPopulate as string)?.split(",");
   const parsedLimit = limit ? +(limit ?? 10) : null;
   const parsedPageNumber = +(pageNumber ?? 1);
   const parsedSortBy =
@@ -26,7 +23,6 @@ const paginationParser = (
 
   const parsedSortOrder =
     sortOrder !== "asc" && sortOrder !== "desc" ? null : sortOrder;
-  const parsedDoPopulate = populate === "true";
 
   let parsedStartDate = startDate ? new Date(startDate as string) : null;
   let parsedEndDate = endDate ? new Date(endDate as string) : null;
@@ -44,13 +40,12 @@ const paginationParser = (
   // add parsed pagination parameters to request object
   req.pagination = {
     limit: parsedLimit,
+    page: parsedPageNumber,
     sortBy: parsedSortBy,
     sortOrder: parsedSortOrder,
-    doPopulate: parsedDoPopulate,
-    pageNumber: parsedPageNumber,
-    populateFields: parsedPopulateFields,
     startDate: parsedStartDate,
     endDate: parsedEndDate,
+    next: _next as string | null,
   };
 
   return next();

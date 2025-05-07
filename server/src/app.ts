@@ -5,7 +5,7 @@ import cookieparser from "cookie-parser";
 
 import helmet from "helmet";
 import config from "@config";
-import { errorHandler } from "@middlewares/errorHandler";
+import { errorHandler, requestContextMiddleware } from "@middlewares";
 import appRoutes from "@routes";
 import { NotFoundError } from "@exceptions";
 
@@ -48,6 +48,8 @@ const createServer = () => {
       version: "1.0.0",
     });
   });
+
+  app.use(requestContextMiddleware);
 
   app.use(appRoutes);
 

@@ -1,21 +1,23 @@
 import config from "@config";
 import { supabase } from "@connections";
+import { RequestContext } from "@contexts";
 import { ICustomRequest } from "@definitions/types";
-import { IBaseUser } from "@definitions/types/global";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@exceptions";
-import { RedisCache } from "@features/cache";
 import {
+  deleteUserSessionCache,
   getSafeUser,
+  getUserSessionCacheList,
   setUserCache,
   setUserSessionCache,
 } from "@features/user/helpers";
 import UserService from "@features/user/service";
 import {
-  signJWTPayload,
   getGeoLocationData,
   validatePassword,
   getAlphaNumericId,
 } from "@helpers";
+import logger from "@logger";
+import { jnstringify } from "@utils";
 import { Request, Response } from "express";
 import { UAParser } from "ua-parser-js";
 
@@ -60,8 +62,9 @@ const login = async (req: Request, res: Response) => {
   });
 };
 
-const logOut = (req: Request, res: Response) => {
-  res.clearCookie("jwt");
+const logOut = async (req: ICustomRequest, res: Response) => {
+  await deleteUserSessionCache(req.user.id, req.cookies[config.cookie.keyName]);
+  res.clearCookie(config.cookie.keyName);
   return res.status(200).json({ data: "Logout successful", success: true });
 };
 
@@ -94,6 +97,11 @@ const googleCallback = async (req: Request, res: Response) => {
 
   const { user, session } = data;
 
+  RequestContext.setContextValue("session", {
+    accessToken: session?.access_token,
+    refreshToken: session?.refresh_token,
+  });
+
   let { data: existingUser, error: userError } =
     await userService.getUserByEmail(user.email);
 
@@ -102,10 +110,9 @@ const googleCallback = async (req: Request, res: Response) => {
   const ip =
     (req.headers["x-forwarded-for"] as string)?.split(",")[0] ||
     req.socket.remoteAddress;
-  let geoLocationData = {};
+  let geoLocationData = await getGeoLocationData(ip);
 
   if (!existingUser) {
-    geoLocationData = await getGeoLocationData(ip);
     // create new user
     const newUserData = {
       id: user.id,
@@ -136,7 +143,7 @@ const googleCallback = async (req: Request, res: Response) => {
     existingUser = newUser?.[0];
   }
   existingUser = getSafeUser(existingUser);
-  await setUserCache(existingUser.id, existingUser);
+  await setUserCache(existingUser.id, existingUser, 3600 * 24 * 30 * 30);
   // Extract device metadata
   const userAgent = req.headers["user-agent"] || "";
   const parser = new UAParser();
@@ -159,7 +166,8 @@ const googleCallback = async (req: Request, res: Response) => {
     access_token: session?.access_token,
     refresh_token: session?.refresh_token,
     userAgent: finalUserAgent,
-    user: existingUser,
+    location: geoLocationData,
+    user: { id: existingUser.id },
   };
 
   const sessionId = getAlphaNumericId();
@@ -168,7 +176,7 @@ const googleCallback = async (req: Request, res: Response) => {
     userId: existingUser.id,
     sessionId,
     data: sessionDataToSave,
-    ttl: 60 * 60 * 24 * 30,
+    ttl: 60 * 60 * 24 * 30 * 30,
   });
 
   res.cookie(config.cookie.keyName, sessionId, {
@@ -179,7 +187,19 @@ const googleCallback = async (req: Request, res: Response) => {
     data: {
       session: { id: sessionId, user: existingUser },
     },
+    success: true,
   });
+};
+
+export const sessionsList = async (req: ICustomRequest, res: Response) => {
+  const sessions = await getUserSessionCacheList(req.user.id);
+  return res.status(200).json({ data: sessions });
+};
+
+export const deleteSession = async (req: ICustomRequest, res: Response) => {
+  const { sessionId } = req.params;
+  await deleteUserSessionCache(req.user.id, sessionId);
+  return res.status(200).json({ data: "Session deleted", success: true });
 };
 
 export { login, logOut, session, googleAuth, googleCallback };

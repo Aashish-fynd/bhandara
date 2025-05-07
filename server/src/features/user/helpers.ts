@@ -1,15 +1,21 @@
+import { IUserSession } from "@definitions/types";
 import { IBaseUser } from "@definitions/types/global";
 import { RedisCache } from "@features/cache";
+import { jnparse } from "@utils";
 
 const userCache = new RedisCache({ namespace: "users" });
 const sessionCache = new RedisCache({ namespace: "session" });
 
-export const getUserCache = (userId: string) => {
-  return userCache.getItem(userId);
+export const getUserCache = async (userId: string) => {
+  return userCache.getItem(userId) as Promise<IBaseUser>;
 };
 
-export const setUserCache = async (userId: string, user: IBaseUser) => {
-  return userCache.setItem(userId, user);
+export const setUserCache = async (
+  userId: string,
+  user: IBaseUser,
+  ttl: number
+) => {
+  return userCache.setItem(userId, user, ttl);
 };
 
 export const getUserCacheByEmail = async (email: string) => {
@@ -21,7 +27,49 @@ export const setUserCacheByEmail = async (email: string, user: IBaseUser) => {
 };
 
 export const getUserSessionCacheList = async (userId: string) => {
-  const list = await userCache.getHKeys(`${userId}:sessions`);
+  // Step 1: Get all session IDs from the user's hash
+  const sessionMap = await userCache.getHKeys(`${userId}:sessions`);
+
+  if (!sessionMap || Object.keys(sessionMap).length === 0) {
+    return [];
+  }
+
+  const sessionIds = Object.keys(sessionMap);
+
+  // Step 2: Fetch all session objects using pipeline
+  const pipeline = sessionCache.getPipeline();
+  sessionIds.forEach((sessionId) => {
+    pipeline.get(`session:${sessionId}`);
+  });
+
+  const results = await pipeline.exec();
+
+  // TODO: TO be used with upstash redis
+  // Extract actual session data from results
+  // const sessions = results
+  //   .map((result: Record<string, any>) => {
+  //     return {
+  //       device: result.userAgent,
+  //       createdAt: result.createdAt,
+  //       location: result.location,
+  //     };
+  //   })
+  //   .filter(Boolean);
+
+  const sessions = results.map(
+    ([, result]: [Error, Record<string, any>], index: number) => {
+      result = jnparse(result);
+      if (!result) return null;
+      return {
+        id: sessionIds[index],
+        device: result.userAgent,
+        createdAt: result.createdAt,
+        location: result.location,
+      };
+    }
+  );
+
+  return sessions.filter(Boolean);
 };
 
 export const setUserSessionCache = async ({
@@ -44,8 +92,20 @@ export const setUserSessionCache = async ({
   return sessionCache.setItem(sessionId, data, ttl);
 };
 
-export const getUserSessionCache = async (sessionId: string) => {
+export const getUserSessionCache = async (
+  sessionId: string
+): Promise<IUserSession | null> => {
   return sessionCache.getItem(sessionId);
+};
+
+export const deleteUserSessionCache = async (
+  userId: string,
+  sessionId: string
+) => {
+  return Promise.all([
+    sessionCache.deleteItem(sessionId),
+    userCache.deleteHKey(`${userId}:sessions`, sessionId),
+  ]);
 };
 
 export const getSafeUser = (user: IBaseUser) => {

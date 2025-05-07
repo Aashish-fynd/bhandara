@@ -1,4 +1,4 @@
-import { IBaseUser } from "@/definitions/types/global";
+import { IBaseUser } from "@/definitions/types";
 import Base from "../Base";
 import { validateUserCreate, validateUserUpdate } from "./validation";
 import { EQueryOperator } from "@/definitions/enums";

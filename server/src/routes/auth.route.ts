@@ -1,5 +1,3 @@
-import asyncHandler from "@middlewares/asyncHandler";
-import userParser from "@middlewares/userParser";
 import { Router } from "express";
 import {
   logOut,
@@ -7,14 +5,21 @@ import {
   login,
   googleAuth,
   googleCallback,
+  sessionsList,
+  deleteSession,
 } from "@features/auth/controller";
+import { sessionParser, userParser, asyncHandler } from "@middlewares";
 
 const router = Router();
 
 router.post("/login", asyncHandler(login));
-router.get("/logout", [userParser], asyncHandler(logOut));
-router.get("/session", [userParser], asyncHandler(session));
 router.get("/google", asyncHandler(googleAuth));
 router.get("/google/callback", asyncHandler(googleCallback));
+
+router.use([sessionParser, userParser]);
+router.get("/logout", asyncHandler(logOut));
+router.get("/session", asyncHandler(session));
+router.delete("/session/:sessionId", asyncHandler(deleteSession));
+router.get("/sessions", asyncHandler(sessionsList));
 
 export default router;
