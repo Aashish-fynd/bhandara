@@ -1,5 +1,5 @@
 import config from "@config";
-import { IBaseUser } from "@definitions/types/global";
+import { IBaseUser } from "@definitions/types";
 import logger from "@logger";
 import { jnstringify } from "@utils";
 import * as bcrypt from "bcrypt";
@@ -125,6 +125,11 @@ export * from "./validation";
 export { default as ajv } from "./validation";
 
 export const getGeoLocationData = async (ip: string) => {
+  const skippedIps = ["127.0.0.1", "::1", "localhost"];
+  // Return null for localhost IPs
+  if (skippedIps.includes(ip)) {
+    return null;
+  }
   const response = await fetch(
     `https://api.ip2location.io/?key=${config.ip2location.apiKey}&ip=${ip}`
   );
@@ -134,6 +139,7 @@ export const getGeoLocationData = async (ip: string) => {
     logger.error(`Error getting geo location data: ${data.error}`);
     return {};
   }
+
   return {
     city: data.city_name,
     country: data.country_name,

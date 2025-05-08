@@ -1,5 +1,5 @@
 import { EQueryOperator } from "@/definitions/enums";
-import { IPaginationParams } from "@/definitions/types/global";
+import { IPaginationParams } from "@/definitions/types";
 import SupabaseService, { SimpleFilter } from "@supabase";
 import { PostgrestError } from "@supabase/supabase-js";
 
@@ -32,12 +32,12 @@ class Base<T extends Record<string, any>> {
     error: any;
   }> {
     const _pagination = {
-      limit: 10,
-      page: 1,
-      next: null,
-      sortBy: "createdAt",
-      sortOrder: "desc",
       ...pagination,
+      limit: pagination?.limit || 10,
+      page: pagination?.page || 1,
+      next: pagination?.next || null,
+      sortBy: pagination?.sortBy || "createdAt",
+      sortOrder: pagination?.sortOrder || "desc",
     };
 
     const from = (_pagination.page - 1) * _pagination.limit;
@@ -45,13 +45,24 @@ class Base<T extends Record<string, any>> {
     const { data, error } = await this.supabaseService.querySupabase<T>({
       table: this.tableName,
       modifyQuery: (qb: any) => {
-        if (_pagination.sortOrder === "asc") {
-          qb = qb.order(_pagination.sortBy, { ascending: true });
-        } else {
-          qb = qb.order(_pagination.sortBy, { ascending: false });
+        if (_pagination?.sortOrder && _pagination?.sortBy) {
+          qb = qb.order(_pagination.sortBy, {
+            ascending: _pagination.sortOrder === "asc",
+          });
         }
-        if (_pagination.next) qb = qb.gt(_pagination.sortBy, _pagination.next);
-        qb = qb.range(from, from + _pagination.limit + 1);
+
+        if (_pagination.startDate)
+          qb = qb.gte(_pagination.sortBy, _pagination.startDate);
+        if (_pagination.endDate)
+          qb = qb.lte(_pagination.sortBy, _pagination.endDate);
+
+        if (_pagination.next) {
+          qb = qb
+            .gt(_pagination.sortBy, _pagination.next)
+            .limit(_pagination.limit + 1);
+        } else {
+          qb = qb.range(from, from + _pagination.limit - 1);
+        }
 
         if (args?.modifyQuery) qb = args.modifyQuery(qb);
         return qb;
@@ -59,17 +70,17 @@ class Base<T extends Record<string, any>> {
       ...args,
     });
 
-    if (error) return { error };
+    if (error) throw new Error(error.message);
 
     return {
       data: {
-        items: data as T[],
+        items: data?.slice(0, _pagination.limit) as T[],
         pagination: {
           limit: _pagination.limit,
           page: _pagination.page,
           next:
             data?.length > _pagination.limit
-              ? (data as T[])[data?.length - 1]?.createdAt
+              ? (data as T[])[_pagination.limit - 1]?.createdAt
               : null,
           hasNext: data?.length > _pagination.limit,
         },

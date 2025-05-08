@@ -16,7 +16,7 @@ const paginationParser = (
     startDate,
     endDate,
   } = req.query;
-  const parsedLimit = limit ? +(limit ?? 10) : null;
+  const parsedLimit = +(limit ?? 10);
   const parsedPageNumber = +(pageNumber ?? 1);
   const parsedSortBy =
     sortBy !== "createdAt" && sortBy !== "updatedAt" ? null : sortBy;

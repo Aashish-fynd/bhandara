@@ -163,8 +163,8 @@ const googleCallback = async (req: Request, res: Response) => {
   };
 
   const sessionDataToSave = {
-    access_token: session?.access_token,
-    refresh_token: session?.refresh_token,
+    accessToken: session?.access_token,
+    refreshToken: session?.refresh_token,
     userAgent: finalUserAgent,
     location: geoLocationData,
     user: { id: existingUser.id },
