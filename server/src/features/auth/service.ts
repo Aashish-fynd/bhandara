@@ -1,11 +1,22 @@
-import { redis, supabase } from "@connections";
-import { Redis } from "@upstash/redis";
+import { supabase } from "@connections";
+import { RequestContext } from "@contexts";
+import { ESocialLoginProvider } from "@definitions/enums";
+import { IBaseUser } from "@definitions/types";
+import {
+  getSafeUser,
+  setUserCache,
+  setUserSessionCache,
+} from "@features/user/helpers";
+import UserService from "@features/user/service";
+import { getAlphaNumericId, getGeoLocationData } from "@helpers";
+import { AuthResponse } from "@supabase/supabase-js";
+import { Request } from "express";
+import { UAParser } from "ua-parser-js";
 
 class Auth {
-  protected readonly redis: Redis;
-
+  private userService: UserService;
   constructor() {
-    this.redis = redis;
+    this.userService = new UserService();
   }
 
   performOAuth = async (provider: "github" | "google", redirectTo: string) => {
@@ -75,6 +86,134 @@ class Auth {
       const { error } = await supabase.auth.signOut({ scope });
       if (error) throw error;
     }
+  };
+
+  refreshSession = async (refreshToken: string) => {
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+    if (error) throw error;
+    return { data };
+  };
+
+  createPlatformUser = async ({
+    sessionData,
+    req,
+    existingUser,
+  }: {
+    req: Request;
+    sessionData: AuthResponse;
+    existingUser?: IBaseUser;
+  }) => {
+    const { data, error } = sessionData;
+    if (error) throw error;
+
+    const { user, session } = data;
+
+    RequestContext.setContextValue("session", {
+      accessToken: session?.access_token,
+      refreshToken: session?.refresh_token,
+    });
+
+    if (!existingUser) {
+      const { data: userData, error: userError } =
+        await this.userService.getUserByEmail(user.email);
+
+      if (userError) throw new Error(userError.message);
+      existingUser = userData;
+    }
+
+    // Extract IP and location info
+    const ip =
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0] ||
+      req.socket.remoteAddress;
+    const rawUserAgent = req.headers["user-agent"] as string;
+
+    let geoLocationData = await getGeoLocationData(ip);
+
+    if (!existingUser) {
+      // create new user
+      let profilePic = null;
+
+      const authProvider = user.app_metadata.provider;
+
+      if (authProvider === ESocialLoginProvider.Google) {
+        profilePic = {
+          url: user.user_metadata.avatar_url,
+          provider: authProvider,
+        };
+      }
+
+      const newUserData = {
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata.full_name,
+        gender: "-", // will be updated later
+        address: geoLocationData,
+        isVerified: Object.values(ESocialLoginProvider).includes(
+          authProvider as ESocialLoginProvider
+        ),
+        profilePic,
+        mediaId: user.user_metadata?.mediaId,
+        meta: {
+          auth: {
+            authProvider: user.app_metadata.provider,
+            accessToken: session?.access_token,
+            refreshToken: session?.refresh_token,
+          },
+        },
+      };
+
+      const { data: newUser, error: newUserError } =
+        await this.userService.create(newUserData);
+
+      if (newUserError) throw new Error(newUserError.message);
+      existingUser = newUser?.[0];
+    }
+    existingUser = getSafeUser(existingUser);
+    await setUserCache(existingUser.id, existingUser);
+
+    // Extract device metadata
+    const parser = new UAParser();
+    const deviceInfo = parser.setUA(rawUserAgent).getResult();
+
+    const finalUserAgent = {
+      device: {
+        model: deviceInfo.device.model,
+        vendor: deviceInfo.device.vendor,
+      },
+      os: {
+        name: deviceInfo.os.name,
+        version: deviceInfo.os.version,
+      },
+      browser: {
+        name: deviceInfo.browser.name,
+        version: deviceInfo.browser.major,
+      },
+      ua: deviceInfo.ua,
+    };
+
+    const sessionDataToSave = {
+      accessToken: session?.access_token,
+      refreshToken: session?.refresh_token,
+      userAgent: finalUserAgent,
+      location: geoLocationData,
+      expiresAt: new Date(
+        new Date(0).setUTCSeconds(session.expires_at)
+      ).toISOString(),
+      expiresIn: session.expires_in,
+      user: { id: existingUser.id },
+    };
+
+    const sessionId = getAlphaNumericId();
+
+    await setUserSessionCache({
+      userId: existingUser.id,
+      sessionId,
+      data: sessionDataToSave,
+    });
+
+    return { sessionId, user: existingUser };
   };
 }
 

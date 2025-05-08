@@ -2,8 +2,14 @@ import config from "@config";
 import { RequestContext } from "@contexts";
 import { ICustomRequest } from "@definitions/types";
 import { UnauthorizedError } from "@exceptions";
-import { getUserSessionCache } from "@features";
+import {
+  AuthService,
+  getUserSessionCache,
+  updateUserSessionCache,
+} from "@features";
 import { NextFunction, Request, Response } from "express";
+
+const authService = new AuthService();
 
 const sessionParser = async (
   req: Request,
@@ -19,6 +25,23 @@ const sessionParser = async (
 
   if (!session)
     throw new UnauthorizedError(`Session not found, please login again`);
+
+  // check if session is expired if expired then refresh the token
+  if (new Date(session.expiresAt) > new Date()) {
+    const newSession = await authService.refreshSession(session.refreshToken);
+    session.accessToken = newSession.data.session.access_token;
+    session.refreshToken = newSession.data.session.refresh_token;
+    session.expiresAt = new Date(
+      new Date(0).setUTCSeconds(newSession.data.session.expires_at)
+    ).toISOString();
+    session.expiresIn = newSession.data.session.expires_in;
+
+    const res = await updateUserSessionCache(jwtCookie, session);
+    if (res !== "OK")
+      throw new UnauthorizedError(
+        `Failed to refresh session, please login again`
+      );
+  }
 
   (req as ICustomRequest).session = session;
   RequestContext.setContextValue("session", {

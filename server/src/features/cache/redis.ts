@@ -124,7 +124,7 @@ class RedisCache {
     return this.redisClient.set(namespacedKey, jnstringify(value), "EX", ttl);
   }
 
-  async getItem(key: string) {
+  async getItem<T>(key: string): Promise<T | null> {
     const namespacedKey = `${this.cacheNamespace}:${key}`;
     const result = await this.redisClient.get(namespacedKey);
     return result ? jnparse(result) : null;
@@ -210,6 +210,11 @@ class RedisCache {
         return fn(...args);
       }
     };
+  }
+
+  updateValue(key: string, newValue: any) {
+    const namespacedKey = `${this.cacheNamespace}:${key}`;
+    return redis.set(namespacedKey, jnstringify(newValue), "KEEPTTL");
   }
 }
 

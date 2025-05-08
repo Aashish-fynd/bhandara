@@ -24,7 +24,7 @@ const supabase = createClient(config.supabase.url, config.supabase.key, {
       const context = RequestContext.getContext();
       const session = context?.session;
 
-      if (!session.accessToken) throw new UnauthorizedError("No session found");
+      if (!session?.accessToken) return fetch(input, init);
 
       const defaultHeaders: Record<string, string> = {};
       // @ts-ignore

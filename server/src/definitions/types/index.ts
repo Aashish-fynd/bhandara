@@ -160,11 +160,26 @@ export interface ICustomRequest extends Request {
 }
 
 export interface IUserSession {
-  device: string;
   location: Record<string, any>;
-  userAgent: string;
+  userAgent: {
+    device: {
+      model: string;
+      vendor: string;
+    };
+    os: {
+      name: string;
+      version: string;
+    };
+    browser: {
+      name: string;
+      version: string;
+    };
+    ua: string;
+  };
   accessToken: string;
   refreshToken: string;
+  expiresAt: string;
+  expiresIn: number;
   user: { id: string };
 }
 

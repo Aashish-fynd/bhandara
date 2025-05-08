@@ -1,5 +1,5 @@
 import { IUserSession } from "@definitions/types";
-import { IBaseUser } from "@definitions/types/global";
+import { IBaseUser } from "@definitions/types";
 import { RedisCache } from "@features/cache";
 import { jnparse } from "@utils";
 
@@ -7,23 +7,27 @@ const userCache = new RedisCache({ namespace: "users" });
 const sessionCache = new RedisCache({ namespace: "session" });
 
 export const getUserCache = async (userId: string) => {
-  return userCache.getItem(userId) as Promise<IBaseUser>;
+  return userCache.getItem<IBaseUser>(userId);
 };
 
 export const setUserCache = async (
   userId: string,
   user: IBaseUser,
-  ttl: number
+  ttl = 3600
 ) => {
   return userCache.setItem(userId, user, ttl);
 };
 
 export const getUserCacheByEmail = async (email: string) => {
-  return userCache.getItem(email);
+  return userCache.getItem<IBaseUser>(email);
 };
 
-export const setUserCacheByEmail = async (email: string, user: IBaseUser) => {
-  return userCache.setItem(email, user);
+export const setUserCacheByEmail = async (
+  email: string,
+  user: IBaseUser,
+  ttl = 3600
+) => {
+  return userCache.setItem(email, user, ttl);
 };
 
 export const getUserSessionCacheList = async (userId: string) => {
@@ -56,6 +60,7 @@ export const getUserSessionCacheList = async (userId: string) => {
   //   })
   //   .filter(Boolean);
 
+  // TODO: TO be used with ioredis
   const sessions = results.map(
     ([, result]: [Error, Record<string, any>], index: number) => {
       result = jnparse(result);
@@ -76,12 +81,12 @@ export const setUserSessionCache = async ({
   userId,
   sessionId,
   data,
-  ttl,
+  ttl = 3600 * 24 * 30,
 }: {
   userId: string;
   sessionId: string;
-  data: Record<string, any>;
-  ttl: number;
+  data: IUserSession;
+  ttl?: number;
 }) => {
   const expiration = new Date(Date.now() + ttl * 1000);
   await userCache.setHKey(
@@ -96,6 +101,13 @@ export const getUserSessionCache = async (
   sessionId: string
 ): Promise<IUserSession | null> => {
   return sessionCache.getItem(sessionId);
+};
+
+export const updateUserSessionCache = async (
+  sessionId: string,
+  data: IUserSession
+) => {
+  return sessionCache.updateValue(sessionId, data);
 };
 
 export const deleteUserSessionCache = async (

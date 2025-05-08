@@ -1,12 +1,12 @@
 export enum EMessageType {
   PlainText = "text",
   // Rich Object can have images, images + text, for now
-  RichObject = "rich_object"
+  RichObject = "rich_object",
 }
 
 export enum EEventType {
   Organized = "organized",
-  Custom = "custom"
+  Custom = "custom",
 }
 
 export enum EMediaProvider {
@@ -14,32 +14,32 @@ export enum EMediaProvider {
   S3 = "s3",
   GCS = "gcs",
   Cloudinary = "cloudinary",
-  Supabase = "supabase"
+  Supabase = "supabase",
 }
 
 export enum EMediaType {
   Image = "image",
   Video = "video",
   Audio = "audio",
-  Document = "document"
+  Document = "document",
 }
 
 export enum EEventStatus {
   Upcoming = "upcoming",
   Ongoing = "ongoing",
   Completed = "completed",
-  Cancelled = "cancelled"
+  Cancelled = "cancelled",
 }
 
 export enum EThreadType {
   Discussion = "discussion",
-  QnA = "qna"
+  QnA = "qna",
 }
 
 export enum EAccessLevel {
   Public = "public",
   Private = "private",
-  Restricted = "restricted"
+  Restricted = "restricted",
 }
 
 export enum EQueryOperator {
@@ -51,5 +51,9 @@ export enum EQueryOperator {
   Lte = "lte",
   Like = "like",
   ILike = "ilike",
-  In = "in"
+  In = "in",
+}
+
+export enum ESocialLoginProvider {
+  Google = "google",
 }
