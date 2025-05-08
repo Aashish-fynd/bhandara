@@ -1,11 +1,9 @@
 import { createLogger, format, transports } from "winston";
-import * as path from "node:path";
+import "winston-daily-rotate-file";
 import config from "@/config";
 import errors = format.errors;
 
 const env = process.env.NODE_ENV || "development";
-const logDir = config.log.path;
-const logFile = path.join(logDir, "server.log");
 
 const customFormat = format.printf(
   ({ level, message, timestamp, service, stack, ...temp }) => {
@@ -20,8 +18,27 @@ const customFormat = format.printf(
   }
 );
 
+// Create a daily rotate transport for all logs
+const allLogsTransport = new transports.DailyRotateFile({
+  filename: config.log.allLogsPath.replace(".log", "-%DATE%.log"),
+  datePattern: "YYYY-MM-DD",
+  maxFiles: "3d", // Keep logs for 3 days
+  maxSize: "20m", // Rotate if file size exceeds 20MB
+  zippedArchive: true, // Compress rotated files
+});
+
+// Create a daily rotate transport for error logs
+const errorLogsTransport = new transports.DailyRotateFile({
+  filename: config.log.errorLogsPath.replace(".log", "-%DATE%.log"),
+  datePattern: "YYYY-MM-DD",
+  maxFiles: "10d", // Keep logs for 10 days
+  maxSize: "20m", // Rotate if file size exceeds 20MB
+  zippedArchive: true, // Compress rotated files
+  level: "error", // Only log errors
+});
+
 const logger = createLogger({
-  level: config.log.level,
+  level: env === "production" ? "info" : "debug",
   defaultMeta: { service: "Backend Server" },
   format: format.combine(
     format.splat(),
@@ -32,14 +49,14 @@ const logger = createLogger({
     }),
     customFormat
   ),
-  transports: [new transports.File({ filename: logFile })],
+  transports: [allLogsTransport, errorLogsTransport],
   exitOnError: false,
 });
 
 if (env !== "production") {
   logger.add(
     new transports.Console({
-      format: format.combine(format.colorize()),
+      format: format.combine(format.colorize({ all: true })),
     })
   );
 }

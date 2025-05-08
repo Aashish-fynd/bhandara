@@ -1,11 +1,14 @@
 import cors from "cors";
 import express from "express";
-import morgan from "morgan";
 import cookieparser from "cookie-parser";
 
 import helmet from "helmet";
 import config from "@config";
-import { errorHandler, requestContextMiddleware } from "@middlewares";
+import {
+  errorHandler,
+  morganLogger,
+  requestContextMiddleware,
+} from "@middlewares";
 import appRoutes from "@routes";
 import { NotFoundError } from "@exceptions";
 
@@ -26,7 +29,7 @@ const createServer = () => {
     })
   );
 
-  app.use(morgan(config.morganLogFormat));
+  app.use(morganLogger);
   app.use(cookieparser());
 
   // routes setup

@@ -22,7 +22,6 @@ const config = {
   },
   dbUrl: process.env.DATABASE_URL,
   saltRounds: 10,
-  morganLogFormat: "dev",
   express: {
     fileSizeLimit: "20mb",
   },
@@ -31,9 +30,8 @@ const config = {
     optionsSuccessStatus: 200,
   },
   log: {
-    filename: "server.log",
-    level: "debug", // provide in lowercase. Possible values 'info', 'debug', 'warning', 'error'
-    path: "./logs/",
+    allLogsPath: "./logs/server.log",
+    errorLogsPath: "./logs/error.log",
   },
   supabase: {
     url: process.env.SUPABASE_URL || "",

@@ -39,4 +39,4 @@ app-example
 *.env*
 tmp
 .temp
-*.log
+logs
