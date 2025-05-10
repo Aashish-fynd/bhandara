@@ -126,6 +126,7 @@ class Base<T extends Record<string, any>> {
     return this._supabaseService.deleteById({
       table: this.tableName,
       id,
+      single: true,
     });
   }
 

@@ -67,12 +67,11 @@ export const createMediaData = async (req: ICustomRequest, res: Response) => {
 
 export const deleteFile = async (req: ICustomRequest, res: Response) => {
   const { mediaId } = req.params;
-  const existingMedia = await mediaService.getById(mediaId);
+  const existingMedia = await mediaService.delete(mediaId);
 
   if (isEmpty(existingMedia)) throw new NotFoundError("Media not found");
-  const { data } = await mediaService.delete(mediaId);
 
-  return res.status(200).json({ data });
+  return res.status(200).json(existingMedia);
 };
 
 export const getMediaById = async (req: ICustomRequest, res: Response) => {

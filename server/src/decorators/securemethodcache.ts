@@ -20,7 +20,7 @@ export interface CacheDecoratorOptions<T = any> {
   methodType?: MethodType;
   cacheGetter?: (key: string) => Promise<T | null>;
   cacheSetter?: (key: string, value: T) => Promise<"OK">;
-  cacheDeleter?: (key: string | Record<string, any>) => Promise<any>;
+  cacheDeleter?: (key: string, existingData: T) => Promise<any>;
   cacheSetterWithExistingTTL?: (key: string, value: T) => Promise<"OK">;
   customCacheKey?: (...args: any[]) => string;
 }
@@ -113,7 +113,7 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
           checkAndThrowRLSError(result, existingData);
 
           if (result?.data) {
-            await deleteCache(cacheKey);
+            await deleteCache(cacheKey, existingData);
           }
           return result;
         }

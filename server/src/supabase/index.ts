@@ -234,7 +234,7 @@ class SupabaseService {
       .eq("id", id)
       .select();
 
-    if (single) _query.single();
+    if (single) _query.maybeSingle();
 
     const res = await _query;
 

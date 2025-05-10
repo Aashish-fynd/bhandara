@@ -57,11 +57,8 @@ class UserService extends Base<IBaseUser> {
   }
 
   @SecureMethodCache<IBaseUser>({
-    cacheDeleter: (existingData: IBaseUser) =>
-      Promise.all([
-        deleteUserCache(existingData.id),
-        deleteUserCache(existingData.email),
-      ]),
+    cacheDeleter: (id: string, existingData: IBaseUser) =>
+      Promise.all([deleteUserCache(id), deleteUserCache(existingData.email)]),
   })
   delete(id: string) {
     return super.delete(id);

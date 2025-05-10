@@ -15,10 +15,12 @@ import {
   setMediaPublicUrlCache,
   updateMediaCache,
   getMediaPublicUrlCache,
+  deleteMediaPublicUrlCache,
 } from "./helpers";
 import { getMediaCache } from "./helpers";
 import { PostgrestError } from "@supabase/postgrest-js";
 import { get32BitMD5Hash } from "@helpers";
+import logger from "@logger";
 
 class MediaService extends Base<IMedia> {
   private readonly getCache = getMediaCache;
@@ -246,13 +248,20 @@ class MediaService extends Base<IMedia> {
     return { data: publicUrl.data.signedUrl, error: null };
   }
 
-  @SecureMethodCache<IMedia>()
+  @SecureMethodCache<IMedia>({
+    cacheDeleter: (id: string, existingData: IMedia) =>
+      Promise.all([
+        deleteMediaCache(id),
+        deleteMediaPublicUrlCache(get32BitMD5Hash(existingData.url)),
+      ]),
+  })
   async delete(id: string) {
     const res = await super.delete(id);
-    await this.deleteFile(res.data.storage.bucket, res.data.url);
-    if (res.data) {
-      await this.deleteCache(id);
-    }
+    const deletionResult = await this.deleteFile(
+      res.data.storage.bucket,
+      res.data.url
+    );
+    logger.debug(`Deleted media ${id}`, { deletionResult });
     return res;
   }
 }
