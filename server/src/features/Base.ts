@@ -1,7 +1,8 @@
 import { EQueryOperator } from "@/definitions/enums";
 import { IPaginationParams } from "@/definitions/types";
-import SupabaseService, { SimpleFilter } from "@supabase";
+import SupabaseService, { SimpleFilter, SupabaseClient } from "@supabase";
 import { PostgrestError } from "@supabase/supabase-js";
+import { omit } from "@utils";
 
 interface QuerySupabaseArgs<T> {
   table: string;
@@ -13,12 +14,12 @@ interface QuerySupabaseArgs<T> {
 export type BaseQueryArgs<T> = Omit<QuerySupabaseArgs<T>, "table">;
 
 class Base<T extends Record<string, any>> {
-  protected readonly supabaseService: SupabaseService;
+  protected readonly _supabaseService: SupabaseService;
   private readonly tableName: string;
 
   constructor(table: string) {
     this.tableName = table;
-    this.supabaseService = new SupabaseService();
+    this._supabaseService = new SupabaseService();
   }
 
   async getAll(
@@ -42,7 +43,7 @@ class Base<T extends Record<string, any>> {
 
     const from = (_pagination.page - 1) * _pagination.limit;
 
-    const { data, error } = await this.supabaseService.querySupabase<T>({
+    const { data, error } = await this._supabaseService.querySupabase<T>({
       table: this.tableName,
       modifyQuery: (qb: any) => {
         if (_pagination?.sortOrder && _pagination?.sortBy) {
@@ -92,75 +93,67 @@ class Base<T extends Record<string, any>> {
   getById(
     id: string
   ): Promise<{ data: T | null; error: PostgrestError | null }> {
-    return this.supabaseService.querySupabase<T>({
+    return this._supabaseService.querySupabase<T>({
       table: this.tableName,
       query: [{ column: "id", operator: EQueryOperator.Eq, value: id }],
       modifyQuery: (qb) => qb.maybeSingle(),
     }) as Promise<{ data: T | null; error: PostgrestError | null }>;
   }
 
-  /**
-   * Helper method to handle operations with optional transaction support
-   * @param operation Function containing the database operation
-   * @param useTransaction Whether to use transaction
-   */
-  private async handleOperation<U>(
-    operation: (
-      client: typeof this.supabaseClient
-    ) => Promise<{ data: U[] | null; error: PostgrestError | null }>,
-    useTransaction: boolean = false
-  ): Promise<{ data: U[] | null; error: PostgrestError | null }> {
-    if (useTransaction) {
-      const result = await this.supabaseService.transaction((client) =>
-        operation(client)
-      );
-      return {
-        data: result?.data?.data ?? null,
-        error: result?.error ?? null,
-      };
-    }
-    return operation(this.supabaseClient);
+  async create(data: Partial<T>) {
+    const _data = omit(data, ["deletedAt", "updatedAt"]);
+    return this._supabaseService.insertIntoDB<Partial<T>>({
+      table: this.tableName,
+      data: _data,
+    }) as Promise<{
+      data: T[] | null;
+      error: PostgrestError | null;
+    }>;
   }
 
-  async create<U extends Partial<Omit<T, "id" | "updatedAt">>>(
-    data: U,
-    useTransaction: boolean = false
-  ): Promise<{ data: T[] | null; error: PostgrestError | null }> {
-    return this.handleOperation<T>(async (client) => {
-      const result = await client.from(this.tableName).insert(data).select();
-      return result;
-    }, useTransaction);
-  }
-
-  async update<U extends Partial<T>>(
-    id: string,
-    data: U,
-    useTransaction: boolean = false
-  ): Promise<{
-    data: U[] | null;
-    error: PostgrestError | null;
-  }> {
-    return this.handleOperation<U>(async (client) => {
-      const result = await client
-        .from(this.tableName)
-        .update(data)
-        .eq("id", id)
-        .select();
-      return result;
-    }, useTransaction);
+  async update(id: string, data: Partial<T>) {
+    const _data = omit(data, ["id", "createdAt"]);
+    return this._supabaseService.updateById<T>({
+      table: this.tableName,
+      id,
+      data: _data,
+    });
   }
 
   delete(
     id: string
-  ): Promise<{ data: T[] | null; error: PostgrestError | null }> {
-    return this.supabaseService.deleteById({
+  ): Promise<{ data: T | null; error: PostgrestError | null }> {
+    return this._supabaseService.deleteById({
       table: this.tableName,
       id,
     });
   }
 
-  protected get supabaseClient() {
-    return this.supabaseService.supabaseClient;
+  /**
+   * Wrapper function to execute operations within a Supabase transaction
+   * @param operation Function containing the database operation(s)
+   * @returns Promise with the operation result
+   *
+   * @example
+   * // Example usage:
+   * const result = await withTransaction(async (client) => {
+   *   const { data: user } = await client
+   *     .from('users')
+   *     .insert({ name: 'John' })
+   *     .select()
+   *     .single();
+   *
+   *   const { data: profile } = await client
+   *     .from('profiles')
+   *     .insert({ userId: user.id })
+   *     .select()
+   *     .single();
+   *
+   *   return { user, profile };
+   * });
+   */
+  async withTransaction<T>(operation: (client: SupabaseClient) => Promise<T>) {
+    return this._supabaseService.transaction(operation);
   }
 }
 

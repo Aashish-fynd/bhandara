@@ -18,6 +18,10 @@ export const setUserCache = async (
   return userCache.setItem(userId, user, ttl);
 };
 
+export const deleteUserCache = async (userId: string) => {
+  return userCache.deleteItem(userId);
+};
+
 export const getUserCacheByEmail = async (email: string) => {
   return userCache.getItem<IBaseUser>(email);
 };

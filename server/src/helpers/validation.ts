@@ -2,6 +2,7 @@ import Ajv, { ValidateFunction } from "ajv";
 import addFormats from "ajv-formats";
 import addErrors from "ajv-errors";
 import { PostgrestError } from "@supabase/supabase-js";
+import { BadRequestError } from "@exceptions";
 
 // Initialize AJV with options
 const ajv = new Ajv({
@@ -51,16 +52,7 @@ export const validateSchema = (schemaName: string, schema: object) => {
     const isValid = validate(data);
     if (!isValid) {
       const errors = validate.errors?.map((error) => error.message).join(", ");
-      return {
-        data: null,
-        error: {
-          message: `Validation failed: ${errors}`,
-          details: "",
-          hint: "",
-          code: "400",
-          name: "BadRequestError",
-        },
-      };
+      throw new BadRequestError(errors);
     }
     return callback(data);
   };

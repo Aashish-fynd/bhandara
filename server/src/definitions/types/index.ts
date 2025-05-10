@@ -9,7 +9,7 @@ import {
 } from "@/definitions/enums";
 
 // Base Interface for Timestamps
-interface ITimeStamp {
+export interface ITimeStamp {
   createdAt: Date; // Always present
   updatedAt: Date; // Always present
   deletedAt?: Date | null; // Soft delete column
@@ -123,7 +123,7 @@ export interface ITag extends ITimeStamp {
 // Media Storage Interface
 interface IMediaStorage {
   provider: EMediaProvider;
-  path: string;
+  bucket: string;
   metadata: Record<string, any>;
 }
 
@@ -132,6 +132,8 @@ export interface IMedia extends ITimeStamp {
   id: string;
   type: EMediaType;
   url: string;
+  publicUrl?: string;
+  publicUrlExpiresAt?: Date;
   caption?: string | null;
   thumbnail?: string | null;
   size?: number | null;

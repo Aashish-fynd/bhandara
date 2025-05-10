@@ -14,6 +14,7 @@ CREATE TABLE "Media" (
     "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     "type" "MediaType" NOT NULL,
     "url" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
     "caption" TEXT NULL,
     "thumbnail" TEXT NULL,
     "size" INTEGER NULL,
@@ -21,7 +22,7 @@ CREATE TABLE "Media" (
     "duration" INTEGER NULL,
     "uploader" UUID NOT NULL, -- Foreign key will be added later
     "storage" JSONB NOT NULL,
-    "accessLevel" "AccessLevel" NOT NULL,
+    "access" "AccessLevel" NOT NULL,
     "metadata" JSONB NOT NULL DEFAULT '{}'::JSONB,
     "createdAt" TIMESTAMPTZ DEFAULT NOW(),
     "updatedAt" TIMESTAMPTZ DEFAULT NOW(),

@@ -1,16 +1,14 @@
 import config from "@config";
 import { supabase } from "@connections";
-import { RequestContext } from "@contexts";
 import { ESocialLoginProvider } from "@definitions/enums";
 import { ICustomRequest } from "@definitions/types";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@exceptions";
+import { BadRequestError, NotFoundError } from "@exceptions";
 import { AuthService } from "@features";
 import {
   deleteUserSessionCache,
   getUserSessionCacheList,
 } from "@features/user/helpers";
 import UserService from "@features/user/service";
-import { validatePassword, getAlphaNumericId } from "@helpers";
 import { isEmpty } from "@utils";
 import { Request, Response } from "express";
 
@@ -29,8 +27,7 @@ const login = async (req: Request, res: Response) => {
     throw new BadRequestError("Username and password are required");
   }
 
-  const { data: existingUser, error } = await userService.getUserByEmail(email);
-  if (error) throw new Error(error.message);
+  const { data: existingUser } = await userService.getUserByEmail(email);
 
   if (!existingUser)
     throw new NotFoundError(`User not found with email: ${email}`);
@@ -130,10 +127,7 @@ export const deleteSession = async (req: ICustomRequest, res: Response) => {
 
 export const signUp = async (req: Request, res: Response) => {
   const { email, password, location, name } = req.body;
-  const { data: existingUser, error: existingUserError } =
-    await userService.getUserByEmail(email);
-
-  if (existingUserError) throw new Error(existingUserError.message);
+  const { data: existingUser } = await userService.getUserByEmail(email);
 
   if (!isEmpty(existingUser))
     throw new BadRequestError(`User already exists with email: ${email}`);

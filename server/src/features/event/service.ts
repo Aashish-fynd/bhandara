@@ -1,4 +1,9 @@
-import { IBaseUser, IDiscussionThread, IEvent, IQnAThread } from "@/definitions/types/global";
+import {
+  IBaseUser,
+  IDiscussionThread,
+  IEvent,
+  IQnAThread,
+} from "@/definitions/types/global";
 import ThreadsService from "../thread/service";
 import MessageService from "../message/service";
 import Base from "../Base";
@@ -48,9 +53,9 @@ class EventService extends Base<IEvent> {
         {
           value: eventData.id || "",
           operator: EQueryOperator.Eq,
-          column: "eventId"
-        }
-      ]
+          column: "eventId",
+        },
+      ],
     });
 
     if (threadData.error) {
@@ -61,9 +66,13 @@ class EventService extends Base<IEvent> {
     }
 
     // Separate QnA and Discussion threads
-    const qnaThread = threadData.data.items?.filter((thread) => thread.type === EThreadType.QnA);
+    const qnaThread = threadData.data.items?.filter(
+      (thread) => thread.type === EThreadType.QnA
+    );
 
-    const discussionThread = threadData.data.items?.filter((thread) => thread.type === EThreadType.Discussion);
+    const discussionThread = threadData.data.items?.filter(
+      (thread) => thread.type === EThreadType.Discussion
+    );
 
     // Create promises for fetching related data
     const promises: Record<string, Promise<any>> = {};
@@ -75,9 +84,9 @@ class EventService extends Base<IEvent> {
           {
             value: qnaThread[0].id || "",
             operator: EQueryOperator.Eq,
-            column: "threadId"
-          }
-        ]
+            column: "threadId",
+          },
+        ],
       });
     }
 
@@ -87,9 +96,9 @@ class EventService extends Base<IEvent> {
           {
             value: discussionThread[0].id || "",
             operator: EQueryOperator.Eq,
-            column: "threadId"
-          }
-        ]
+            column: "threadId",
+          },
+        ],
       });
     }
 
@@ -99,7 +108,9 @@ class EventService extends Base<IEvent> {
     // Wait for all promises to settle
     const settledResults = await Promise.allSettled(Object.values(promises));
 
-    const userIds = eventData.participants.flatMap((participant) => participant.userId);
+    const userIds = eventData.participants.flatMap(
+      (participant) => participant.userId
+    );
     userIds.push(...eventData.verifiers);
 
     const { data: userProfiles, error } = await this.userService.getAll({
@@ -108,19 +119,19 @@ class EventService extends Base<IEvent> {
         {
           value: userIds as string[],
           operator: EQueryOperator.In,
-          column: "id"
-        }
-      ]
+          column: "id",
+        },
+      ],
     });
 
     if (error) return { error: error };
 
     eventData.participants = eventData?.participants.map((participant) => ({
       ...participant,
-      user: userProfiles?.items.find((user) => user.id === participant.userId)
+      user: userProfiles?.items.find((user) => user.id === participant.userId),
     }));
     eventData.verifiers = eventData.verifiers.map((verifier) => ({
-      ...userProfiles?.items.find((user) => user.id === verifier)
+      ...userProfiles?.items.find((user) => user.id === verifier),
     })) as IBaseUser[];
 
     // Map results back to their keys
@@ -143,32 +154,40 @@ class EventService extends Base<IEvent> {
         event: eventData,
         qnaThread: {
           thread: qnaThread || [],
-          messages: resolvedData.qnaMessages?.data || []
+          messages: resolvedData.qnaMessages?.data || [],
         },
         discussionThread: {
           thread: discussionThread || [],
-          messages: resolvedData.discussionMessages?.data || []
-        }
+          messages: resolvedData.discussionMessages?.data || [],
+        },
       },
-      error: null
+      error: null,
     };
   }
 
-  async createEvent({ body, tagIds, mediaIds }: { body: Partial<IEvent>; tagIds: string[]; mediaIds: string[] }) {
+  async createEvent({
+    body,
+    tagIds,
+    mediaIds,
+  }: {
+    body: Partial<IEvent>;
+    tagIds: string[];
+    mediaIds: string[];
+  }) {
     return validateEventCreate(body, (data) =>
-      super.supabaseClient.rpc("create_event", {
+      super._supabaseClient.rpc("create_event", {
         event_data: data,
         tag_ids: tagIds,
-        media_ids: mediaIds
+        media_ids: mediaIds,
       })
     );
   }
 
   async update<U extends Partial<IEvent>>(id: string, data: U) {
     return validateEventUpdate(data, (data) =>
-      super.supabaseClient.rpc("update_event", {
+      super._supabaseClient.rpc("update_event", {
         event_id: id,
-        event_data: data
+        event_data: data,
       })
     );
   }

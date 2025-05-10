@@ -27,7 +27,7 @@ const sessionParser = async (
     throw new UnauthorizedError(`Session not found, please login again`);
 
   // check if session is expired if expired then refresh the token
-  if (new Date(session.expiresAt) > new Date()) {
+  if (new Date(session.expiresAt) < new Date()) {
     const newSession = await authService.refreshSession(session.refreshToken);
     session.accessToken = newSession.data.session.access_token;
     session.refreshToken = newSession.data.session.refresh_token;

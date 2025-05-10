@@ -4,29 +4,46 @@ import { validateUserCreate, validateUserUpdate } from "./validation";
 import { EQueryOperator } from "@/definitions/enums";
 import { USER_TABLE_NAME } from "./constants";
 import { PostgrestError } from "@supabase/supabase-js";
+import { deleteUserCache, getUserCache, setUserCache } from "./helpers";
+import { SecureMethodCache } from "@decorators";
 
 class UserService extends Base<IBaseUser> {
-  // redisCache: RedisCache;
+  private readonly getCache = getUserCache;
+  private readonly setCache = setUserCache;
+  private readonly deleteCache = deleteUserCache;
+
   constructor() {
     super(USER_TABLE_NAME);
-    // this.redisCache = new RedisCache({ cacheNamespace: "users" });
   }
 
-  async create<U extends Partial<Omit<IBaseUser, "id" | "updatedAt">>>(
-    data: U,
-    useTransaction?: boolean
-  ) {
-    return validateUserCreate(data, (data) =>
-      super.create(data, useTransaction)
+  @SecureMethodCache<IBaseUser>()
+  async create(
+    data: Partial<IBaseUser>
+  ): Promise<{ data: IBaseUser[] | null; error: PostgrestError | null }> {
+    return validateUserCreate(data, (data) => super.create(data));
+  }
+
+  @SecureMethodCache<IBaseUser>()
+  async update(id: string, data: Partial<IBaseUser>) {
+    return validateUserUpdate(data, async (validData) =>
+      super.update(id, validData)
     );
   }
 
-  async update<U extends Partial<IBaseUser>>(id: string, data: U) {
-    return validateUserUpdate(data, (data) => super.update(id, data));
+  @SecureMethodCache<IBaseUser>()
+  async getById(
+    id: string
+  ): Promise<{ data: IBaseUser; error: PostgrestError | null }> {
+    const cachedUser = await getUserCache(id);
+    if (cachedUser) return { data: cachedUser, error: null };
+    const res = await super.getById(id);
+    if (res.data) await setUserCache(res.data.email, res.data);
+    return res;
   }
 
+  @SecureMethodCache<IBaseUser>()
   getUserByEmail(email: string) {
-    return this.supabaseService.querySupabase({
+    return this._supabaseService.querySupabase({
       table: USER_TABLE_NAME,
       query: [
         {
@@ -37,6 +54,17 @@ class UserService extends Base<IBaseUser> {
       ],
       modifyQuery: (qb) => qb.maybeSingle(),
     }) as Promise<{ data: IBaseUser | null; error: PostgrestError | null }>;
+  }
+
+  @SecureMethodCache<IBaseUser>({
+    cacheDeleter: (existingData: IBaseUser) =>
+      Promise.all([
+        deleteUserCache(existingData.id),
+        deleteUserCache(existingData.email),
+      ]),
+  })
+  delete(id: string) {
+    return super.delete(id);
   }
 }
 

@@ -6,6 +6,7 @@ import {
 import { EQueryOperator } from "@/definitions/enums";
 import { decode } from "base64-arraybuffer";
 import { supabase } from "../connections";
+import { SupabaseCustomError } from "@exceptions";
 
 export type SimpleFilter = {
   column: string;
@@ -18,8 +19,18 @@ export type QueryFilter =
   | { And: QueryFilter[] }
   | { Or: QueryFilter[] };
 
+const throwSupabaseError = (res: any) => {
+  throw new SupabaseCustomError(
+    res.error.message,
+    res?.status,
+    res?.statusText
+  );
+};
+
+export type SupabaseClient = typeof supabase;
+
 class SupabaseService {
-  public readonly supabaseClient = supabase;
+  private readonly supabaseClient = supabase;
 
   /**
    * Get results from database with a custom selection query
@@ -102,7 +113,11 @@ class SupabaseService {
       queryBuilder = modifiedQuery as any;
     }
 
-    return queryBuilder;
+    const res = await queryBuilder;
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
   }
 
   /**
@@ -115,7 +130,7 @@ class SupabaseService {
   async insertIntoDB<T extends Record<string, any>>({
     table,
     data,
-    selecting = false,
+    selecting = true,
   }: {
     table: string;
     data: T;
@@ -127,7 +142,11 @@ class SupabaseService {
     const baseQuery = this.supabaseClient.from(table).insert(data);
     if (selecting) return baseQuery.select();
 
-    return baseQuery;
+    const res = await baseQuery;
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
   }
 
   /**
@@ -144,13 +163,16 @@ class SupabaseService {
   }: {
     table: string;
     id: string;
-    data: T;
-  }): Promise<{ data: T[] | null; error: PostgrestError | null }> {
-    return this.updateByQuery({
+    data: Partial<T>;
+  }): Promise<{ data: T | null; error: PostgrestError | null }> {
+    const res = await this.updateByQuery({
       table,
       data,
       query: [{ column: "id", operator: EQueryOperator.Eq, value: id }],
+      single: true,
     });
+
+    return { data: res.data as T, error: res.error };
   }
 
   /**
@@ -164,18 +186,31 @@ class SupabaseService {
     table,
     data,
     query,
+    single = false,
   }: {
     table: string;
-    data: T;
-    query: QueryFilter[];
-  }): Promise<{ data: T[] | null; error: PostgrestError | null }> {
-    let queryBuilder = this.supabaseClient.from(table);
+    data: Partial<T>;
+    query: SimpleFilter[];
+    single?: boolean;
+  }): Promise<{
+    data: T | T[] | null;
+    error: PostgrestError | null;
+  }> {
+    let queryBuilder = this.supabaseClient.from(table).update(data);
 
-    (query as SimpleFilter[]).forEach(({ column, operator, value }) => {
+    query.forEach(({ column, operator, value }) => {
       queryBuilder = (queryBuilder as any)[operator](column, value);
     });
 
-    return queryBuilder.update(data).select();
+    const _query = queryBuilder.select();
+
+    if (single) _query.maybeSingle();
+
+    const res = await _query;
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
   }
 
   /**
@@ -184,14 +219,27 @@ class SupabaseService {
    * @param {string} params.table - The table name
    * @param {string} params.id - The record ID
    */
-  async deleteById({
+  async deleteById<T extends Record<string, any>>({
     table,
     id,
+    single = false,
   }: {
     table: string;
     id: string;
-  }): Promise<{ data: any[] | null; error: PostgrestError | null }> {
-    return this.supabaseClient.from(table).delete().eq("id", id).select();
+    single?: boolean;
+  }): Promise<{ data: T | T[] | null; error: PostgrestError | null }> {
+    const _query = this.supabaseClient
+      .from(table)
+      .delete()
+      .eq("id", id)
+      .select();
+
+    if (single) _query.single();
+
+    const res = await _query;
+
+    if (res.error) throwSupabaseError(res);
+    return { data: res.data, error: null };
   }
 
   /**
@@ -219,7 +267,7 @@ class SupabaseService {
     options?: Record<string, any>;
     base64FileData: string;
   }) {
-    return this.supabaseClient.storage
+    const res = await this.supabaseClient.storage
       .from(bucket)
       .upload(path, decode(base64FileData), {
         contentType: mimeType,
@@ -227,6 +275,10 @@ class SupabaseService {
         upsert: true,
         ...options,
       });
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
   }
 
   /**
@@ -239,7 +291,11 @@ class SupabaseService {
    * @returns A promise that resolves with the result of the deletion operation.
    */
   async deleteFile({ bucket, paths }: { bucket: string; paths: string[] }) {
-    return this.supabaseClient.storage.from(bucket).remove(paths);
+    const res = await this.supabaseClient.storage.from(bucket).remove(paths);
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
   }
 
   /**
@@ -268,13 +324,17 @@ class SupabaseService {
       expiresIn: 60,
       ...options,
     };
-    return this.supabaseClient.storage
+    const res = await this.supabaseClient.storage
       .from(bucket)
       .createSignedUrl(
         path,
         _options?.expiresIn,
         _options?.transformations || {}
       );
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
   }
 
   /**
@@ -320,8 +380,79 @@ class SupabaseService {
     } catch (error) {
       // Rollback transaction on error
       await this.supabaseClient.rpc("rollback");
-      return { data: null, error: error as PostgrestError };
+      throwSupabaseError(error);
     }
+  }
+
+  async getSignedUrlForUpload({
+    bucket,
+    path,
+    options,
+  }: {
+    bucket: string;
+    path: string;
+    options?: {
+      upsert?: boolean;
+    };
+  }) {
+    const res = await this.supabaseClient.storage
+      .from(bucket)
+      .createSignedUploadUrl(path, {
+        upsert: true,
+        ...options,
+      });
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
+  }
+
+  async uploadFileToSignedUrl({
+    bucket,
+    path,
+    base64FileData,
+    mimeType,
+    token,
+  }: {
+    bucket: string;
+    path: string;
+    base64FileData: string;
+    mimeType: string;
+    token: string;
+  }) {
+    const res = await this.supabaseClient.storage
+      .from(bucket)
+      .uploadToSignedUrl(path, token, decode(base64FileData), {
+        contentType: mimeType,
+        upsert: true,
+      });
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
+  }
+
+  async getPublicUrl({
+    bucket,
+    path,
+    expiresIn = 60,
+    options = {},
+  }: {
+    bucket: string;
+    path: string;
+    expiresIn?: number;
+    options?: {
+      transformations?: any;
+      download?: boolean;
+    };
+  }) {
+    const res = await this.supabaseClient.storage
+      .from(bucket)
+      .createSignedUrl(path, expiresIn, options);
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
   }
 }
 

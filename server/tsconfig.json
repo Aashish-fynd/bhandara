@@ -9,7 +9,8 @@
     "baseUrl": "src/",
     "paths": {
       "@*": ["./*"]
-    }
+    },
+    "experimentalDecorators": true
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]

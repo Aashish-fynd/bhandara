@@ -1,13 +1,14 @@
 import { EQueryOperator } from "@definitions/enums";
 import { ICustomRequest, IRequestPagination } from "@definitions/types";
-import { getSafeUser, RedisCache, UserService } from "@features";
+import { NotFoundError } from "@exceptions";
+import { getSafeUser, UserService } from "@features";
 import {
   asyncHandler,
   paginationParser,
   sessionParser,
   userParser,
 } from "@middlewares";
-import { omit } from "@utils";
+import { isEmpty, omit } from "@utils";
 import { Response, Router } from "express";
 
 const router = Router();
@@ -29,12 +30,7 @@ router.get(
         ];
       }
 
-      const { data, error } = await userService.getAll(
-        { query },
-        req.pagination
-      );
-
-      if (error) throw new Error(error.message);
+      const { data } = await userService.getAll({ query }, req.pagination);
 
       const safeUsers = data?.items.map((user) => getSafeUser(user));
       return res.status(200).json({
@@ -53,26 +49,24 @@ router
   .get(
     asyncHandler(async (req: ICustomRequest, res: Response) => {
       const { id } = req.params;
-      const { data, error } = await userService.getById(id);
-      if (error) throw new Error(error.message);
+      const { data } = await userService.getById(id);
+      if (isEmpty(data)) throw new NotFoundError("User not found");
       return res.status(200).json({ data: getSafeUser(data), error: null });
     })
   )
   .delete(
     asyncHandler(async (req: ICustomRequest, res: Response) => {
       const { id } = req.params;
-      const { data, error } = await userService.delete(id);
-      if (error) throw new Error(error.message);
-      return res.status(200).json({ data, error: null });
+      const { data } = await userService.delete(id);
+      return res.status(200).json({ data: getSafeUser(data), error: null });
     })
   )
   .patch(
     asyncHandler(async (req: ICustomRequest, res: Response) => {
       const { id } = req.params;
       const updateBody = omit(req.body, ["password", "email"]);
-      const { data, error } = await userService.update(id, updateBody);
-      if (error) throw new Error(error.message);
-      return res.status(200).json({ data, error: null });
+      const { data } = await userService.update(id, updateBody);
+      return res.status(200).json({ data: getSafeUser(data), error: null });
     })
   );
 

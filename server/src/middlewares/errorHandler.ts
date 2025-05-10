@@ -21,9 +21,11 @@ const errorHandler = (
   // Check if the error is an instance of CustomError
   if (!(err instanceof CustomError)) {
     // If not a CustomError, send a generic internal server error response
-    res.status(500).json({
+    res.status(err?.status || 500).json({
       error: {
         message: err.message || "Internal server error. Try again later",
+        type: err.name || "InternalServerError",
+        status: err.status || 500,
       },
       success: false,
     });
@@ -47,8 +49,7 @@ const errorHandler = (
     // Send a JSON response with the appropriate status code and error message
     return res
       .status(customError.status)
-      .type("json")
-      .send(JSON.stringify({ error: response, success: false }));
+      .json({ error: response, success: false });
   }
 };
 

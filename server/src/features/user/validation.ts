@@ -60,7 +60,6 @@ const updateSchema = {
       pattern: "^.+$",
       minLength: 5,
       maxLength: 50,
-      errorMessage: "Name must be a valid string",
     },
     address: {
       type: ["object", "null"],

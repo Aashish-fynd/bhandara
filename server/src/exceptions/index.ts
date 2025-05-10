@@ -45,3 +45,13 @@ export const UnauthorizedError = createCustomErrorClass(
   401,
   "Unauthorized access"
 );
+
+export class SupabaseCustomError extends Error {
+  status: number;
+  statusText: string;
+  constructor(message: string, status: number, statusText: string) {
+    super(message);
+    this.status = status;
+    this.name = statusText;
+  }
+}

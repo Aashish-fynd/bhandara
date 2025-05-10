@@ -1,5 +1,5 @@
 import { validateSchema } from "@/helpers";
-import { MEDIA_TABLE_NAME } from "./constants";
+import { MEDIA_BUCKET_CONFIG, MEDIA_TABLE_NAME } from "./constants";
 const mediaStorageSchema = {
   type: "object",
   properties: {
@@ -31,17 +31,13 @@ const mediaStorageSchema = {
 const mediaSchema = {
   type: "object",
   properties: {
-    fileUri: {
-      type: "string",
-      format: "uri",
-      errorMessage: "File URI must be a valid URI",
-    },
-    uploadPath: {
+    path: {
       type: "string",
       errorMessage: "Upload path must be a valid string",
     },
     bucket: {
       type: "string",
+      enum: Object.keys(MEDIA_BUCKET_CONFIG),
       errorMessage: "Bucket must be a valid string",
     },
     mimeType: {
@@ -50,7 +46,6 @@ const mediaSchema = {
     },
     options: {
       type: "object",
-      additionalProperties: true,
       properties: {
         type: {
           type: "string",
@@ -66,11 +61,6 @@ const mediaSchema = {
           type: ["string", "null"],
           errorMessage: "Thumbnail must be a string or null",
         },
-        size: {
-          type: ["integer", "null"],
-          minimum: 0,
-          errorMessage: "Size must be a non-negative integer or null",
-        },
         duration: {
           type: ["integer", "null"],
           minimum: 0,
@@ -81,31 +71,48 @@ const mediaSchema = {
           format: "uuid",
           errorMessage: "Uploader must be a valid UUID",
         },
-        accessLevel: {
+        access: {
           type: "string",
           enum: ["public", "private", "restricted"],
           errorMessage:
             "Access level must be one of 'public', 'private', or 'restricted'",
+        },
+        name: {
+          type: ["string", "null"],
+          errorMessage: "Name must be a string or null",
         },
         metadata: {
           type: ["object", "null"],
           additionalProperties: true,
           errorMessage: "Metadata must be an object or null",
         },
+        size: {
+          type: "integer",
+          minimum: 0,
+          errorMessage: "Size must be a non-negative integer",
+        },
+      },
+      required: ["type", "uploader", "size"],
+      additionalProperties: false,
+      errorMessage: {
+        required: {
+          type: "Media type is required",
+          size: "Media size is required",
+          uploader: "Media uploader is required",
+          access: "Media access is required",
+        },
       },
     },
   },
-  required: ["type", "url", "uploader", "storage", "accessLevel", "metadata"],
+  required: ["path", "bucket", "mimeType", "options"],
   additionalProperties: false,
   errorMessage: {
     type: "Media data must be an object",
     required: {
-      type: "Type is required",
-      url: "URL is required",
-      uploader: "Uploader is required",
-      storage: "Storage is required",
-      accessLevel: "Access level is required",
-      metadata: "Metadata is required",
+      path: "Path is required",
+      bucket: "Bucket is required",
+      mimeType: "MIME type is required",
+      options: "Options are required",
     },
   },
 };
@@ -125,7 +132,7 @@ const updateSchema = {
       type: ["string", "null"],
       errorMessage: "MIME type must be a string or null",
     },
-    accessLevel: {
+    access: {
       type: "string",
       enum: ["public", "private", "restricted"],
       errorMessage:
@@ -135,6 +142,10 @@ const updateSchema = {
       type: "object",
       additionalProperties: true,
       errorMessage: "Metadata must be an object",
+    },
+    name: {
+      type: ["string", "null"],
+      errorMessage: "Name must be a string or null",
     },
   },
   additionalProperties: false,
@@ -147,6 +158,7 @@ const validateMediaCreate = validateSchema(
   `${MEDIA_TABLE_NAME}_CREATE`,
   mediaSchema
 );
+
 const validateMediaUpdate = validateSchema(
   `${MEDIA_TABLE_NAME}_UPDATE`,
   updateSchema

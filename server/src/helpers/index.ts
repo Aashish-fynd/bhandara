@@ -25,7 +25,7 @@ export const hashPassword = async (password: string): Promise<string> => {
 
 /**
  * Generates an access token for the given user.
- * @param {IUser} user - The user for whom the access token is generated.
+ * @param {IBaseUser} user - The user for whom the access token is generated.
  * @returns {Promise<string>} A Promise that resolves with the generated access token.
  * @throws {Error} Throws an error if token generation fails.
  */
@@ -153,3 +153,5 @@ export const getGeoLocationData = async (ip: string) => {
 export const getAlphaNumericId = (size: number = 21) => {
   return nanoid(size);
 };
+
+export * from "./hashing";

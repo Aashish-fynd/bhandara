@@ -17,12 +17,13 @@ const userParser = async (
   res: Response,
   next: NextFunction
 ) => {
-  const user = await getUserCache(req.session.user.id);
+  let user = await getUserCache(req.session.user.id);
 
   if (!user) {
-    const { data, error } = await userService.getById(req.session.user.id);
-    if (!data || error) throw new NotFoundError("User not found");
+    const { data } = await userService.getById(req.session.user.id);
+    if (!data) throw new NotFoundError("User not found");
     await setUserCache(req.session.user.id, data);
+    user = data;
   }
 
   (req as ICustomRequest).user = getSafeUser(user);
