@@ -30,15 +30,19 @@ class UserService extends Base<IBaseUser> {
     );
   }
 
-  @SecureMethodCache<IBaseUser>()
+  @SecureMethodCache<IBaseUser>({
+    cacheSetter: async (id: string, data: IBaseUser) => {
+      await Promise.all([
+        setUserCache(id, data),
+        setUserCache(data.email, data),
+      ]);
+      return "OK";
+    },
+  })
   async getById(
     id: string
   ): Promise<{ data: IBaseUser; error: PostgrestError | null }> {
-    const cachedUser = await getUserCache(id);
-    if (cachedUser) return { data: cachedUser, error: null };
-    const res = await super.getById(id);
-    if (res.data) await setUserCache(res.data.email, res.data);
-    return res;
+    return super.getById(id);
   }
 
   @SecureMethodCache<IBaseUser>()

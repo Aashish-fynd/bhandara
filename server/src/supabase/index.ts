@@ -454,6 +454,15 @@ class SupabaseService {
 
     return res;
   }
+
+  async executeRpc<T>(
+    name: string,
+    params: Record<string, any>
+  ): Promise<{ data: T | null; error: PostgrestError | null }> {
+    const res = await this.supabaseClient.rpc(name, params);
+    if (res.error) throwSupabaseError(res);
+    return res;
+  }
 }
 
 export default SupabaseService;

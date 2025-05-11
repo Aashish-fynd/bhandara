@@ -3,14 +3,14 @@ import {
   IDiscussionThread,
   IEvent,
   IQnAThread,
-} from "@/definitions/types/global";
-import ThreadsService from "../thread/service";
-import MessageService from "../message/service";
+} from "@/definitions/types";
+import ThreadsService from "../threads/service";
+import MessageService from "../messages/service";
 import Base from "../Base";
 import { EQueryOperator, EThreadType } from "@/definitions/enums";
-import TagService from "../tag/service";
+import TagService from "../tags/service";
 import MediaService from "../media/service";
-import UserService from "../user/service";
+import UserService from "../users/service";
 import { validateEventCreate, validateEventUpdate } from "./validation";
 import { EVENT_TABLE_NAME } from "./constants";
 
@@ -39,13 +39,9 @@ class EventService extends Base<IEvent> {
     error: any;
   }> {
     // Fetch the event data
-    const { data: eventData, error: eventError } = await this.getById(id);
-    if (eventError) {
-      return { error: eventError };
-    }
-    if (!eventData) {
-      return { error: "Event not found" };
-    }
+    const { data: eventData } = await this.getById(id);
+
+    if (!eventData) return { error: "Event not found" };
 
     // Fetch thread data
     const threadData = await this.threadService.getAll({
@@ -130,6 +126,7 @@ class EventService extends Base<IEvent> {
       ...participant,
       user: userProfiles?.items.find((user) => user.id === participant.userId),
     }));
+
     eventData.verifiers = eventData.verifiers.map((verifier) => ({
       ...userProfiles?.items.find((user) => user.id === verifier),
     })) as IBaseUser[];
@@ -175,7 +172,7 @@ class EventService extends Base<IEvent> {
     mediaIds: string[];
   }) {
     return validateEventCreate(body, (data) =>
-      super._supabaseClient.rpc("create_event", {
+      this._supabaseService.executeRpc<IEvent>("create_event", {
         event_data: data,
         tag_ids: tagIds,
         media_ids: mediaIds,
@@ -185,7 +182,7 @@ class EventService extends Base<IEvent> {
 
   async update<U extends Partial<IEvent>>(id: string, data: U) {
     return validateEventUpdate(data, (data) =>
-      super._supabaseClient.rpc("update_event", {
+      this._supabaseService.executeRpc<IEvent>("update_event", {
         event_id: id,
         event_data: data,
       })

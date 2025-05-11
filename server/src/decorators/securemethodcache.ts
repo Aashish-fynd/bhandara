@@ -5,8 +5,8 @@ export type MethodType = "create" | "update" | "delete" | "get";
 
 // Base interface for cache operations
 interface CacheOperations<T = any> {
-  getCache: (key: string) => Promise<T | null>;
-  setCache: (key: string, value: T) => Promise<void>;
+  getCache: (key: string) => Promise<T | T[] | null>;
+  setCache: (key: string, value: T | T[]) => Promise<void>;
   deleteCache: (key: string | Record<string, any>) => Promise<void>;
 }
 
@@ -18,9 +18,9 @@ export interface CacheableClass<T = any> extends CacheOperations<T> {
 // Options for the decorator
 export interface CacheDecoratorOptions<T = any> {
   methodType?: MethodType;
-  cacheGetter?: (key: string) => Promise<T | null>;
-  cacheSetter?: (key: string, value: T) => Promise<"OK">;
-  cacheDeleter?: (key: string, existingData: T) => Promise<any>;
+  cacheGetter?: (key: string) => Promise<T | T[] | null>;
+  cacheSetter?: (key: string, value: T | T[]) => Promise<"OK">;
+  cacheDeleter?: (key: string, existingData: T | T[]) => Promise<any>;
   cacheSetterWithExistingTTL?: (key: string, value: T) => Promise<"OK">;
   customCacheKey?: (...args: any[]) => string;
 }
@@ -77,7 +77,7 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
         }
 
         case "update": {
-          let existingData: T = await getCache(cacheKey);
+          let existingData: T | T[] = await getCache(cacheKey);
           if (isEmpty(existingData)) {
             const res = await this.getById(cacheKey);
             if (isEmpty(res.data))
@@ -101,7 +101,7 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
         }
 
         case "delete": {
-          let existingData: T = await getCache(cacheKey);
+          let existingData: T | T[] = await getCache(cacheKey);
           if (isEmpty(existingData)) {
             const res = await this.getById(cacheKey);
             if (isEmpty(res.data))
@@ -127,8 +127,11 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
           checkAndThrowRLSError(result, cachedData);
 
           if (!isEmpty(result?.data)) {
-            await setCache(cacheKey, result.data || result);
+            await setCache(cacheKey, result.data);
+          } else {
+            throw new NotFoundError("Resource not found");
           }
+
           return result;
         }
 

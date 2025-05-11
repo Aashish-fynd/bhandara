@@ -6,8 +6,8 @@ import {
   getSafeUser,
   setUserCache,
   setUserSessionCache,
-} from "@features/user/helpers";
-import UserService from "@features/user/service";
+} from "@features/users/helpers";
+import UserService from "@features/users/service";
 import { getAlphaNumericId, getGeoLocationData } from "@helpers";
 import { AuthResponse } from "@supabase/supabase-js";
 import { Request } from "express";

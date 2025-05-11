@@ -7,7 +7,7 @@ import {
   MEDIA_EVENT_JUNCTION_TABLE_NAME,
   MEDIA_BUCKET_CONFIG,
 } from "./constants";
-import { omit } from "@utils";
+import { isEmpty, omit } from "@utils";
 import { SecureMethodCache } from "@decorators";
 import {
   deleteMediaCache,
@@ -263,6 +263,26 @@ class MediaService extends Base<IMedia> {
     );
     logger.debug(`Deleted media ${id}`, { deletionResult });
     return res;
+  }
+
+  async getMediaByIds(ids: string[]) {
+    const mediaData = await this._supabaseService.querySupabase({
+      table: MEDIA_TABLE_NAME,
+      query: [{ column: "id", operator: EQueryOperator.In, value: ids }],
+    });
+    if (!isEmpty(mediaData.data)) {
+      const mediaDataWithPublicUrl = await Promise.all(
+        mediaData.data.map(async (media: IMedia) => {
+          const publicUrl = await this.getPublicUrl(
+            media.url,
+            media.storage.bucket
+          );
+          return { ...media, publicUrl: publicUrl.data };
+        })
+      );
+      return { data: mediaDataWithPublicUrl, error: null };
+    }
+    return mediaData;
   }
 }
 

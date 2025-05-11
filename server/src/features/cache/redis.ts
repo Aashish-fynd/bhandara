@@ -121,7 +121,12 @@ class RedisCache {
     // return this.redisClient.set(namespacedKey, jnstringify(value), {
     //   ex: ttl || this.defaultTTLSeconds,
     // }); // TODO: Uncomment on prod
-    return this.redisClient.set(namespacedKey, jnstringify(value), "EX", ttl);
+    return this.redisClient.set(
+      namespacedKey,
+      jnstringify(value),
+      "EX",
+      ttl || this.defaultTTLSeconds
+    );
   }
 
   async getItem<T>(key: string): Promise<T | null> {
@@ -215,6 +220,24 @@ class RedisCache {
   updateValue(key: string, newValue: any) {
     const namespacedKey = `${this.cacheNamespace}:${key}`;
     return redis.set(namespacedKey, jnstringify(newValue), "KEEPTTL");
+  }
+
+  getTTL(key: string) {
+    const namespacedKey = `${this.cacheNamespace}:${key}`;
+    return this.redisClient.ttl(namespacedKey);
+  }
+
+  setTTL(key: string, ttl: number) {
+    const namespacedKey = `${this.cacheNamespace}:${key}`;
+    return this.redisClient.expire(namespacedKey, ttl);
+  }
+
+  getDefaultTTL() {
+    return this.defaultTTLSeconds;
+  }
+
+  getCacheNamespace() {
+    return this.cacheNamespace;
   }
 }
 

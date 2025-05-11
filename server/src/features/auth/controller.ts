@@ -7,8 +7,8 @@ import { AuthService } from "@features";
 import {
   deleteUserSessionCache,
   getUserSessionCacheList,
-} from "@features/user/helpers";
-import UserService from "@features/user/service";
+} from "@features/users/helpers";
+import UserService from "@features/users/service";
 import { isEmpty } from "@utils";
 import { Request, Response } from "express";
 

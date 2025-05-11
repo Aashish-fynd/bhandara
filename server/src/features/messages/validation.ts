@@ -1,6 +1,17 @@
 import { validateSchema } from "@/helpers";
 import { MESSAGE_TABLE_NAME } from "./constants";
 
+const dynamicMediaSchema = {
+  type: "array",
+  items: {
+    type: "string",
+    format: "uuid",
+    errorMessage: "Should must be a valid UUID",
+  },
+  uniqueItems: true,
+  errorMessage: "Must be an array of unique UUIDs",
+};
+
 const messageContentSchema = {
   oneOf: [
     {
@@ -20,50 +31,8 @@ const messageContentSchema = {
           type: ["string", "null"],
           errorMessage: "Text must be a string or null",
         },
-        images: {
-          type: "array",
-          items: {
-            type: "string",
-            format: "uri",
-            errorMessage: "Each image URL must be a valid URI",
-          },
-          uniqueItems: true,
-          errorMessage: "Images must be an array of unique URIs",
-        },
-        videos: {
-          type: "array",
-          items: {
-            type: "string",
-            format: "uri",
-            errorMessage: "Each video URL must be a valid URI",
-          },
-          uniqueItems: true,
-          errorMessage: "Videos must be an array of unique URIs",
-        },
-        // TODO: to be added later
-        // links: {
-        //   type: "array",
-        //   items: {
-        //     type: "object",
-        //     properties: {
-        //       url: {
-        //         type: "string",
-        //         format: "uri",
-        //         errorMessage: "URL must be a valid URI",
-        //       },
-        //       title: {
-        //         type: "string",
-        //         errorMessage: "Title must be a valid string",
-        //       },
-        //     },
-        //     required: ["url", "title"],
-        //     additionalProperties: false,
-        //     errorMessage: "Each link must have a valid 'url' and 'title'",
-        //   },
-        //   uniqueItems: true,
-        //   errorMessage:
-        //     "Links must be an array of unique objects with 'url' and 'title'",
-        // },
+        images: dynamicMediaSchema,
+        videos: dynamicMediaSchema,
       },
       additionalProperties: false,
       errorMessage: "Rich object message must have valid fields",

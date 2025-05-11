@@ -3,16 +3,32 @@ import Base from "../Base";
 import { validateTagCreate, validateTagUpdate } from "./validation";
 import { TAG_TABLE_NAME, TAG_EVENT_JUNCTION_TABLE_NAME } from "./constants";
 import { EQueryOperator } from "@definitions/enums";
+import { SecureMethodCache } from "@decorators";
+import {
+  getTagCache,
+  setTagCache,
+  deleteTagCache,
+  getEventTagsCache,
+  setEventTagsCache,
+  deleteEventTagsCache,
+} from "./helpers";
+import { PostgrestError } from "@supabase/postgrest-js";
 
 class TagService extends Base<ITag> {
+  private readonly getCache = getTagCache;
+  private readonly setCache = setTagCache;
+  private readonly deleteCache = deleteTagCache;
+
   constructor() {
     super(TAG_TABLE_NAME);
   }
 
-  async getAllEventTags(
-    eventId: string,
-    pagination: Partial<IPaginationParams> = {}
-  ) {
+  @SecureMethodCache<ITag>({
+    cacheGetter: getEventTagsCache,
+    cacheSetter: setEventTagsCache,
+    cacheDeleter: deleteEventTagsCache,
+  })
+  async getAllEventTags(eventId: string) {
     const { data: eventTags, error: eventTagsError } =
       await this._supabaseService.querySupabase({
         table: TAG_EVENT_JUNCTION_TABLE_NAME,
@@ -21,42 +37,42 @@ class TagService extends Base<ITag> {
         ],
       });
 
-    if (eventTagsError) return { error: eventTagsError };
-
-    const { data, error } = await super.getAll(
+    const { data } = await super.getAll(
       {
-        modifyQuery: (qb) =>
-          qb.in("id", eventTags?.map((tag) => tag.tagId) || []),
+        query: [
+          {
+            column: "id",
+            operator: EQueryOperator.In,
+            value: eventTags?.map((tag: { tagId: string }) => tag.tagId) || [],
+          },
+        ],
       },
-      pagination
+      { limit: 1000 }
     );
 
-    if (error) return { error };
-
-    const formattedData = (data?.items || []).map((item) => ({
-      eventId: item.eventId,
-      ...item,
-    }));
-
     return {
-      data: {
-        items: formattedData,
-        pagination: data!.pagination,
-      },
-      error,
+      data: data.items || [],
+      error: null,
     };
   }
 
+  @SecureMethodCache<ITag>()
   async create<U extends Partial<Omit<ITag, "id" | "updatedAt">>>(data: U) {
     return validateTagCreate(data, (validatedData: U) =>
       super.create(validatedData)
     );
   }
 
+  @SecureMethodCache<ITag>()
   async update<U extends Partial<ITag>>(id: string, data: U) {
     return validateTagUpdate(data, (validatedData: U) =>
       super.update(id, validatedData)
     );
+  }
+
+  @SecureMethodCache<ITag>()
+  delete(id: string): Promise<{ data: ITag; error: PostgrestError | null }> {
+    return super.delete(id);
   }
 
   async associateTagToEvent(eventId: string, tagId: string) {

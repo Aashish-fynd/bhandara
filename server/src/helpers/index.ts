@@ -1,4 +1,5 @@
 import config from "@config";
+import { EQueryOperator } from "@definitions/enums";
 import { IBaseUser } from "@definitions/types";
 import logger from "@logger";
 import { jnstringify } from "@utils";
