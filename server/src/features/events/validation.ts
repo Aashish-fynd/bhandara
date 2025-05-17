@@ -1,5 +1,6 @@
 import { validateSchema } from "@/helpers";
 import { EVENT_TABLE_NAME } from "./constants";
+import { EEventParticipantStatus, EEventStatus } from "@definitions/enums";
 
 const locationSchema = {
   type: "object",
@@ -37,19 +38,20 @@ const locationSchema = {
 const participantSchema = {
   type: "object",
   properties: {
-    userId: {
+    user: {
       type: "string",
       format: "uuid",
       errorMessage: "userId must be a valid UUID",
     },
     status: {
       type: "string",
-      enum: ["confirmed", "pending", "declined"],
-      errorMessage:
-        "Status must be one of 'confirmed', 'pending', or 'declined'",
+      enum: Object.values(EEventParticipantStatus),
+      errorMessage: `Status must be one of ${Object.values(
+        EEventParticipantStatus
+      ).join(", ")}`,
     },
   },
-  required: ["userId", "status"],
+  required: ["user", "status"],
   additionalProperties: false,
   errorMessage: {
     type: "Participant data must be an object",
@@ -58,6 +60,23 @@ const participantSchema = {
       status: "Status is required",
     },
   },
+};
+
+const verifierSchema = {
+  type: "object",
+  properties: {
+    user: {
+      type: "string",
+      format: "uuid",
+      errorMessage: "Each verifier must be a valid UUID",
+    },
+    verifiedAt: {
+      type: "string",
+      format: "date-time",
+      errorMessage: "Verified at must be a valid date-time",
+    },
+  },
+  required: ["user", "verifiedAt"],
 };
 
 const eventSchema = {
@@ -77,13 +96,9 @@ const eventSchema = {
     },
     verifiers: {
       type: "array",
-      items: {
-        type: "string",
-        format: "uuid",
-        errorMessage: "Each verifier must be a valid UUID",
-      },
+      items: verifierSchema,
       uniqueItems: true,
-      errorMessage: "Verifiers must be an array of unique UUIDs",
+      errorMessage: "Verifiers must be an array of unique objects",
     },
     threadId: {
       type: "string",
@@ -102,9 +117,10 @@ const eventSchema = {
     },
     status: {
       type: "string",
-      enum: ["upcoming", "ongoing", "completed", "cancelled"],
-      errorMessage:
-        "Status must be one of 'upcoming', 'ongoing', 'completed', or 'cancelled'",
+      enum: Object.values(EEventStatus),
+      errorMessage: `Status must be one of ${Object.values(EEventStatus).join(
+        ", "
+      )}`,
     },
     capacity: {
       type: "integer",
@@ -133,11 +149,56 @@ const eventSchema = {
       location: "Location is required",
       participants: "Participants is required",
       verifiers: "Verifiers is required",
-      threadId: "threadId is required",
       type: "Type is required",
       createdBy: "createdBy is required",
       status: "Status is required",
       capacity: "Capacity is required",
+    },
+  },
+};
+
+const eventUpdateSchema = {
+  type: "object",
+  properties: {
+    name: { type: "string", errorMessage: "Name must be a valid string" },
+    description: {
+      type: "string",
+      errorMessage: "Description must be a valid string",
+    },
+    location: { oneOf: [locationSchema, { type: "null" }] },
+    participants: {
+      oneOf: [
+        {
+          type: "array",
+          items: participantSchema,
+          uniqueItems: true,
+          errorMessage: "Participants must be an array of unique objects",
+        },
+        { type: "null" },
+      ],
+    },
+    verifiers: {
+      oneOf: [
+        {
+          type: "array",
+          items: verifierSchema,
+          uniqueItems: true,
+          errorMessage: "Verifiers must be an array of unique objects",
+        },
+        { type: "null" },
+      ],
+    },
+    status: {
+      type: "string",
+      enum: Object.values(EEventStatus),
+      errorMessage: `Status must be one of ${Object.values(EEventStatus).join(
+        ", "
+      )}`,
+    },
+    capacity: {
+      type: "integer",
+      minimum: 0,
+      errorMessage: "Capacity must be a non-negative integer",
     },
   },
 };
@@ -149,7 +210,7 @@ const validateEventCreate = validateSchema(
 
 const validateEventUpdate = validateSchema(
   `${EVENT_TABLE_NAME}_UPDATE`,
-  eventSchema
+  eventUpdateSchema
 );
 
 export { validateEventCreate, validateEventUpdate };

@@ -12,12 +12,12 @@ const paginationParser = (
     sortBy,
     sortOrder,
     next: _next,
-    pageNumber,
+    page,
     startDate,
     endDate,
   } = req.query;
   const parsedLimit = +(limit ?? 10);
-  const parsedPageNumber = +(pageNumber ?? 1);
+  const parsedPageNumber = +(page ?? 1);
   const parsedSortBy =
     sortBy !== "createdAt" && sortBy !== "updatedAt" ? null : sortBy;
 

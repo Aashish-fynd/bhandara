@@ -52,8 +52,15 @@ export enum EQueryOperator {
   Like = "like",
   ILike = "ilike",
   In = "in",
+  Is = "is",
 }
 
 export enum ESocialLoginProvider {
   Google = "google",
+}
+
+export enum EEventParticipantStatus {
+  Pending = "pending",
+  Confirmed = "confirmed",
+  Declined = "declined",
 }

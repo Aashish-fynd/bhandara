@@ -1,26 +1,26 @@
 import { RedisCache } from "@features/cache";
-import { CACHE_NAMESPACES, DEFAULT_NAMESPACE_CACHE_TTL } from "@constants";
-import { ITag } from "@definitions/types";
+import { CACHE_NAMESPACE_CONFIG } from "@constants";
+import { IBaseUser, IEvent } from "@definitions/types";
 
-const eventTagsCache = new RedisCache({
-  namespace: CACHE_NAMESPACES.EVENTS,
-  defaultTTLSeconds: DEFAULT_NAMESPACE_CACHE_TTL[CACHE_NAMESPACES.EVENTS],
+const eventCache = new RedisCache({
+  namespace: CACHE_NAMESPACE_CONFIG.Events.namespace,
+  defaultTTLSeconds: CACHE_NAMESPACE_CONFIG.Events.ttl,
 });
 
-export const setEventTagsCache = (eventId: string, tags: ITag[]) => {
-  const pipeline = eventTagsCache.getPipeline();
-  const eventTagsKey = `${eventId}:tags`;
-  tags.forEach((tag) => {
-    pipeline.hset(eventTagsKey, {
-      [tag.id]: tag,
-    });
-  });
-  pipeline.expire(eventTagsKey, eventTagsCache.getDefaultTTL());
-  return pipeline.exec();
+export const getEventCache = (eventId: string) =>
+  eventCache.getItem<IEvent>(`${eventId}`);
+
+export const setEventCache = (eventId: string, event: IEvent) =>
+  eventCache.setItem(`${eventId}`, event);
+
+export const deleteEventCache = (eventId: string) => {
+  eventCache.deleteItem(`${eventId}*`);
 };
 
-export const getEventTagsCache = (eventId: string) =>
-  eventTagsCache.getItem(`${eventId}:tags`);
+export const getEventUsersCache = (key: string) =>
+  eventCache.getItem<Record<string, IBaseUser>>(key);
 
-export const deleteEventTagsCache = (eventId: string) =>
-  eventTagsCache.deleteItem(`${eventId}:tags`);
+export const setEventUsersCache = (
+  key: string,
+  users: Record<string, IBaseUser>
+) => eventCache.setItem(key, users);

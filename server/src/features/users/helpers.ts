@@ -2,9 +2,16 @@ import { IUserSession } from "@definitions/types";
 import { IBaseUser } from "@definitions/types";
 import { RedisCache } from "@features/cache";
 import { jnparse } from "@utils";
+import { CACHE_NAMESPACE_CONFIG } from "@constants";
 
-const userCache = new RedisCache({ namespace: "users" });
-const sessionCache = new RedisCache({ namespace: "session" });
+const userCache = new RedisCache({
+  namespace: CACHE_NAMESPACE_CONFIG.Users.namespace,
+  defaultTTLSeconds: CACHE_NAMESPACE_CONFIG.Users.ttl,
+});
+const sessionCache = new RedisCache({
+  namespace: CACHE_NAMESPACE_CONFIG.Sessions.namespace,
+  defaultTTLSeconds: CACHE_NAMESPACE_CONFIG.Sessions.ttl,
+});
 
 export const getUserCache = async (userId: string) => {
   return userCache.getItem<IBaseUser>(userId);

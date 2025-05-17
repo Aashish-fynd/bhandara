@@ -8,7 +8,7 @@ import {
   setUserSessionCache,
 } from "@features/users/helpers";
 import UserService from "@features/users/service";
-import { getAlphaNumericId, getGeoLocationData } from "@helpers";
+import { getAlphaNumericId, getGeoLocationData, getUUIDv7 } from "@helpers";
 import { AuthResponse } from "@supabase/supabase-js";
 import { Request } from "express";
 import { UAParser } from "ua-parser-js";
@@ -145,7 +145,8 @@ class Auth {
       }
 
       const newUserData = {
-        id: user.id,
+        id: getUUIDv7(),
+        __sid: user.id, // supabase user id
         email: user.email,
         name: user.user_metadata.full_name,
         gender: "-", // will be updated later

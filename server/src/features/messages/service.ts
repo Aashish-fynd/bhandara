@@ -1,12 +1,22 @@
-import { IMessage, IPaginationParams } from "@/definitions/types";
+import {
+  IMessage,
+  IMessageContent,
+  IPaginationParams,
+} from "@/definitions/types";
 import Base, { BaseQueryArgs } from "../Base";
 import { EQueryOperator } from "@/definitions/enums";
 import { validateMessageCreate, validateMessageUpdate } from "./validation";
 import { MESSAGE_TABLE_NAME } from "./constants";
+import { SecureMethodCache } from "@decorators";
+import MediaService from "@features/media/service";
+import { isEmpty } from "@utils";
 
 class MessageService extends Base<IMessage> {
+  private readonly mediaService: MediaService;
+
   constructor() {
     super(MESSAGE_TABLE_NAME);
+    this.mediaService = new MediaService();
   }
 
   async getAll(
@@ -15,7 +25,7 @@ class MessageService extends Base<IMessage> {
   ) {
     args.query?.push({
       value: null,
-      operator: EQueryOperator.Eq,
+      operator: EQueryOperator.Is,
       column: "parentId",
     });
     // Step 1: Fetch parent threads with pagination
@@ -29,8 +39,20 @@ class MessageService extends Base<IMessage> {
     if (error) return { error };
 
     // Step 2: Fetch total count of parent threads for pagination metadata
-    const childMessagesPromises = (parentLevelMessages?.items || [])?.map((m) =>
-      this.getChildren(m.id, { limit: 1 })
+    const childMessagesPromises = (parentLevelMessages?.items || [])?.map(
+      async (m) => {
+        const mediaIds = [...((m.content as any)?.media || [])];
+
+        const mediaData = await this.mediaService.getMediaByIds(mediaIds);
+
+        if ("media" in m.content) {
+          m.content.media = (m.content.media as string[]).map((media) => {
+            return mediaData.data[media];
+          });
+        }
+
+        return this.getChildren(m.threadId, m.id, { limit: 1 });
+      }
     );
 
     const childMessages = await Promise.all(childMessagesPromises);
@@ -39,7 +61,7 @@ class MessageService extends Base<IMessage> {
     const messagesWithChildren = parentLevelMessages?.items?.map(
       (parent, index) => ({
         ...parent,
-        children: childMessages[index]?.data || [],
+        children: childMessages[index].data,
       })
     );
 
@@ -53,23 +75,58 @@ class MessageService extends Base<IMessage> {
   }
 
   async getChildren(
+    threadId: string,
     parentId: string,
-    pagination: Partial<IPaginationParams> = {}
+    pagination: Partial<IPaginationParams>
   ) {
-    return super.getAll({
-      query: [
-        { value: parentId, operator: EQueryOperator.Eq, column: "parentId" },
-      ],
-      ...pagination,
-    });
+    const { data } = await super.getAll(
+      {
+        query: [
+          { value: threadId, operator: EQueryOperator.Eq, column: "threadId" },
+          { value: parentId, operator: EQueryOperator.Eq, column: "parentId" },
+        ],
+      },
+      pagination
+    );
+    if (!isEmpty(data.items)) {
+      const mediaIds = data.items
+        .map((m) => {
+          if ("media" in m.content) {
+            return (m.content as any)?.media;
+          }
+          return [];
+        })
+        .flat();
+
+      const { data: mediaData } = await this.mediaService.getMediaByIds(
+        mediaIds
+      );
+
+      data.items.forEach((m) => {
+        if ("media" in m.content) {
+          m.content.media = (m.content.media as string[]).map(
+            (media) => mediaData[media]
+          );
+        }
+      });
+    }
+
+    return { data };
   }
 
+  @SecureMethodCache<IMessage>({})
   async create<U extends Partial<Omit<IMessage, "id" | "updatedAt">>>(data: U) {
     return validateMessageCreate(data, (data) => super.create(data));
   }
 
+  @SecureMethodCache<IMessage>({})
   async update<U extends Partial<IMessage>>(id: string, data: U) {
     return validateMessageUpdate(data, (data) => super.update(id, data));
+  }
+
+  @SecureMethodCache<IMessage>({})
+  getById(id: string) {
+    return super.getById(id);
   }
 }
 

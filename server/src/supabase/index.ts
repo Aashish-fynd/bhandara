@@ -21,7 +21,7 @@ export type QueryFilter =
 
 const throwSupabaseError = (res: any) => {
   throw new SupabaseCustomError(
-    res.error.message,
+    res.error?.message,
     res?.status,
     res?.statusText
   );
@@ -212,6 +212,40 @@ class SupabaseService {
 
     return res;
   }
+  /**
+   * Delete records by query in the database
+   * @param {Object} params - The delete parameters
+   * @param {string} params.table - The table name
+   * @param {QueryFilter[]} params.query - Array of query filters
+   */
+  async deleteByQuery<T extends Record<string, any>>({
+    table,
+    query,
+    single = false,
+  }: {
+    table: string;
+    query: SimpleFilter[];
+    single?: boolean;
+  }): Promise<{
+    data: T | T[] | null;
+    error: PostgrestError | null;
+  }> {
+    let queryBuilder = this.supabaseClient.from(table).delete();
+
+    query.forEach(({ column, operator, value }) => {
+      queryBuilder = (queryBuilder as any)[operator](column, value);
+    });
+
+    const _query = queryBuilder.select();
+
+    if (single) _query.maybeSingle();
+
+    const res = await _query;
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
+  }
 
   /**
    * Delete a record by ID from the database
@@ -219,7 +253,7 @@ class SupabaseService {
    * @param {string} params.table - The table name
    * @param {string} params.id - The record ID
    */
-  async deleteById<T extends Record<string, any>>({
+  deleteById<T extends Record<string, any>>({
     table,
     id,
     single = false,
@@ -227,19 +261,12 @@ class SupabaseService {
     table: string;
     id: string;
     single?: boolean;
-  }): Promise<{ data: T | T[] | null; error: PostgrestError | null }> {
-    const _query = this.supabaseClient
-      .from(table)
-      .delete()
-      .eq("id", id)
-      .select();
-
-    if (single) _query.maybeSingle();
-
-    const res = await _query;
-
-    if (res.error) throwSupabaseError(res);
-    return { data: res.data, error: null };
+  }) {
+    return this.deleteByQuery<T>({
+      table,
+      query: [{ column: "id", operator: EQueryOperator.Eq, value: id }],
+      single,
+    });
   }
 
   /**

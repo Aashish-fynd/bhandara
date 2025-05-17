@@ -1,6 +1,7 @@
 import { Request } from "express";
 import {
   EAccessLevel,
+  EEventParticipantStatus,
   EEventStatus,
   EEventType,
   EMediaProvider,
@@ -30,12 +31,11 @@ export interface IBaseUser extends ITimeStamp {
 }
 
 // Message Content Type
-type IMessageContent =
+export type IMessageContent =
   | { text: string } // Plain text message
   | {
       text?: string; // Optional caption
-      images?: string[]; // Array of image URLs
-      videos?: string[]; // Array of video URLs
+      media?: IMedia[] | string[]; // Array of media IDs
       links?: { url: string; title: string }[]; // Array of links with titles
     }; // Rich object message
 
@@ -86,8 +86,8 @@ export interface ILocation {
 
 // Event Participant Interface
 interface IParticipant {
-  userId: string | IBaseUser;
-  status: "confirmed" | "pending" | "declined";
+  user: string | IBaseUser;
+  status: EEventParticipantStatus;
 }
 
 // Event Interface
@@ -97,7 +97,7 @@ export interface IEvent extends ITimeStamp {
   description: string;
   location: ILocation; // JSONB field
   participants: IParticipant[]; // JSONB field
-  verifiers: string[] | IBaseUser[]; // Array of verifier IDs
+  verifiers: { user: string | IBaseUser; verifiedAt: Date | string }[]; // Array of verifier IDs
   threadId: string; // References "Thread" table
   type: EEventType;
   createdBy: string; // References "User" table
@@ -143,6 +143,13 @@ export interface IMedia extends ITimeStamp {
   storage: IMediaStorage; // JSONB field
   accessLevel: EAccessLevel;
   metadata: Record<string, any>;
+
+  path?: string;
+}
+
+export interface IMediaEventJunction extends ITimeStamp {
+  eventId: string;
+  mediaId: string;
 }
 
 export interface IPaginationParams {

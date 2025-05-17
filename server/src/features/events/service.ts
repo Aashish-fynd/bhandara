@@ -2,17 +2,34 @@ import {
   IBaseUser,
   IDiscussionThread,
   IEvent,
+  IPaginationParams,
   IQnAThread,
 } from "@/definitions/types";
 import ThreadsService from "../threads/service";
 import MessageService from "../messages/service";
-import Base from "../Base";
-import { EQueryOperator, EThreadType } from "@/definitions/enums";
+import Base, { BaseQueryArgs } from "../Base";
+import {
+  EEventParticipantStatus,
+  EEventStatus,
+  EQueryOperator,
+  EThreadType,
+} from "@/definitions/enums";
 import TagService from "../tags/service";
 import MediaService from "../media/service";
 import UserService from "../users/service";
 import { validateEventCreate, validateEventUpdate } from "./validation";
 import { EVENT_TABLE_NAME } from "./constants";
+import { SecureMethodCache } from "@decorators";
+import {
+  getEventCache,
+  getEventUsersCache,
+  setEventCache,
+  setEventUsersCache,
+} from "./helpers";
+import { deleteEventCache } from "./helpers";
+import { isEmpty } from "@utils";
+import { BadRequestError, NotFoundError } from "@exceptions";
+import { getDistanceInMeters } from "@helpers";
 
 class EventService extends Base<IEvent> {
   private readonly threadService: ThreadsService;
@@ -20,6 +37,9 @@ class EventService extends Base<IEvent> {
   private readonly tagService: TagService;
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
+  private readonly getCache = getEventCache;
+  private readonly setCache = setEventCache;
+  private readonly deleteCache = deleteEventCache;
 
   constructor() {
     super(EVENT_TABLE_NAME);
@@ -30,19 +50,25 @@ class EventService extends Base<IEvent> {
     this.userService = new UserService();
   }
 
+  @SecureMethodCache<IEvent>({})
+  getById(id: string) {
+    return super.getById(id);
+  }
+
   async getEventData(id: string): Promise<{
     data?: {
       event: IEvent;
-      qnaThread?: { thread: IQnAThread[]; messages: any[] };
-      discussionThread?: { thread: IDiscussionThread[]; messages: any[] };
+      qnaThread?: IQnAThread & { messages: any[] };
+      discussionThread?: IDiscussionThread & { messages: any[] };
     } | null;
     error: any;
   }> {
     // Fetch the event data
     const { data: eventData } = await this.getById(id);
 
-    if (!eventData) return { error: "Event not found" };
+    if (isEmpty(eventData)) throw new NotFoundError("Event not found");
 
+    // TODO: if thread takes too much time move into separate call
     // Fetch thread data
     const threadData = await this.threadService.getAll({
       query: [
@@ -54,27 +80,25 @@ class EventService extends Base<IEvent> {
       ],
     });
 
-    if (threadData.error) {
-      return { error: threadData.error };
-    }
-    if (!threadData.data) {
-      return { error: "Thread not found" };
-    }
+    if (threadData.error) throw new Error(threadData.error as any);
+
+    if (isEmpty(threadData.data))
+      throw new NotFoundError("No thread found for this event");
 
     // Separate QnA and Discussion threads
     const qnaThread = threadData.data.items?.filter(
       (thread) => thread.type === EThreadType.QnA
-    );
+    )?.[0];
 
     const discussionThread = threadData.data.items?.filter(
       (thread) => thread.type === EThreadType.Discussion
-    );
+    )?.[0];
 
     // Create promises for fetching related data
     const promises: Record<string, Promise<any>> = {};
 
     // there will always be only one qna thread and one discussion thread
-    if (qnaThread?.length! > 0) {
+    if (!isEmpty(qnaThread)) {
       promises.qnaMessages = this.messageService.getAll({
         query: [
           {
@@ -86,11 +110,11 @@ class EventService extends Base<IEvent> {
       });
     }
 
-    if (discussionThread?.length! > 0) {
+    if (!isEmpty(discussionThread)) {
       promises.discussionMessages = this.messageService.getAll({
         query: [
           {
-            value: discussionThread[0].id || "",
+            value: discussionThread.id,
             operator: EQueryOperator.Eq,
             column: "threadId",
           },
@@ -99,37 +123,44 @@ class EventService extends Base<IEvent> {
     }
 
     promises.tags = this.tagService.getAllEventTags(id);
-    promises.media = this.mediaService.getAllEventMedia(id);
+    promises.media = this.mediaService.getEventMedia(id);
+
+    const participantIds = eventData.participants.map(
+      (participant) => participant.user
+    ) as string[];
+
+    promises.participants = new Promise(async (resolve) => {
+      const participants = await this.getEventUsers(
+        id,
+        "participants",
+        participantIds
+      );
+      eventData.participants = eventData.participants.map((participant) => {
+        return {
+          ...participant,
+          user: participants.data[participant.user as string],
+        };
+      });
+      resolve(eventData.participants);
+    });
+
+    const verifierIds = eventData.verifiers.map(
+      (verifier) => verifier.user
+    ) as string[];
+
+    promises.verifiers = new Promise(async (resolve) => {
+      const verifiers = await this.getEventUsers(id, "verifiers", verifierIds);
+      eventData.verifiers = eventData.verifiers.map((verifier) => {
+        return {
+          ...verifier,
+          user: verifiers.data[verifier.user as string],
+        };
+      });
+      resolve(eventData.verifiers);
+    });
 
     // Wait for all promises to settle
     const settledResults = await Promise.allSettled(Object.values(promises));
-
-    const userIds = eventData.participants.flatMap(
-      (participant) => participant.userId
-    );
-    userIds.push(...eventData.verifiers);
-
-    const { data: userProfiles, error } = await this.userService.getAll({
-      select: "name,email,id",
-      query: [
-        {
-          value: userIds as string[],
-          operator: EQueryOperator.In,
-          column: "id",
-        },
-      ],
-    });
-
-    if (error) return { error: error };
-
-    eventData.participants = eventData?.participants.map((participant) => ({
-      ...participant,
-      user: userProfiles?.items.find((user) => user.id === participant.userId),
-    }));
-
-    eventData.verifiers = eventData.verifiers.map((verifier) => ({
-      ...userProfiles?.items.find((user) => user.id === verifier),
-    })) as IBaseUser[];
 
     // Map results back to their keys
     const resolvedData: Record<string, any> = {};
@@ -137,8 +168,7 @@ class EventService extends Base<IEvent> {
       const result = settledResults[index];
       resolvedData[key] = result.status === "fulfilled" ? result.value : null;
       if (result.status === "rejected") {
-        console.error(`Error fetching ${key}:`, result.reason);
-        return { error: result.reason };
+        throw result.reason;
       }
     });
 
@@ -150,11 +180,11 @@ class EventService extends Base<IEvent> {
       data: {
         event: eventData,
         qnaThread: {
-          thread: qnaThread || [],
+          ...qnaThread,
           messages: resolvedData.qnaMessages?.data || [],
         },
         discussionThread: {
-          thread: discussionThread || [],
+          ...discussionThread,
           messages: resolvedData.discussionMessages?.data || [],
         },
       },
@@ -162,6 +192,7 @@ class EventService extends Base<IEvent> {
     };
   }
 
+  @SecureMethodCache<IEvent>({})
   async createEvent({
     body,
     tagIds,
@@ -180,13 +211,180 @@ class EventService extends Base<IEvent> {
     );
   }
 
+  @SecureMethodCache<IEvent>({})
   async update<U extends Partial<IEvent>>(id: string, data: U) {
-    return validateEventUpdate(data, (data) =>
-      this._supabaseService.executeRpc<IEvent>("update_event", {
-        event_id: id,
-        event_data: data,
-      })
+    return validateEventUpdate(data, (data) => super.update(id, data));
+  }
+
+  async getAll(
+    args?: BaseQueryArgs<IEvent>,
+    pagination?: Partial<IPaginationParams>
+  ) {
+    const { data } = await super.getAll(args, pagination);
+    if (data.items) {
+      await Promise.all(
+        data.items.map(async (event) => {
+          const mediaPromise = this.mediaService.getEventMedia(event.id, 3);
+          const tagsPromise = this.tagService.getAllEventTags(event.id);
+          const [media, tags] = await Promise.all([mediaPromise, tagsPromise]);
+          event.media = media.data || [];
+          event.tags = tags.data || [];
+        })
+      );
+    }
+    return { data, error: null };
+  }
+
+  @SecureMethodCache<IEvent>({})
+  delete(id: string) {
+    return this.getById(id);
+  }
+
+  @SecureMethodCache<Record<string, IBaseUser>>({
+    cacheGetter: getEventUsersCache,
+    cacheSetter: setEventUsersCache,
+    customCacheKey: (...args) => `${args[0]}:${args[1]}`,
+  })
+  async getEventUsers(
+    eventId: string,
+    type: "participants" | "verifiers",
+    userIds: string[]
+  ) {
+    const { data } = await this.userService.getAll(
+      {
+        query: [
+          {
+            value: userIds,
+            operator: EQueryOperator.In,
+            column: "id",
+          },
+        ],
+        select: "id,name,email,deletedAt",
+      },
+      { limit: 1000 }
     );
+    const userMap = data.items?.reduce((acc, user) => {
+      acc[user.id] = user;
+      return acc;
+    }, {} as Record<string, IBaseUser>);
+
+    return { data: userMap, error: null, type, eventId };
+  }
+
+  async verifyEvent(
+    userId: string,
+    eventId: string,
+    currentCoordinates: {
+      latitude: number;
+      longitude: number;
+    }
+  ) {
+    const { data } = await this.getById(eventId);
+    const { latitude, longitude } = currentCoordinates;
+    const { latitude: eventLatitude, longitude: eventLongitude } =
+      data.location.coordinates;
+    const distance = getDistanceInMeters(
+      latitude,
+      longitude,
+      eventLatitude,
+      eventLongitude
+    );
+    if (distance > 50) {
+      throw new BadRequestError(
+        `You are too far from the event. Current distance ${distance.toFixed(
+          2
+        )} meters`
+      );
+    }
+    const updateData = {
+      verifiers: [...data.verifiers],
+    };
+    const verifierIndex = updateData.verifiers.findIndex(
+      (verifier) => verifier.user === userId
+    );
+    if (verifierIndex === -1) {
+      updateData.verifiers.push({
+        user: userId,
+        verifiedAt: new Date().toISOString(),
+      });
+    } else {
+      throw new BadRequestError("You are already a verifier");
+    }
+
+    return this.update(eventId, updateData);
+  }
+
+  async joinLeaveEvent(
+    userId: string,
+    eventId: string,
+    action: "join" | "leave"
+  ) {
+    const [event, user] = await Promise.all([
+      this.getById(eventId),
+      this.userService.getById(userId),
+    ]);
+
+    if (event.error || user.error)
+      throw new Error((event.error || user.error) as any);
+
+    const eventData = event.data;
+    const userData = user.data;
+
+    if (eventData.status !== EEventStatus.Ongoing) {
+      throw new BadRequestError(`Event is ${eventData.status}`);
+    }
+
+    const updateData = {
+      participants: [...eventData.participants],
+    };
+
+    if (action === "join") {
+      updateData.participants.push({
+        user: userData.id,
+        status: EEventParticipantStatus.Confirmed,
+      });
+    } else if (action === "leave") {
+      const participantIndex = updateData.participants.findIndex(
+        (participant) => participant.user === userData.id
+      );
+
+      if (participantIndex === -1) {
+        throw new BadRequestError("User is not a participant");
+      }
+
+      updateData.participants[participantIndex].status =
+        EEventParticipantStatus.Declined;
+    } else {
+      throw new BadRequestError("Invalid action");
+    }
+    await this.update(eventId, updateData);
+    return {
+      data: `Successfully ${action === "join" ? "joined" : "left"} the event`,
+      error: null,
+    };
+  }
+
+  async associateMediaToEvent(eventId: string, mediaId: string) {
+    const [event, media, eventMedia] = await Promise.all([
+      this.getById(eventId),
+      this.mediaService.getById(mediaId),
+      this.mediaService.getEventMediaJunctionRow(eventId, mediaId),
+    ]);
+
+    if (event.error || media.error)
+      throw new Error((event.error || media.error) as any);
+
+    if (!isEmpty(eventMedia.data))
+      throw new BadRequestError("Media is already associated to this event");
+
+    if (isEmpty(event.data) || isEmpty(media.data))
+      throw new NotFoundError("Event or media not found");
+
+    return this.mediaService.createEventMediaJunctionRow(eventId, mediaId);
+  }
+
+  async deleteEventMedia(eventId: string, mediaId: string) {
+    return this.mediaService.deleteEventMediaJunctionRow(eventId, mediaId);
   }
 }
 

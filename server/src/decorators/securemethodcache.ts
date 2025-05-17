@@ -120,7 +120,7 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
 
         case "get": {
           const cachedData = await getCache(cacheKey);
-          if (cachedData)
+          if (!isEmpty(cachedData))
             return { data: cachedData, error: null } as ReturnType<M>;
 
           const result = await originalMethod.apply(this, args);
@@ -128,9 +128,11 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
 
           if (!isEmpty(result?.data)) {
             await setCache(cacheKey, result.data);
-          } else {
-            throw new NotFoundError("Resource not found");
           }
+          // TODO: check if this is required here or not
+          // } else {
+          //   throw new NotFoundError("Resource not found");
+          // }
 
           return result;
         }

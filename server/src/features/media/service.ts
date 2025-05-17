@@ -1,4 +1,8 @@
-import { IMedia, IPaginationParams } from "@/definitions/types";
+import {
+  IMedia,
+  IMediaEventJunction,
+  IPaginationParams,
+} from "@/definitions/types";
 import Base from "../Base";
 import { EMediaProvider, EQueryOperator } from "@/definitions/enums";
 import { validateMediaCreate, validateMediaUpdate } from "./validation";
@@ -21,6 +25,7 @@ import { getMediaCache } from "./helpers";
 import { PostgrestError } from "@supabase/postgrest-js";
 import { get32BitMD5Hash } from "@helpers";
 import logger from "@logger";
+import { appendUUIDToFilename } from "./utils";
 
 class MediaService extends Base<IMedia> {
   private readonly getCache = getMediaCache;
@@ -32,41 +37,49 @@ class MediaService extends Base<IMedia> {
   }
 
   @SecureMethodCache<IMedia>()
-  async getAllEventMedia(
-    eventId: string,
-    pagination: Partial<IPaginationParams> = {}
-  ) {
+  async getEventMedia(eventId: string, limit: number | null = null) {
     const { data: eventMedia, error: eventMediaError } =
       await this._supabaseService.querySupabase({
         table: MEDIA_EVENT_JUNCTION_TABLE_NAME,
         query: [
           { column: "eventId", operator: EQueryOperator.Eq, value: eventId },
         ],
+        modifyQuery: (qb) => {
+          if (limit) qb.limit(limit);
+          return qb;
+        },
       });
 
     if (eventMediaError) return { error: eventMediaError };
-    const { data, error } = await super.getAll(
+    const { data } = await super.getAll(
       {
-        select: `*`,
-        modifyQuery: (qb) =>
-          qb.in("id", eventMedia?.map((media) => media.mediaId) || []),
+        query: [
+          {
+            column: "id",
+            operator: EQueryOperator.In,
+            value:
+              eventMedia?.map((media: { mediaId: string }) => media.mediaId) ||
+              [],
+          },
+        ],
       },
-      pagination
+      { limit }
     );
 
-    if (error) return { error };
+    const publicUrlPromises = (data?.items || []).map(async (item) => {
+      const publicUrl = await this.getPublicUrl(item.url, item.storage.bucket);
+      return {
+        ...item,
+        publicUrl: publicUrl.data.signedUrl,
+        publicUrlExpiresAt: publicUrl.data.expiresAt,
+      };
+    });
 
-    const formattedData = (data?.items || []).map((item) => ({
-      eventId: (item as IMedia & { eventId: string }).eventId,
-      ...item,
-    }));
+    const publicUrls = await Promise.all(publicUrlPromises);
 
     return {
-      data: {
-        items: formattedData,
-        pagination: data!.pagination,
-      },
-      error,
+      data: publicUrls,
+      error: null,
     };
   }
 
@@ -90,7 +103,7 @@ class MediaService extends Base<IMedia> {
           bucket,
           base64FileData: file,
           mimeType,
-          path,
+          path: appendUUIDToFilename(path),
           options,
         });
 
@@ -157,7 +170,7 @@ class MediaService extends Base<IMedia> {
         if (validatedData.options.size > bucketConfig.maxFileSize)
           throw new Error("File size too large");
 
-        const path = validatedData.path;
+        const path = appendUUIDToFilename(validatedData.path);
 
         omit(validatedData, ["path", "bucket", "options"]);
         delete restOptions.path;
@@ -189,7 +202,7 @@ class MediaService extends Base<IMedia> {
 
         delete signedUrl.data.token;
         return {
-          row: creationData[0],
+          row: creationData[0] as IMedia,
           ...signedUrl.data,
         };
       })
@@ -215,7 +228,13 @@ class MediaService extends Base<IMedia> {
 
   @SecureMethodCache<IMedia>()
   async create<U extends Partial<Omit<IMedia, "id" | "updatedAt">>>(data: U) {
-    return validateMediaCreate(data, (data) => super.create(data));
+    return validateMediaCreate(data, (validatedData) => {
+      const { path, ...rest } = validatedData;
+      return super.create({
+        ...rest,
+        path: appendUUIDToFilename(path),
+      });
+    });
   }
 
   @SecureMethodCache<IMedia>()
@@ -228,7 +247,8 @@ class MediaService extends Base<IMedia> {
         res.data.url,
         res.data.storage.bucket
       );
-      res.data.publicUrl = publicUrl.data;
+      res.data.publicUrl = publicUrl.data.signedUrl;
+      res.data.publicUrlExpiresAt = publicUrl.data.expiresAt;
     }
     return res;
   }
@@ -245,7 +265,13 @@ class MediaService extends Base<IMedia> {
       expiresIn: 3600 * 24,
     });
 
-    return { data: publicUrl.data.signedUrl, error: null };
+    return {
+      data: {
+        signedUrl: publicUrl.data.signedUrl,
+        expiresAt: new Date(Date.now() + 3600 * 24 * 1000),
+      },
+      error: null,
+    };
   }
 
   @SecureMethodCache<IMedia>({
@@ -265,24 +291,64 @@ class MediaService extends Base<IMedia> {
     return res;
   }
 
-  async getMediaByIds(ids: string[]) {
-    const mediaData = await this._supabaseService.querySupabase({
+  async getMediaByIds(
+    ids: string[]
+  ): Promise<{ data: Record<string, IMedia>; error: PostgrestError | null }> {
+    const mediaData = await this._supabaseService.querySupabase<IMedia>({
       table: MEDIA_TABLE_NAME,
       query: [{ column: "id", operator: EQueryOperator.In, value: ids }],
     });
     if (!isEmpty(mediaData.data)) {
       const mediaDataWithPublicUrl = await Promise.all(
-        mediaData.data.map(async (media: IMedia) => {
+        (mediaData.data as IMedia[]).map(async (media: IMedia) => {
           const publicUrl = await this.getPublicUrl(
             media.url,
             media.storage.bucket
           );
-          return { ...media, publicUrl: publicUrl.data };
+          return {
+            ...media,
+            publicUrl: publicUrl.data.signedUrl,
+            publicUrlExpiresAt: publicUrl.data.expiresAt,
+          };
         })
       );
-      return { data: mediaDataWithPublicUrl, error: null };
+
+      // Convert array to object with id as key
+      const mediaMap = mediaDataWithPublicUrl.reduce((acc, media) => {
+        acc[media.id] = media;
+        return acc;
+      }, {} as Record<string, IMedia>);
+
+      return { data: mediaMap, error: null };
     }
-    return mediaData;
+    return { data: {}, error: mediaData.error };
+  }
+
+  async getEventMediaJunctionRow(eventId: string, mediaId: string) {
+    return this._supabaseService.querySupabase({
+      table: MEDIA_EVENT_JUNCTION_TABLE_NAME,
+      query: [
+        { column: "eventId", operator: EQueryOperator.Eq, value: eventId },
+        { column: "mediaId", operator: EQueryOperator.Eq, value: mediaId },
+      ],
+    });
+  }
+
+  async createEventMediaJunctionRow(eventId: string, mediaId: string) {
+    return this._supabaseService.insertIntoDB({
+      table: MEDIA_EVENT_JUNCTION_TABLE_NAME,
+      data: { eventId, mediaId },
+    });
+  }
+
+  async deleteEventMediaJunctionRow(eventId: string, mediaId: string) {
+    return this._supabaseService.deleteByQuery({
+      table: MEDIA_EVENT_JUNCTION_TABLE_NAME,
+      query: [
+        { column: "eventId", operator: EQueryOperator.Eq, value: eventId },
+        { column: "mediaId", operator: EQueryOperator.Eq, value: mediaId },
+      ],
+    });
   }
 }
 

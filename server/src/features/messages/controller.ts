@@ -68,3 +68,16 @@ export const getMessageById = async (req: ICustomRequest, res: Response) => {
 
   return res.status(200).json(message);
 };
+
+export const getChildMessages = async (
+  req: ICustomRequest & IRequestPagination,
+  res: Response
+) => {
+  const { parentId, threadId } = req.params;
+  const messages = await messagesService.getChildren(
+    threadId,
+    parentId,
+    req.pagination
+  );
+  return res.status(200).json(messages);
+};

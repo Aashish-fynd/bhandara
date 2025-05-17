@@ -51,7 +51,7 @@ class TagService extends Base<ITag> {
     );
 
     return {
-      data: data.items || [],
+      data: data.items,
       error: null,
     };
   }
@@ -85,10 +85,13 @@ class TagService extends Base<ITag> {
     });
   }
 
-  async dissociateTagFromEvent(junctionId: string) {
-    return this._supabaseService.deleteById({
+  async dissociateTagFromEvent(eventId: string, tagId: string) {
+    return this._supabaseService.deleteByQuery({
       table: TAG_EVENT_JUNCTION_TABLE_NAME,
-      id: junctionId,
+      query: [
+        { column: "eventId", operator: EQueryOperator.Eq, value: eventId },
+        { column: "tagId", operator: EQueryOperator.Eq, value: tagId },
+      ],
     });
   }
 }

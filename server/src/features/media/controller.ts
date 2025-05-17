@@ -13,7 +13,7 @@ export const uploadFile = async (req: ICustomRequest, res: Response) => {
   const uploadPath = `${req.user.id}/${path}`;
   const uploadRes = (await mediaService.uploadFile({
     file,
-    path: appendUUIDToFilename(uploadPath),
+    path: uploadPath,
     bucket,
     mimeType,
     options: {
@@ -31,7 +31,7 @@ export const getSignedUploadUrl = async (
 ) => {
   const { path, bucket, mimeType, format, ...rest } = req.body;
 
-  const uploadPath = appendUUIDToFilename(`${req.user.id}/${path}`);
+  const uploadPath = `${req.user.id}/${path}`;
   const insertData = {
     path: uploadPath,
     bucket,
@@ -53,7 +53,7 @@ export const createMediaData = async (req: ICustomRequest, res: Response) => {
   const uploadPath = `${req.user.id}/${path}`;
   const { data } = await mediaService.create({
     file,
-    path: appendUUIDToFilename(uploadPath),
+    path: uploadPath,
     bucket,
     mimeType,
     options: {

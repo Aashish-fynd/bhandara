@@ -1,17 +1,17 @@
 import { ITag } from "@definitions/types";
 import { RedisCache } from "@features/cache";
-import { CACHE_NAMESPACES, DEFAULT_NAMESPACE_CACHE_TTL } from "@constants";
+import { CACHE_NAMESPACE_CONFIG } from "@constants";
 import logger from "@logger";
-import { jnstringify } from "@utils";
+import { isEmpty, jnstringify } from "@utils";
 
 const tagCache = new RedisCache({
-  namespace: CACHE_NAMESPACES.TAGS,
-  defaultTTLSeconds: DEFAULT_NAMESPACE_CACHE_TTL[CACHE_NAMESPACES.TAGS],
+  namespace: CACHE_NAMESPACE_CONFIG.Tags.namespace,
+  defaultTTLSeconds: CACHE_NAMESPACE_CONFIG.Tags.ttl,
 });
 
 const eventTagsCache = new RedisCache({
-  namespace: CACHE_NAMESPACES.EVENTS,
-  defaultTTLSeconds: DEFAULT_NAMESPACE_CACHE_TTL[CACHE_NAMESPACES.EVENTS],
+  namespace: CACHE_NAMESPACE_CONFIG.Events.namespace,
+  defaultTTLSeconds: CACHE_NAMESPACE_CONFIG.Events.ttl,
 });
 
 export const getTagCache = (tagId: string) => tagCache.getItem<ITag>(tagId);
@@ -26,10 +26,10 @@ export const setEventTagsCache = async (
   tags: ITag[]
 ): Promise<"OK"> => {
   const pipeline = eventTagsCache.getPipeline();
-  const eventTagsKey = `${eventId}:tags`;
+  const eventTagsKey = `${CACHE_NAMESPACE_CONFIG.Events.namespace}:${eventId}:tags`;
   tags.forEach((tag) => {
     pipeline.hset(eventTagsKey, {
-      [tag.id]: tag,
+      [tag.id]: jnstringify(tag),
     });
   });
   pipeline.expire(eventTagsKey, eventTagsCache.getDefaultTTL());
@@ -40,8 +40,13 @@ export const setEventTagsCache = async (
   return "OK";
 };
 
-export const getEventTagsCache = (eventId: string) =>
-  eventTagsCache.getItem<ITag[]>(`${eventId}:tags`);
+export const getEventTagsCache = async (eventId: string) => {
+  const tags = await eventTagsCache.getHKeys(`${eventId}:tags`);
+  const formattedTags = Object.keys(tags).map(
+    (tag) => JSON.parse(tags[tag]) as ITag
+  );
+  return isEmpty(formattedTags) ? null : formattedTags;
+};
 
 export const deleteEventTagsCache = (eventId: string) =>
   eventTagsCache.deleteItem(`${eventId}:tags`);

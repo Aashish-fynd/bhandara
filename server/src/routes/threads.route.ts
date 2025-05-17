@@ -12,6 +12,7 @@ import {
   getMessageById,
   updateMessage,
   deleteMessage,
+  getChildMessages,
 } from "@features/messages/controller";
 import {
   createThread,
@@ -44,5 +45,11 @@ router
   .get(asyncHandler(getMessageById))
   .put(asyncHandler(updateMessage))
   .delete(asyncHandler(deleteMessage));
+
+router.get(
+  "/:threadId/child-messages/:parentId",
+  [paginationParser],
+  asyncHandler(getChildMessages)
+);
 
 export default router;

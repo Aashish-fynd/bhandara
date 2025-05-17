@@ -5,22 +5,30 @@ import { validateThreadCreate, validateThreadUpdate } from "./validation";
 import { THREAD_TABLE_NAME } from "./constants";
 import MediaService from "@features/media/service";
 import { PostgrestError } from "@supabase/postgrest-js";
-import { EQueryOperator } from "@definitions/enums";
+import { EQueryOperator, EThreadType } from "@definitions/enums";
+import { SecureMethodCache } from "@decorators";
+import { getThreadCache, setThreadCache, deleteThreadCache } from "./helpers";
+
 class ThreadsService extends Base<IDiscussionThread | IQnAThread> {
   private readonly messageService: MessageService;
   private readonly mediaService: MediaService;
+  private readonly getCache = getThreadCache;
+  private readonly setCache = setThreadCache;
+  private readonly deleteCache = deleteThreadCache;
 
   constructor() {
     super(THREAD_TABLE_NAME);
     this.messageService = new MessageService();
   }
 
+  @SecureMethodCache<IDiscussionThread | IQnAThread>({})
   async create<
     U extends Partial<Omit<IDiscussionThread | IQnAThread, "id" | "updatedAt">>
   >(data: U) {
     return validateThreadCreate(data, (data) => super.create(data));
   }
 
+  @SecureMethodCache<IDiscussionThread | IQnAThread>({})
   async getById(
     id: string,
     includeMessages?: boolean
@@ -28,16 +36,29 @@ class ThreadsService extends Base<IDiscussionThread | IQnAThread> {
     data: IDiscussionThread | IQnAThread;
     error: PostgrestError | null;
   }> {
-    const thread = await super.getById(id);
+    const { data: thread } = await super.getById(id);
     if (includeMessages) {
       const messages = await this.messageService.getAll({
         query: [{ column: "threadId", operator: EQueryOperator.Eq, value: id }],
       });
-      thread.data.messages = messages.data;
+
+      if (thread.type === EThreadType.Discussion) {
+        (thread as IDiscussionThread).messages = messages.data.items;
+      } else if (thread.type === EThreadType.QnA) {
+        (thread as IQnAThread).qaPairs = messages.data.items.map((item) => {
+          const { children, ...question } = item;
+          return {
+            question,
+            answers: children.items,
+          };
+        });
+      }
     }
-    return thread;
+
+    return { data: thread, error: null };
   }
 
+  @SecureMethodCache<IDiscussionThread | IQnAThread>({})
   async update<U extends Partial<IDiscussionThread | IQnAThread>>(
     id: string,
     data: U

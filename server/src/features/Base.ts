@@ -58,11 +58,15 @@ class Base<T extends Record<string, any>> {
           qb = qb.lte(_pagination.sortBy, _pagination.endDate);
 
         if (_pagination.next) {
-          qb = qb
-            .gt(_pagination.sortBy, _pagination.next)
-            .limit(_pagination.limit + 1);
+          const params = [_pagination.sortBy, _pagination.next];
+          if (_pagination.sortOrder === "asc") {
+            qb = qb.gt(...params);
+          } else {
+            qb = qb.lt(...params);
+          }
+          qb = qb.limit(_pagination.limit + 1);
         } else {
-          qb = qb.range(from, from + _pagination.limit - 1);
+          qb = qb.range(from, from + _pagination.limit);
         }
 
         if (args?.modifyQuery) qb = args.modifyQuery(qb);
@@ -73,18 +77,25 @@ class Base<T extends Record<string, any>> {
 
     if (error) throw new Error(error.message);
 
+    const paginationObj = {
+      limit: _pagination.limit,
+      page: _pagination.page,
+      next:
+        data?.length > _pagination.limit
+          ? (data as T[])[_pagination.limit - 1]?.createdAt
+          : null,
+      hasNext: data?.length > _pagination.limit,
+    };
+
+    if (_pagination.next) {
+      delete paginationObj.page;
+      delete paginationObj.hasNext;
+    }
+
     return {
       data: {
         items: data?.slice(0, _pagination.limit) as T[],
-        pagination: {
-          limit: _pagination.limit,
-          page: _pagination.page,
-          next:
-            data?.length > _pagination.limit
-              ? (data as T[])[_pagination.limit - 1]?.createdAt
-              : null,
-          hasNext: data?.length > _pagination.limit,
-        },
+        pagination: paginationObj,
       },
       error: null,
     };

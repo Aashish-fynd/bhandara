@@ -1,11 +1,11 @@
 import config from "@config";
-import { EQueryOperator } from "@definitions/enums";
 import { IBaseUser } from "@definitions/types";
 import logger from "@logger";
 import { jnstringify } from "@utils";
 import * as bcrypt from "bcrypt";
 import * as jwt from "jsonwebtoken";
 import { nanoid } from "nanoid";
+import { v7 as uuidv7 } from "uuid";
 
 /**
  * Hashes a password using bcrypt.
@@ -154,5 +154,26 @@ export const getGeoLocationData = async (ip: string) => {
 export const getAlphaNumericId = (size: number = 21) => {
   return nanoid(size);
 };
+
+export const getUUIDv7 = () => uuidv7();
+
+export function getDistanceInMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+) {
+  const toRad = (x: number) => (x * Math.PI) / 180;
+  const R = 6371000; // Earth radius in meters
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
 
 export * from "./hashing";

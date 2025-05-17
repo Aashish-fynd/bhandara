@@ -1,7 +1,7 @@
 import { ICustomRequest, IRequestPagination } from "@definitions/types";
 import { Response } from "express";
 import EventService from "./service";
-import { NotFoundError } from "@exceptions";
+import { BadRequestError, NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
 import TagService from "@features/tags/service";
 
@@ -17,7 +17,9 @@ export const getEvents = async (
 };
 
 export const getEventById = async (req: ICustomRequest, res: Response) => {
-  const event = await eventService.getById(req.params.id);
+  const { eventId } = req.params;
+
+  const event = await eventService.getEventData(eventId);
 
   if (isEmpty(event)) throw new NotFoundError("Event not found");
 
@@ -43,11 +45,58 @@ export const deleteEvent = async (req: ICustomRequest, res: Response) => {
 };
 
 export const createEventTag = async (req: ICustomRequest, res: Response) => {
-  const tag = await tagService.associateTagToEvent(req.params.id, req.body);
+  const { eventId, tagId } = req.params;
+
+  const tag = await tagService.associateTagToEvent(eventId, tagId);
   return res.status(201).json(tag);
 };
 
 export const deleteEventTag = async (req: ICustomRequest, res: Response) => {
-  const tag = await tagService.dissociateTagFromEvent(req.params.id);
+  const { eventId, tagId } = req.params;
+
+  const tag = await tagService.dissociateTagFromEvent(eventId, tagId);
   return res.status(200).json(tag);
+};
+
+export const eventJoinLeaveHandler = async (
+  req: ICustomRequest,
+  res: Response
+) => {
+  const event = await eventService.joinLeaveEvent(
+    req.user.id,
+    req.params.eventId,
+    req.params.action as "join" | "leave"
+  );
+  return res.status(200).json(event);
+};
+
+export const verifyEvent = async (req: ICustomRequest, res: Response) => {
+  const { currentCoordinates } = req.body;
+
+  if (isEmpty(currentCoordinates))
+    throw new BadRequestError("Current coordinates are required");
+
+  const event = await eventService.verifyEvent(
+    req.user.id,
+    req.params.eventId,
+    currentCoordinates
+  );
+  return res.status(200).json(event);
+};
+
+export const associateEventMedia = async (
+  req: ICustomRequest,
+  res: Response
+) => {
+  const { eventId, mediaId } = req.params;
+
+  const event = await eventService.associateMediaToEvent(eventId, mediaId);
+  return res.status(200).json(event);
+};
+
+export const deleteEventMedia = async (req: ICustomRequest, res: Response) => {
+  const { eventId, mediaId } = req.params;
+
+  const event = await eventService.deleteEventMedia(eventId, mediaId);
+  return res.status(200).json(event);
 };

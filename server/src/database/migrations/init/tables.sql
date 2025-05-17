@@ -11,7 +11,7 @@ CREATE TYPE "EventStatus" AS ENUM ('upcoming', 'ongoing', 'completed', 'cancelle
 
 -- Media Table
 CREATE TABLE "Media" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT uuidv7(),
     "type" "MediaType" NOT NULL,
     "url" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -37,7 +37,7 @@ COMMENT ON COLUMN "Media"."storage" IS '{
 
 -- User Table
 CREATE TABLE "Users" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT uuidv7(),
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL UNIQUE,
     "gender" TEXT NOT NULL,
@@ -56,7 +56,7 @@ ALTER TABLE "Users" ADD CONSTRAINT "Users_mediaId_fkey" FOREIGN KEY ("mediaId") 
 
 -- Thread Table
 CREATE TABLE "Threads" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT uuidv7(),
     "type" "ThreadType" NOT NULL,
     "status" "AccessLevel" NOT NULL,
     "visibility" "AccessLevel" NOT NULL,
@@ -74,7 +74,7 @@ COMMENT ON COLUMN "Threads"."lockHistory" IS '{
 
 -- Event Table
 CREATE TABLE "Events" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT uuidv7(),
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "location" JSONB NOT NULL,
@@ -108,7 +108,7 @@ ALTER TABLE "Threads" ADD CONSTRAINT "Threads_eventId_fkey" FOREIGN KEY ("eventI
 
 -- Message Table
 CREATE TABLE "Messages" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT uuidv7(),
     "userId" UUID NOT NULL REFERENCES "Users"("id"),
     "parentId" UUID NULL REFERENCES "Messages"("id"),
     "content" JSONB NOT NULL, -- Unified field for text or richObject
@@ -121,8 +121,7 @@ CREATE TABLE "Messages" (
 
 COMMENT ON COLUMN "Messages"."content" IS '{
 "text": "string", -- Always present (for plain text or as optional caption)
-"images": "string[] | null", -- Optional array of image URLs
-"videos": "string[] | null", -- Optional array of video URLs
+"media": "string[] | null", -- Optional array of media ids
 "links": {
 "url": "string",
 "title": "string"
@@ -131,7 +130,7 @@ COMMENT ON COLUMN "Messages"."content" IS '{
 
 -- Tag Table
 CREATE TABLE "Tags" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT uuidv7(),
     "name" TEXT NOT NULL,
     "value" TEXT NOT NULL UNIQUE,
     "description" TEXT NULL,

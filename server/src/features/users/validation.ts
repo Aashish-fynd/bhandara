@@ -40,6 +40,10 @@ const createSchema = {
       type: ["object", "null"],
       errorMessage: "Profile picture must be an object or null",
     },
+    __sid: {
+      type: "string",
+      errorMessage: "SID must be a string",
+    },
   },
   required: ["name", "email", "gender"],
   additionalProperties: false,
