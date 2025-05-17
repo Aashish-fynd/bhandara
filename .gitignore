@@ -40,3 +40,4 @@ app-example
 tmp
 .temp
 logs
+server/**/assets
