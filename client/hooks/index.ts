@@ -1,12 +1,27 @@
-import { UserService, ThreadService, EventService, MediaService, AuthService } from "@/features";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 
-const createServiceClassHook = <T extends new (...args: any[]) => any>(ServiceClass: T) => {
-  return () => useMemo(() => new ServiceClass(), []) as InstanceType<T>;
+export const useDataLoader = <T>(
+  promiseFunction: () => Promise<T>,
+  onSuccess?: (data: T) => void,
+  onError?: (error: Error) => void
+) => {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    promiseFunction()
+      .then((data) => {
+        setData(data);
+        onSuccess?.(data);
+      })
+      .catch((error) => {
+        setError(error);
+        onError?.(error);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { data, loading, error };
 };
-
-export const useUserService = createServiceClassHook(UserService);
-export const useThreadService = createServiceClassHook(ThreadService);
-export const useEventService = createServiceClassHook(EventService);
-export const useMediaService = createServiceClassHook(MediaService);
-export const useAuthService = createServiceClassHook(AuthService);

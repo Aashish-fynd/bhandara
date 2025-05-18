@@ -9,6 +9,9 @@ const config = getDefaultConfig(__dirname, {
   isCSSEnabled: true
 });
 
+// Add mjs extension support
+config.resolver.sourceExts.push("mjs");
+
 // Enable Tamagui and add nice web support with optimizing compiler + CSS extraction
 const { withTamagui } = require("@tamagui/metro-plugin");
 module.exports = withTamagui(config, {
@@ -16,7 +19,3 @@ module.exports = withTamagui(config, {
   config: "./tamagui.config.ts",
   outputCSS: "./tamagui-web.css"
 });
-
-config.resolver.sourceExts.push("mjs");
-
-module.exports = config;

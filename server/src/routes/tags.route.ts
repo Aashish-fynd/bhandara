@@ -3,6 +3,7 @@ import { sessionParser, userParser, asyncHandler } from "@middlewares";
 import {
   createTag,
   deleteTag,
+  getSubTags,
   getTagById,
   getTags,
   updateTag,
@@ -19,5 +20,7 @@ router
   .get(asyncHandler(getTagById))
   .put(asyncHandler(updateTag))
   .delete(asyncHandler(deleteTag));
+
+router.get("/:tagId/sub-tags", asyncHandler(getSubTags));
 
 export default router;

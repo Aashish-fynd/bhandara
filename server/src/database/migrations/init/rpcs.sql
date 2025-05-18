@@ -84,3 +84,32 @@ BEGIN
   RETURN new_event;
 END;
 $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION get_tags_with_children()
+RETURNS TABLE (
+    id UUID,
+    name TEXT,
+    value TEXT,
+    description TEXT,
+    icon TEXT,
+    color TEXT,
+    parentId UUID,
+    createdBy UUID,
+    createdAt TIMESTAMPTZ,
+    updatedAt TIMESTAMPTZ,
+    deletedAt TIMESTAMPTZ,
+    hasChildren BOOLEAN
+)
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    t.*,
+    COUNT(c.id) > 0 AS "hasChildren"
+  FROM "Tags" t
+  LEFT JOIN "Tags" c ON c."parentId" = t."id" AND c."deletedAt" IS NULL
+  WHERE t."deletedAt" IS NULL
+  GROUP BY t."id";
+END;
+$$ LANGUAGE plpgsql STABLE;

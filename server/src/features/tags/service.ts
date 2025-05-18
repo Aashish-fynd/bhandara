@@ -1,5 +1,5 @@
 import { IPaginationParams, ITag } from "@/definitions/types";
-import Base from "../Base";
+import Base, { BaseQueryArgs } from "../Base";
 import { validateTagCreate, validateTagUpdate } from "./validation";
 import { TAG_TABLE_NAME, TAG_EVENT_JUNCTION_TABLE_NAME } from "./constants";
 import { EQueryOperator } from "@definitions/enums";
@@ -11,6 +11,9 @@ import {
   getEventTagsCache,
   setEventTagsCache,
   deleteEventTagsCache,
+  getSubTagsCache,
+  setSubTagsCache,
+  deleteSubTagsCache,
 } from "./helpers";
 import { PostgrestError } from "@supabase/postgrest-js";
 
@@ -21,6 +24,20 @@ class TagService extends Base<ITag> {
 
   constructor() {
     super(TAG_TABLE_NAME);
+  }
+
+  async getAll(
+    args?: BaseQueryArgs<ITag>,
+    pagination?: Partial<IPaginationParams>
+  ) {
+    return super.getAll(args, pagination);
+  }
+
+  async getRootTags() {
+    return this._supabaseService.executeRpc(
+      "get_top_level_tags_with_children",
+      {}
+    );
   }
 
   @SecureMethodCache<ITag>({
@@ -92,6 +109,26 @@ class TagService extends Base<ITag> {
         { column: "eventId", operator: EQueryOperator.Eq, value: eventId },
         { column: "tagId", operator: EQueryOperator.Eq, value: tagId },
       ],
+    });
+  }
+
+  @SecureMethodCache<ITag>({
+    cacheGetter: getSubTagsCache,
+    cacheSetter: setSubTagsCache,
+    cacheDeleter: deleteSubTagsCache,
+  })
+  getSubTags(tagId: string, limit?: number) {
+    return this._supabaseService.querySupabase({
+      table: TAG_TABLE_NAME,
+      query: [
+        { column: "parentId", operator: EQueryOperator.Eq, value: tagId },
+      ],
+      modifyQuery: (qb) => {
+        if (limit) {
+          qb.limit(limit);
+        }
+        return qb;
+      },
     });
   }
 }

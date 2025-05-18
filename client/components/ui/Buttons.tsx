@@ -6,8 +6,6 @@ export const FilledButton = styled(Button, {
   color: "$accent12",
   hoverStyle: { bg: "$accent2", borderColor: "$accent2" },
   height: "auto",
-  ml: "auto",
-  mr: "auto",
   pt: "$2.5",
   pb: "$2.5",
   width: "100%"

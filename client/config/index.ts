@@ -1,11 +1,9 @@
-// for testing only
-// import dotenv from "dotenv";
-
-// dotenv.config();
-
 const config = {
   mapbox: {
-    accessToken: process.env.MAPBOX_ACCESS_TOKEN || ""
+    accessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
+  },
+  server: {
+    url: process.env.EXPO_PUBLIC_SERVER_URL || ""
   }
 };
 

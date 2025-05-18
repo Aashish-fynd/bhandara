@@ -8,19 +8,13 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { AppState } from "react-native";
+import { ToastProvider, ToastViewport } from "@tamagui/toast";
 
 import Provider from "@/components/Provider";
 import { Theme } from "tamagui";
-import { supabase } from "../../server/src/connections";
+import SafeAreaToastViewport from "@/components/SafeAreaToasViewport";
+import CurrentToast from "@/components/CurrentToast";
 
-AppState.addEventListener("change", async (state) => {
-  if (state === "active") {
-    await supabase.auth.startAutoRefresh();
-  } else {
-    await supabase.auth.stopAutoRefresh();
-  }
-});
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
@@ -51,20 +45,28 @@ export default function RootLayout() {
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return <Provider>{children}</Provider>;
 };
+
 const RootLayoutNav = () => {
   const colorScheme = useColorScheme();
 
   return (
     <Theme name={"dark"}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen
-            name="(tabs)"
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style="auto" />
+        <ToastProvider
+          burntOptions={{ from: "bottom" }}
+          duration={3000}
+        >
+          <Stack>
+            <Stack.Screen
+              name="(tabs)"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <StatusBar style="auto" />
+          <CurrentToast />
+          <SafeAreaToastViewport />
+        </ToastProvider>
       </ThemeProvider>
     </Theme>
   );

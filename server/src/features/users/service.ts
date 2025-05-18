@@ -59,6 +59,20 @@ class UserService extends Base<IBaseUser> {
       modifyQuery: (qb) => qb.maybeSingle(),
     }) as Promise<{ data: IBaseUser | null; error: PostgrestError | null }>;
   }
+  @SecureMethodCache<IBaseUser>()
+  getUserByUsername(username: string) {
+    return this._supabaseService.querySupabase({
+      table: USER_TABLE_NAME,
+      query: [
+        {
+          column: "username",
+          operator: EQueryOperator.Eq,
+          value: username,
+        },
+      ],
+      modifyQuery: (qb) => qb.maybeSingle(),
+    }) as Promise<{ data: IBaseUser | null; error: PostgrestError | null }>;
+  }
 
   @SecureMethodCache<IBaseUser>({
     cacheDeleter: (id: string, existingData: IBaseUser) =>

@@ -22,7 +22,7 @@ const config: ExpoConfig = {
       {
         RNMapboxMapsVersion: "11.0.0",
         RNMapboxMapsDownloadToken:
-          "sk.eyJ1IjoibWFwYm94MTEwOSIsImEiOiJjbWE2azFmYngwcW1zMnFxemJnMHp5aDVsIn0.N59_bXWC5uUM_k_wvu02mQ"
+          "sk.eyJ1IjoibWFwYm94MTEwOSIsImEiOiJjbWF0eW8xNmwwYnBoMmpyMzE2Y3Q3cmg3In0.G41j1AO-KCrdCIJP2uJAsQ"
       }
     ],
     [

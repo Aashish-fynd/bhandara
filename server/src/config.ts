@@ -26,8 +26,9 @@ const config = {
     fileSizeLimit: "20mb",
   },
   corsOptions: {
-    origin: ["http://localhost:3000", "https://editor.swagger.io"],
+    origin: ["http://localhost:8081", "https://editor.swagger.io"],
     optionsSuccessStatus: 200,
+    credentials: true,
   },
   log: {
     allLogsPath: "./logs/server.log",

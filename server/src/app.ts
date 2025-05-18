@@ -54,7 +54,7 @@ const createServer = () => {
 
   app.use(requestContextMiddleware);
 
-  app.use(appRoutes);
+  app.use("/api", appRoutes);
 
   app.use((req, res, next) => {
     next(new NotFoundError(`not found: ${req.originalUrl}`));

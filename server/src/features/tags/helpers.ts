@@ -50,3 +50,12 @@ export const getEventTagsCache = async (eventId: string) => {
 
 export const deleteEventTagsCache = (eventId: string) =>
   eventTagsCache.deleteItem(`${eventId}:tags`);
+
+export const getSubTagsCache = (tagId: string) =>
+  tagCache.getItem<ITag[]>(`${tagId}:sub-tags`);
+
+export const setSubTagsCache = (tagId: string, tags: ITag[]) =>
+  tagCache.setItem(`${tagId}:sub-tags`, tags, 3600);
+
+export const deleteSubTagsCache = (tagId: string) =>
+  tagCache.deleteItem(`${tagId}:sub-tags`);

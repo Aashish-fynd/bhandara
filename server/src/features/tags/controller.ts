@@ -10,7 +10,12 @@ export const getTags = async (
   req: ICustomRequest & IRequestPagination,
   res: Response
 ) => {
-  const { eventId, createdBy } = req.query;
+  const { eventId, createdBy, rootOnly } = req.query;
+
+  if (rootOnly) {
+    const rootTags = await tagsService.getRootTags();
+    return res.status(200).json(rootTags);
+  }
 
   const query = formQueryFromObject<ITag>({ eventId, createdBy });
 
@@ -44,4 +49,11 @@ export const deleteTag = async (req: ICustomRequest, res: Response) => {
   const tag = await tagsService.delete(tagId);
 
   return res.status(200).json(tag);
+};
+
+export const getSubTags = async (req: ICustomRequest, res: Response) => {
+  const { tagId } = req.params;
+  const subTags = await tagsService.getSubTags(tagId);
+
+  return res.status(200).json(subTags);
 };
