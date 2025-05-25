@@ -1,6 +1,6 @@
 import { supabase } from "@connections";
 import { RequestContext } from "@contexts";
-import { ESocialLoginProvider } from "@definitions/enums";
+import { EAuthProvider } from "@definitions/enums";
 import { IBaseUser } from "@definitions/types";
 import {
   getSafeUser,
@@ -137,7 +137,7 @@ class Auth {
 
       const authProvider = user.app_metadata.provider;
 
-      if (authProvider === ESocialLoginProvider.Google) {
+      if (authProvider === EAuthProvider.Google) {
         profilePic = {
           url: user.user_metadata.avatar_url,
           provider: authProvider,
@@ -151,16 +151,14 @@ class Auth {
         name: user.user_metadata.full_name,
         gender: "-", // will be updated later
         address: geoLocationData,
-        isVerified: Object.values(ESocialLoginProvider).includes(
-          authProvider as ESocialLoginProvider
+        isVerified: Object.values(EAuthProvider).includes(
+          authProvider as EAuthProvider
         ),
         profilePic,
         mediaId: user.user_metadata?.mediaId,
         meta: {
           auth: {
             authProvider: user.app_metadata.provider,
-            accessToken: session?.access_token,
-            refreshToken: session?.refresh_token,
           },
         },
       };

@@ -1,6 +1,6 @@
 import config from "@config";
 import { supabase } from "@connections";
-import { ESocialLoginProvider } from "@definitions/enums";
+import { EAuthProvider } from "@definitions/enums";
 import { ICustomRequest } from "@definitions/types";
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { AuthService } from "@features";
@@ -9,7 +9,7 @@ import {
   getUserSessionCacheList,
 } from "@features/users/helpers";
 import UserService from "@features/users/service";
-import { isEmpty } from "@utils";
+import { isEmpty, merge } from "@utils";
 import { Request, Response } from "express";
 
 const authService = new AuthService();
@@ -32,9 +32,16 @@ const login = async (req: Request, res: Response) => {
   if (!existingUser)
     throw new NotFoundError(`User not found with email: ${email}`);
 
-  const loginProvider = existingUser.meta.auth.authProvider;
-  const isSocialLoggedInUser =
-    Object.values(ESocialLoginProvider).includes(loginProvider);
+  const loginProvider = existingUser.meta?.auth?.authProvider;
+  if (!loginProvider) {
+    existingUser.meta = merge(existingUser.meta, {
+      auth: {
+        authProvider: EAuthProvider.Email,
+      },
+    });
+  }
+
+  const isSocialLoggedInUser = [EAuthProvider.Google].includes(loginProvider);
 
   if (isSocialLoggedInUser) {
     throw new BadRequestError(
@@ -153,6 +160,18 @@ export const signUp = async (req: Request, res: Response) => {
     data: { session: { id: sessionId, user } },
     success: true,
   });
+};
+
+export const signInWithGoogleIdToken = async (req: Request, res: Response) => {
+  const { token, clientType } = req.body;
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: "google",
+    token,
+  });
+
+  if (error) throw new Error(error.message);
+
+  return res.status(200).json({ data: null, success: true });
 };
 
 export { login, logOut, session, googleAuth, googleCallback };

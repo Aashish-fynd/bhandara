@@ -12,7 +12,7 @@ import {
   MEDIA_BUCKET_CONFIG,
 } from "./constants";
 import { isEmpty, omit } from "@utils";
-import { SecureMethodCache } from "@decorators";
+import { MethodCacheSync } from "@decorators";
 import {
   deleteMediaCache,
   setMediaCache,
@@ -36,7 +36,7 @@ class MediaService extends Base<IMedia> {
     super(MEDIA_TABLE_NAME);
   }
 
-  @SecureMethodCache<IMedia>()
+  @MethodCacheSync<IMedia>()
   async getEventMedia(eventId: string, limit: number | null = null) {
     const { data: eventMedia, error: eventMediaError } =
       await this._supabaseService.querySupabase({
@@ -144,7 +144,7 @@ class MediaService extends Base<IMedia> {
     return { data: { path, deleted: true }, error: null };
   }
 
-  @SecureMethodCache<IMedia>({
+  @MethodCacheSync<IMedia>({
     cacheSetterWithExistingTTL: updateMediaCache,
   })
   async update<U extends Partial<IMedia>>(id: string, data: U) {
@@ -209,7 +209,7 @@ class MediaService extends Base<IMedia> {
     );
   }
 
-  @SecureMethodCache<IMedia>()
+  @MethodCacheSync<IMedia>()
   async uploadFileToSignedUrl({
     bucket,
     path,
@@ -226,7 +226,7 @@ class MediaService extends Base<IMedia> {
     });
   }
 
-  @SecureMethodCache<IMedia>()
+  @MethodCacheSync<IMedia>()
   async create<U extends Partial<Omit<IMedia, "id" | "updatedAt">>>(data: U) {
     return validateMediaCreate(data, (validatedData) => {
       const { path, ...rest } = validatedData;
@@ -237,7 +237,7 @@ class MediaService extends Base<IMedia> {
     });
   }
 
-  @SecureMethodCache<IMedia>()
+  @MethodCacheSync<IMedia>()
   async getById(
     id: string
   ): Promise<{ data: IMedia; error: PostgrestError | null }> {
@@ -253,7 +253,7 @@ class MediaService extends Base<IMedia> {
     return res;
   }
 
-  @SecureMethodCache<string>({
+  @MethodCacheSync<string>({
     cacheSetter: setMediaPublicUrlCache,
     cacheGetter: getMediaPublicUrlCache,
     customCacheKey: (path: string) => get32BitMD5Hash(path),
@@ -274,7 +274,7 @@ class MediaService extends Base<IMedia> {
     };
   }
 
-  @SecureMethodCache<IMedia>({
+  @MethodCacheSync<IMedia>({
     cacheDeleter: (id: string, existingData: IMedia) =>
       Promise.all([
         deleteMediaCache(id),

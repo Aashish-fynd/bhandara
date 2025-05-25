@@ -1,3 +1,4 @@
+import { IBaseUser } from "@/definitions/types";
 import axiosClient from "./base";
 
 export const getUserByEmail = async (email: string) => {
@@ -15,17 +16,7 @@ export const createUser = async (user: any) => {
   return response.data;
 };
 
-export const signupWithEmailAndPassword = async (user: any) => {
-  const response = await axiosClient.post("/auth/signup", user);
-  return response.data;
-};
-
-export const loginWithEmailAndPassword = async (email: string, password: string) => {
-  const response = await axiosClient.post("/auth/login", { email, password });
-  return response.data;
-};
-
-export const logout = async () => {
-  const response = await axiosClient.post("/logout");
+export const updateUser = async (id: string, user: any) => {
+  const response = await axiosClient.patch(`/users/${id}`, user);
   return response.data;
 };

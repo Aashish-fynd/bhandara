@@ -6,7 +6,7 @@ import { THREAD_TABLE_NAME } from "./constants";
 import MediaService from "@features/media/service";
 import { PostgrestError } from "@supabase/postgrest-js";
 import { EQueryOperator, EThreadType } from "@definitions/enums";
-import { SecureMethodCache } from "@decorators";
+import { MethodCacheSync } from "@decorators";
 import { getThreadCache, setThreadCache, deleteThreadCache } from "./helpers";
 
 class ThreadsService extends Base<IDiscussionThread | IQnAThread> {
@@ -21,14 +21,18 @@ class ThreadsService extends Base<IDiscussionThread | IQnAThread> {
     this.messageService = new MessageService();
   }
 
-  @SecureMethodCache<IDiscussionThread | IQnAThread>({})
+  async _getByIdNoCache(id: string) {
+    return super.getById(id);
+  }
+
+  @MethodCacheSync<IDiscussionThread | IQnAThread>({})
   async create<
     U extends Partial<Omit<IDiscussionThread | IQnAThread, "id" | "updatedAt">>
   >(data: U) {
     return validateThreadCreate(data, (data) => super.create(data));
   }
 
-  @SecureMethodCache<IDiscussionThread | IQnAThread>({})
+  @MethodCacheSync<IDiscussionThread | IQnAThread>({})
   async getById(
     id: string,
     includeMessages?: boolean
@@ -58,7 +62,7 @@ class ThreadsService extends Base<IDiscussionThread | IQnAThread> {
     return { data: thread, error: null };
   }
 
-  @SecureMethodCache<IDiscussionThread | IQnAThread>({})
+  @MethodCacheSync<IDiscussionThread | IQnAThread>({})
   async update<U extends Partial<IDiscussionThread | IQnAThread>>(
     id: string,
     data: U

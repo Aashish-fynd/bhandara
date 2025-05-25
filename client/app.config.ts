@@ -5,6 +5,12 @@ const config: ExpoConfig = {
   name: "bhandara",
   slug: "bhandara",
   plugins: [
+    [
+      "@rnmapbox/maps",
+      {
+        RNMapboxMapsDownloadToken: ""
+      }
+    ],
     "expo-router",
     "expo-secure-store",
     "expo-font",
@@ -15,14 +21,6 @@ const config: ExpoConfig = {
         imageWidth: 200,
         resizeMode: "contain",
         backgroundColor: "#ffffff"
-      }
-    ],
-    [
-      "@rnmapbox/maps",
-      {
-        RNMapboxMapsVersion: "11.0.0",
-        RNMapboxMapsDownloadToken:
-          "sk.eyJ1IjoibWFwYm94MTEwOSIsImEiOiJjbWF0eW8xNmwwYnBoMmpyMzE2Y3Q3cmg3In0.G41j1AO-KCrdCIJP2uJAsQ"
       }
     ],
     [

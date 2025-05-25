@@ -19,7 +19,7 @@ import MediaService from "../media/service";
 import UserService from "../users/service";
 import { validateEventCreate, validateEventUpdate } from "./validation";
 import { EVENT_TABLE_NAME } from "./constants";
-import { SecureMethodCache } from "@decorators";
+import { MethodCacheSync } from "@decorators";
 import {
   getEventCache,
   getEventUsersCache,
@@ -50,7 +50,7 @@ class EventService extends Base<IEvent> {
     this.userService = new UserService();
   }
 
-  @SecureMethodCache<IEvent>({})
+  @MethodCacheSync<IEvent>({})
   getById(id: string) {
     return super.getById(id);
   }
@@ -192,7 +192,7 @@ class EventService extends Base<IEvent> {
     };
   }
 
-  @SecureMethodCache<IEvent>({})
+  @MethodCacheSync<IEvent>({})
   async createEvent({
     body,
     tagIds,
@@ -211,7 +211,7 @@ class EventService extends Base<IEvent> {
     );
   }
 
-  @SecureMethodCache<IEvent>({})
+  @MethodCacheSync<IEvent>({})
   async update<U extends Partial<IEvent>>(id: string, data: U) {
     return validateEventUpdate(data, (data) => super.update(id, data));
   }
@@ -235,12 +235,12 @@ class EventService extends Base<IEvent> {
     return { data, error: null };
   }
 
-  @SecureMethodCache<IEvent>({})
+  @MethodCacheSync<IEvent>({})
   delete(id: string) {
     return this.getById(id);
   }
 
-  @SecureMethodCache<Record<string, IBaseUser>>({
+  @MethodCacheSync<Record<string, IBaseUser>>({
     cacheGetter: getEventUsersCache,
     cacheSetter: setEventUsersCache,
     customCacheKey: (...args) => `${args[0]}:${args[1]}`,

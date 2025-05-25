@@ -3,7 +3,7 @@ import Base, { BaseQueryArgs } from "../Base";
 import { validateTagCreate, validateTagUpdate } from "./validation";
 import { TAG_TABLE_NAME, TAG_EVENT_JUNCTION_TABLE_NAME } from "./constants";
 import { EQueryOperator } from "@definitions/enums";
-import { SecureMethodCache } from "@decorators";
+import { MethodCacheSync } from "@decorators";
 import {
   getTagCache,
   setTagCache,
@@ -33,6 +33,10 @@ class TagService extends Base<ITag> {
     return super.getAll(args, pagination);
   }
 
+  async _getByIdNoCache(id: string) {
+    return super.getById(id);
+  }
+
   async getRootTags() {
     return this._supabaseService.executeRpc(
       "get_top_level_tags_with_children",
@@ -40,7 +44,7 @@ class TagService extends Base<ITag> {
     );
   }
 
-  @SecureMethodCache<ITag>({
+  @MethodCacheSync<ITag>({
     cacheGetter: getEventTagsCache,
     cacheSetter: setEventTagsCache,
     cacheDeleter: deleteEventTagsCache,
@@ -73,25 +77,26 @@ class TagService extends Base<ITag> {
     };
   }
 
-  @SecureMethodCache<ITag>()
+  @MethodCacheSync<ITag>()
   async create<U extends Partial<Omit<ITag, "id" | "updatedAt">>>(data: U) {
     return validateTagCreate(data, (validatedData: U) =>
       super.create(validatedData)
     );
   }
 
-  @SecureMethodCache<ITag>()
+  @MethodCacheSync<ITag>()
   async update<U extends Partial<ITag>>(id: string, data: U) {
     return validateTagUpdate(data, (validatedData: U) =>
       super.update(id, validatedData)
     );
   }
 
-  @SecureMethodCache<ITag>()
+  @MethodCacheSync<ITag>()
   delete(id: string): Promise<{ data: ITag; error: PostgrestError | null }> {
     return super.delete(id);
   }
 
+  @MethodCacheSync<ITag>({})
   async associateTagToEvent(eventId: string, tagId: string) {
     return this._supabaseService.insertIntoDB({
       table: TAG_EVENT_JUNCTION_TABLE_NAME,
@@ -103,6 +108,7 @@ class TagService extends Base<ITag> {
   }
 
   async dissociateTagFromEvent(eventId: string, tagId: string) {
+    await deleteEventTagsCache(eventId);
     return this._supabaseService.deleteByQuery({
       table: TAG_EVENT_JUNCTION_TABLE_NAME,
       query: [
@@ -112,7 +118,7 @@ class TagService extends Base<ITag> {
     });
   }
 
-  @SecureMethodCache<ITag>({
+  @MethodCacheSync<ITag>({
     cacheGetter: getSubTagsCache,
     cacheSetter: setSubTagsCache,
     cacheDeleter: deleteSubTagsCache,

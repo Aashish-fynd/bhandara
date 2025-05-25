@@ -2,7 +2,7 @@ import { ToastViewport } from "@tamagui/toast";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SafeAreaToastViewport = () => {
-  const { left, top, right, bottom } = useSafeAreaInsets();
+  const { left, top, right } = useSafeAreaInsets();
   return (
     <ToastViewport
       flexDirection="column-reverse"

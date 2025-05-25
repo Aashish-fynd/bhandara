@@ -11,7 +11,7 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { ToastProvider, ToastViewport } from "@tamagui/toast";
 
 import Provider from "@/components/Provider";
-import { Theme } from "tamagui";
+import { Theme, View } from "tamagui";
 import SafeAreaToastViewport from "@/components/SafeAreaToasViewport";
 import CurrentToast from "@/components/CurrentToast";
 
@@ -56,13 +56,16 @@ const RootLayoutNav = () => {
           burntOptions={{ from: "bottom" }}
           duration={3000}
         >
-          <Stack>
+          <Stack screenOptions={{ header: () => null }}>
             <Stack.Screen
               name="(tabs)"
               options={{ headerShown: false }}
             />
             <Stack.Screen name="+not-found" />
+            <Stack.Screen name="map" />
+            <Stack.Screen name="onboarding" />
           </Stack>
+
           <StatusBar style="auto" />
           <CurrentToast />
           <SafeAreaToastViewport />

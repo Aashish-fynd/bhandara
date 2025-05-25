@@ -4,6 +4,9 @@ const config = {
   },
   server: {
     url: process.env.EXPO_PUBLIC_SERVER_URL || ""
+  },
+  google: {
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || ""
   }
 };
 

@@ -163,3 +163,17 @@ export interface IPaginationParams {
   startDate?: Date;
   endDate?: Date;
 }
+
+export interface IAddress {
+  address: string;
+  street: string;
+  postcode: string;
+  city: string;
+  district: string;
+  state: string;
+  country: string;
+  building?: string;
+  latitude: number;
+  longitude: number;
+  landmark?: string;
+}

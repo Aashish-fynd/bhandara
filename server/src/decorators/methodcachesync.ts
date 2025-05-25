@@ -13,6 +13,7 @@ interface CacheOperations<T = any> {
 // Interface for the class that will use the decorator
 export interface CacheableClass<T = any> extends CacheOperations<T> {
   getById: (id: string) => Promise<{ data: T | null; error: any }>;
+  _getByIdNoCache: (id: string) => Promise<{ data: T | null; error: any }>;
 }
 
 // Options for the decorator
@@ -34,7 +35,23 @@ const checkAndThrowRLSError = <T>(
   }
 };
 
-function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
+/**
+ * A decorator that adds caching functionality to class methods
+ * @template T The type of data being cached
+ * @param {CacheDecoratorOptions<T>} [options] Optional configuration for the cache decorator
+ * @returns {Function} A method decorator that adds caching behavior
+ *
+ * @example
+ * ```typescript
+ * class UserService {
+ *   @MethodCacheSync<User>()
+ *   async getById(id: string) {
+ *     // Method implementation
+ *   }
+ * }
+ * ```
+ */
+function MethodCacheSync<T = any>(options?: CacheDecoratorOptions<T>) {
   return function <M extends (...args: any[]) => Promise<any>>(
     target: Object,
     propertyKey: string,
@@ -44,6 +61,12 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
     const methodPrefix = propertyKey.match(/^[a-z]+/)?.[0] || "";
     const methodType = options?.methodType || (methodPrefix as MethodType);
 
+    /**
+     * The wrapped method that implements caching logic
+     * @this {CacheableClass<T>} The class instance with cache operations
+     * @param {...Parameters<M>} args The arguments passed to the original method
+     * @returns {Promise<ReturnType<M>>} The result of the method execution
+     */
     descriptor.value = async function (
       this: CacheableClass<T>,
       ...args: Parameters<M>
@@ -51,6 +74,7 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
       const getCache = options?.cacheGetter || this.getCache;
       const setCache = options?.cacheSetter || this.setCache;
       const deleteCache = options?.cacheDeleter || this.deleteCache;
+      const getById = this._getByIdNoCache || this.getById;
 
       const cacheKey = options?.customCacheKey
         ? options.customCacheKey(...args)
@@ -77,13 +101,9 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
         }
 
         case "update": {
-          let existingData: T | T[] = await getCache(cacheKey);
-          if (isEmpty(existingData)) {
-            const res = await this.getById(cacheKey);
-            if (isEmpty(res.data))
-              throw new NotFoundError("Resource not found");
-            existingData = res.data as T;
-          }
+          let { data: existingData } = await this.getById(cacheKey);
+          if (isEmpty(existingData))
+            throw new NotFoundError("Resource not found");
 
           const result = await originalMethod.apply(this, args);
           checkAndThrowRLSError(result, existingData);
@@ -101,20 +121,15 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
         }
 
         case "delete": {
-          let existingData: T | T[] = await getCache(cacheKey);
-          if (isEmpty(existingData)) {
-            const res = await this.getById(cacheKey);
-            if (isEmpty(res.data))
-              throw new NotFoundError("Resource not found");
-            existingData = res.data as T;
-          }
+          let { data: existingData } = await getById(cacheKey);
+          if (isEmpty(existingData))
+            throw new NotFoundError("Resource not found");
 
           const result = await originalMethod.apply(this, args);
           checkAndThrowRLSError(result, existingData);
 
-          if (result?.data) {
-            await deleteCache(cacheKey, existingData);
-          }
+          if (result?.data) await deleteCache(cacheKey, existingData);
+
           return result;
         }
 
@@ -126,13 +141,7 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
           const result = await originalMethod.apply(this, args);
           checkAndThrowRLSError(result, cachedData);
 
-          if (!isEmpty(result?.data)) {
-            await setCache(cacheKey, result.data);
-          }
-          // TODO: check if this is required here or not
-          // } else {
-          //   throw new NotFoundError("Resource not found");
-          // }
+          if (!isEmpty(result?.data)) await setCache(cacheKey, result.data);
 
           return result;
         }
@@ -146,4 +155,4 @@ function SecureMethodCache<T = any>(options?: CacheDecoratorOptions<T>) {
   };
 }
 
-export default SecureMethodCache;
+export default MethodCacheSync;

@@ -55,8 +55,9 @@ export enum EQueryOperator {
   Is = "is",
 }
 
-export enum ESocialLoginProvider {
+export enum EAuthProvider {
   Google = "google",
+  Email = "email",
 }
 
 export enum EEventParticipantStatus {

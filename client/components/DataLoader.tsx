@@ -1,5 +1,6 @@
 import { useDataLoader } from "@/hooks";
 import { View, Text, Spinner } from "tamagui";
+import Loader from "./ui/Loader";
 
 const DataLoader = ({
   promiseFunc,
@@ -24,10 +25,7 @@ const DataLoader = ({
         justify="center"
         items="center"
       >
-        <Spinner
-          size={size}
-          color={"inherit"}
-        />
+        <Loader size={size} />
       </View>
     );
   }

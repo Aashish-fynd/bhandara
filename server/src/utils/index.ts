@@ -31,3 +31,25 @@ export const isEmpty = (value: any) => {
   if (typeof value === "object") return Object.keys(value).length === 0;
   return false;
 };
+
+export const merge = (...objects: any[]) => {
+  const result: any = {};
+
+  objects.forEach((obj) => {
+    if (obj && typeof obj === "object") {
+      Object.keys(obj).forEach((key) => {
+        if (
+          obj[key] &&
+          typeof obj[key] === "object" &&
+          !Array.isArray(obj[key])
+        ) {
+          result[key] = merge(result[key] || {}, obj[key]);
+        } else {
+          result[key] = obj[key];
+        }
+      });
+    }
+  });
+
+  return result;
+};

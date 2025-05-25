@@ -1,23 +1,31 @@
 import GoogleIcon from "@/assets/svg/GoogleIcon";
 import { BaseButton, FilledButton } from "@/components/ui/Buttons";
-import { ArrowLeft, CircleCheck, Mail } from "@tamagui/lucide-icons";
+import { ArrowLeft, CircleCheck, Mail, MapPin, Navigation, SquareArrowOutUpRight } from "@tamagui/lucide-icons";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { debounce, H3, Input, Paragraph, Sheet, Spinner, Text, View, XStack, YStack } from "tamagui";
-import { Controller, useForm } from "react-hook-form";
-import {
-  getUserByEmail,
-  getUserByUsername,
-  loginWithEmailAndPassword,
-  signupWithEmailAndPassword
-} from "@/common/api/user.action";
+import { debounce, H3, Sheet, Text, Tooltip, useDebounce, View, XStack, YStack } from "tamagui";
+import { useForm } from "react-hook-form";
+import { getUserByEmail, getUserByUsername, updateUser } from "@/common/api/user.action";
+
 import { useToastController } from "@tamagui/toast";
-import LocationInput from "@/components/Location";
 
 import * as Location from "expo-location";
 import AvatarSelection from "./AvatarSelection";
 import { ITag } from "@/definitions/types";
 import InterestSelection from "./InterestSelection";
 import OvalCardStack from "./OvalCard";
+
+import { InputGroup } from "@/components/Form";
+import { getAddressFromCoordinates } from "@/common/api/mapbox";
+import { useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { isEmpty } from "@/utils";
+import { getNavState, setNavState } from "@/lib/navigationStore";
+import { getUUIDv4 } from "@/helpers";
+import Loader from "@/components/ui/Loader";
+import { loginWithEmailAndPassword, signupWithEmailAndPassword } from "@/common/api/auth.action";
+import * as WebBrowser from "expo-web-browser";
+import { makeRedirectUri, useAuthRequest } from "expo-auth-session";
+import config from "@/config";
 
 type FormData = {
   firstName: string;
@@ -34,7 +42,11 @@ type FormData = {
     latitude: number;
     longitude: number;
   };
+  _location?: string;
+  interests?: ITag[];
 };
+
+WebBrowser.maybeCompleteAuthSession();
 
 const SignUpCard = ({
   setPosition,
@@ -42,54 +54,81 @@ const SignUpCard = ({
 }: {
   setPosition: (position: number) => void;
   setShowForm: (showForm: boolean) => void;
-}) => (
-  <>
-    <H3>Get Started</H3>
-    <Text
-      fontSize={"$2"}
-      fontWeight={"100"}
-      color={"$accent9"}
-    >
-      Discover, book, and track events seamlessly with calendar integration and personalized event curation
-    </Text>
+}) => {
+  const discovery = {
+    authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenEndpoint: "https://oauth2.googleapis.com/token"
+  };
 
-    <FilledButton
-      ml={"auto"}
-      mr={"auto"}
-      icon={<GoogleIcon size={20} />}
-    >
-      <Text
-        fontSize={"$2"}
-        color={"$accent12"}
-      >
-        Sign up with Google
-      </Text>
-    </FilledButton>
-    <BaseButton icon={<Mail size={20} />}>
-      <Text fontSize={"$2"}>Sign up with Email</Text>
-    </BaseButton>
-    <Text
-      fontSize={"$2"}
-      fontWeight={"100"}
-      color={"$accent9"}
-      mt={"$6"}
-      mx={"auto"}
-    >
-      Already have an account?{" "}
+  const redirectUri = makeRedirectUri({});
+
+  console.log("redirectUri", redirectUri);
+  const [request, response, promptAsync] = useAuthRequest(
+    {
+      clientId: config.google.webClientId,
+      scopes: ["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
+      redirectUri: redirectUri
+    },
+    discovery
+  );
+
+  useEffect(() => {
+    console.log("response", response);
+    if (response?.type === "success") {
+      const { code } = response.params;
+    }
+  }, [response]);
+
+  return (
+    <>
+      <H3>Get Started</H3>
       <Text
         fontSize={"$2"}
         fontWeight={"100"}
-        cursor={"pointer"}
-        onPress={() => {
-          setPosition(0);
-          setShowForm(true);
-        }}
+        color={"$accent9"}
       >
-        Login
+        Discover, book, and track events seamlessly with calendar integration and personalized event curation
       </Text>
-    </Text>
-  </>
-);
+
+      <FilledButton
+        ml={"auto"}
+        mr={"auto"}
+        icon={<GoogleIcon size={20} />}
+        onPress={() => promptAsync()}
+      >
+        <Text
+          fontSize={"$2"}
+          color={"$accent12"}
+        >
+          Sign up with Google
+        </Text>
+      </FilledButton>
+      <BaseButton icon={<Mail size={20} />}>
+        <Text fontSize={"$2"}>Sign up with Email</Text>
+      </BaseButton>
+      <Text
+        fontSize={"$2"}
+        fontWeight={"100"}
+        color={"$accent9"}
+        mt={"$6"}
+        mx={"auto"}
+      >
+        Already have an account?{" "}
+        <Text
+          fontSize={"$2"}
+          fontWeight={"100"}
+          cursor={"pointer"}
+          onPress={() => {
+            setPosition(0);
+            setShowForm(true);
+          }}
+        >
+          Login
+        </Text>
+      </Text>
+    </>
+  );
+};
 
 enum AuthStage {
   EmailCheck = "emailCheck",
@@ -120,7 +159,10 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
   const [isLoading, setIsLoading] = useState(false);
   const toastController = useToastController();
   const [newUser, setNewUser] = useState<any>(null);
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isLocationLoading, setIsLocationLoading] = useState<boolean>(false);
+  const router = useRouter();
+
+  const params = useLocalSearchParams();
 
   const {
     control,
@@ -133,7 +175,8 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
   } = useForm<FormData>({
     defaultValues: {
       email: "",
-      username: ""
+      username: "",
+      _location: ""
     },
     mode: "all"
   });
@@ -154,8 +197,6 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
     return newUserStages;
   }, [isUserComingFromSocialAuth]);
 
-  console.log(allValues);
-
   const _getUserByUsername = async (username: string) => {
     try {
       if (!username || errors.username) return;
@@ -168,7 +209,58 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
     }
   };
 
+  const _getSetLocationFromCoordinates = async (coordinates: { latitude: number; longitude: number }) => {
+    setIsLocationLoading(true);
+    try {
+      const res = await getAddressFromCoordinates({
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude
+      });
+
+      if (!res) return;
+
+      setValue("location", {
+        ...res,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude
+      });
+      setValue("_location", res.address);
+    } catch (error: any) {
+      toastController.show(error?.message || "Error getting location");
+    } finally {
+      setIsLocationLoading(false);
+    }
+  };
+
   const debouncedGetUserByUsername = useCallback(debounce(_getUserByUsername, 300), []);
+  const debouncedGetSetLocationFromCoordinates = useDebounce(_getSetLocationFromCoordinates, 300);
+
+  async function askForLocation() {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      toastController.show("Permission to access location was denied");
+      return;
+    }
+
+    await getCurrentLocation();
+  }
+
+  async function getCurrentLocation() {
+    const location = await Location.getCurrentPositionAsync({});
+
+    // if location is already set and didn't change, do nothing
+    if (
+      allValues.location?.latitude === location.coords.latitude &&
+      allValues.location?.longitude === location.coords.longitude
+    )
+      return;
+
+    debouncedGetSetLocationFromCoordinates.cancel();
+    debouncedGetSetLocationFromCoordinates({
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude
+    });
+  }
 
   const stageFields = {
     emailCheck: ["email"],
@@ -188,14 +280,27 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
       });
   }, [authStage]);
 
+  useEffect(() => {
+    if (params.dataKey) {
+      const location = getNavState(params.dataKey as string);
+      if (!isEmpty(location)) {
+        setValue("location", location);
+        setValue("_location", location.address);
+      }
+    }
+  }, [params.dataKey]);
+
   const stageHandlers = {
     emailCheck: async ({ data }: { data: FormData }) => {
       try {
         await getUserByEmail(data.email);
         setAuthStage(AuthStage.Login);
       } catch (error: any) {
-        setAuthStage(AuthStage.Signup);
-        toastController.show(error?.error?.message);
+        if (error.error?.status === 404) {
+          setAuthStage(AuthStage.Signup);
+        } else {
+          toastController.show(error?.error?.message || "Error checking email");
+        }
       }
     },
     login: async ({ data }: { data: FormData }) => {
@@ -203,7 +308,7 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
         await loginWithEmailAndPassword(data.email, data.password);
         // do something with the new user
       } catch (error: any) {
-        toastController.show(error?.error?.message);
+        toastController.show(error?.error?.message || "Error logging in");
       }
     },
     signup: async ({ data }: { data: FormData }) => {
@@ -218,11 +323,29 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
         }
         setAuthStage(AuthStage.AvatarAndUsername);
       } catch (error: any) {
-        toastController.show(error?.error?.message);
+        toastController.show(error?.error?.message || "Error signing up");
       }
     },
-    avatarAndUsername: async () => {},
-    interestSelection: async () => {}
+    avatarAndUsername: async () => {
+      setAuthStage(AuthStage.InterestSelection);
+    },
+    interestSelection: async () => {
+      // save and update all the data
+      try {
+        const updateData = {
+          address: allValues.location,
+          username: allValues.username,
+          profilePic: allValues.profilePic,
+          interests: allValues.interests?.map((tag) => tag.id)
+        };
+
+        const res = await updateUser(newUser.id, updateData);
+        console.log("res", res);
+      } catch (error: any) {
+        console.log("error", error);
+        toastController.show(error?.error?.message || "Error saving data");
+      }
+    }
   };
 
   const handleContinueClick = async (data: FormData) => {
@@ -230,7 +353,6 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
       setIsLoading(true);
       await stageHandlers[authStage]({ data });
     } catch (error) {
-      console.log(error);
     } finally {
       setIsLoading(false);
     }
@@ -256,6 +378,20 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
     login: {
       title: "Welcome back",
       description: "Sign in to your account"
+    }
+  };
+
+  const handleEditLocation = () => {
+    if (!isEmpty(allValues.location)) {
+      const locationKey = getUUIDv4();
+      setNavState(locationKey, allValues.location);
+
+      router.push({
+        pathname: "/map",
+        params: {
+          dataKey: locationKey
+        }
+      });
     }
   };
 
@@ -309,105 +445,36 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
             width="100%"
             height={"auto"}
           >
-            <YStack
-              flex={1}
-              gap="$2"
-            >
-              <XStack
-                gap="$2"
-                justify="space-between"
-                items="center"
-              >
-                <Text minH={0}>First name</Text>
-                <Paragraph
-                  size="$1"
-                  color="$color8"
-                >
-                  Required
-                </Paragraph>
-              </XStack>
-              <Controller
-                control={control}
-                name="firstName"
-                rules={{
-                  minLength: { value: 2, message: "First name must be at least 2 characters" },
-                  pattern: { value: /^[A-Za-z]+$/, message: "Please enter valid characters" }
-                }}
-                render={({ field }) => (
-                  <>
-                    <Input
-                      placeholder="First name"
-                      value={field.value}
-                      onChangeText={field.onChange}
-                      borderColor={errors.firstName ? "$red8" : undefined}
-                    />
-                    {errors.firstName && (
-                      <Text
-                        color="$red10"
-                        fontSize="$1"
-                      >
-                        {errors.firstName.message}
-                      </Text>
-                    )}
-                  </>
-                )}
-              />
-            </YStack>
-            <YStack
-              flex={1}
-              gap="$2"
-            >
-              <XStack
-                gap="$2"
-                justify="space-between"
-                items="center"
-              >
-                <Text>Last name</Text>
-                <Paragraph
-                  size="$1"
-                  color="$color8"
-                >
-                  Required
-                </Paragraph>
-              </XStack>
-              <Controller
-                control={control}
-                name="lastName"
-                rules={{
-                  minLength: { value: 2, message: "Last name must be at least 2 characters" },
-                  pattern: { value: /^[A-Za-z]+$/, message: "Please enter valid characters" }
-                }}
-                render={({ field }) => (
-                  <>
-                    <Input
-                      placeholder="Last name"
-                      value={field.value}
-                      onChangeText={field.onChange}
-                      borderColor={errors.lastName ? "$red8" : undefined}
-                    />
-                    {errors.lastName && (
-                      <Text
-                        color="$red10"
-                        fontSize="$1"
-                        width={"auto"}
-                      >
-                        {errors.lastName.message}
-                      </Text>
-                    )}
-                  </>
-                )}
-              />
-            </YStack>
+            <InputGroup
+              control={control}
+              rules={{
+                minLength: { value: 2, message: "First name must be at least 2 characters" },
+                pattern: { value: /^[A-Za-z]+$/, message: "Please enter valid characters" }
+              }}
+              error={errors.firstName}
+              placeHolder="First name"
+              name="firstName"
+              label="First name"
+              rightLabel="Required"
+            />
+            <InputGroup
+              control={control}
+              rules={{
+                minLength: { value: 2, message: "Last name must be at least 2 characters" },
+                pattern: { value: /^[A-Za-z]+$/, message: "Please enter valid characters" }
+              }}
+              error={errors.lastName}
+              placeHolder="Last name"
+              name="lastName"
+              label="Last name"
+              rightLabel="Required"
+            />
           </XStack>
         )}
 
         {[AuthStage.EmailCheck, AuthStage.Signup, AuthStage.Login].includes(authStage) && (
-          <YStack
-            gap="$2"
-            position="relative"
-          >
-            <Text fontSize={"$3"}>Email address</Text>
-            <Controller
+          <>
+            <InputGroup
               control={control}
               name="email"
               rules={{
@@ -417,110 +484,64 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
                   message: "Please enter a valid email address"
                 }
               }}
-              render={({ field }) => (
-                <>
-                  <Input
-                    placeholder="Enter your email address"
-                    value={field.value}
-                    onChangeText={field.onChange}
-                    keyboardType="email-address"
-                    borderColor={errors.email ? "$red8" : undefined}
-                    disabled={authStage !== "emailCheck"}
-                    opacity={authStage !== "emailCheck" ? 0.5 : 1}
-                    bg={authStage !== "emailCheck" ? "$accent11" : undefined}
-                    cursor={authStage !== "emailCheck" ? "not-allowed" : "auto"}
-                  />
-                  {errors.email && (
-                    <Text
-                      color="$red10"
-                      fontSize="$1"
-                    >
-                      {errors.email.message}
-                    </Text>
-                  )}
-                </>
-              )}
+              error={errors.email}
+              placeHolder="Email address"
+              label="Email address"
+              rightLabel="Required"
+              inputProps={{
+                keyboardType: "email-address",
+                borderColor: errors.email ? "$red8" : undefined,
+                disabled: authStage !== "emailCheck",
+                opacity: authStage !== "emailCheck" ? 0.5 : 1,
+                bg: authStage !== "emailCheck" ? "$color4" : undefined,
+                cursor: authStage !== "emailCheck" ? "not-allowed" : "auto"
+              }}
             />
-          </YStack>
+          </>
         )}
 
         {[AuthStage.Login, AuthStage.Signup].includes(authStage) && !isUserComingFromSocialAuth && (
-          <YStack gap="$2">
-            <Text fontSize={"$3"}>Password</Text>
-            <Controller
-              control={control}
-              name="password"
-              rules={{
-                required: "Password is required",
-                minLength: {
-                  value: 8,
-                  message: "Password must be at least 8 characters"
-                },
-                pattern: {
-                  value: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/,
-                  message: "Password must contain at least one letter and one number"
-                }
-              }}
-              render={({ field }) => (
-                <>
-                  <Input
-                    placeholder="Enter your password"
-                    secureTextEntry
-                    value={field.value}
-                    onChangeText={field.onChange}
-                    borderColor={errors.password ? "$red8" : undefined}
-                  />
-                  {errors.password && (
-                    <Text
-                      color="$red10"
-                      fontSize="$1"
-                    >
-                      {errors.password.message}
-                    </Text>
-                  )}
-                </>
-              )}
-            />
-          </YStack>
+          <InputGroup
+            name="password"
+            control={control}
+            rules={{
+              required: "Password is required",
+              minLength: {
+                value: 8,
+                message: "Password must be at least 8 characters"
+              },
+              pattern: {
+                value: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/,
+                message: "Password must contain at least one letter and one number"
+              }
+            }}
+            error={errors.password}
+            placeHolder="Password"
+            label="Password"
+            rightLabel="Required"
+            inputProps={{
+              secureTextEntry: true
+            }}
+          />
         )}
         {authStage === AuthStage.Signup && !isUserComingFromSocialAuth && (
-          <>
-            <YStack gap="$2">
-              <Text fontSize={"$3"}>Verify Password</Text>
-              <Controller
-                control={control}
-                name="verifyPassword"
-                rules={{
-                  required: "Verify password is required",
-                  validate: (value) => {
-                    if (value !== allValues.password) {
-                      return "Passwords do not match";
-                    }
-                    return true;
-                  }
-                }}
-                render={({ field }) => (
-                  <>
-                    <Input
-                      placeholder="Re-enter your password"
-                      secureTextEntry
-                      value={field.value}
-                      onChangeText={field.onChange}
-                      borderColor={errors.verifyPassword ? "$red8" : undefined}
-                    />
-                    {errors.verifyPassword && (
-                      <Text
-                        color="$red10"
-                        fontSize="$1"
-                      >
-                        {errors.verifyPassword.message}
-                      </Text>
-                    )}
-                  </>
-                )}
-              />
-            </YStack>
-          </>
+          <InputGroup
+            control={control}
+            name="verifyPassword"
+            rules={{
+              required: "Verify password is required",
+              validate: (value: string | null) => {
+                if (value !== allValues.password) {
+                  return "Passwords do not match";
+                }
+                return true;
+              }
+            }}
+            error={errors.verifyPassword}
+            placeHolder="Re-enter your password"
+            label="Verify password"
+            rightLabel="Required"
+          />
         )}
 
         {authStage === AuthStage.AvatarAndUsername && (
@@ -530,107 +551,90 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
                 setValue("profilePic.url", avatar);
               }}
             />
-            <YStack
-              gap="$2"
-              position="relative"
-            >
-              <Text fontSize={"$3"}>Username</Text>
-              <Controller
-                control={control}
-                name="username"
-                rules={{
-                  required: "Username is required",
-                  pattern: {
-                    value: /^[a-zA-Z0-9_]{8,20}$/,
-                    message: "Please enter a valid username"
-                  }
-                }}
-                render={({ field, fieldState: { error } }) => (
-                  <YStack
-                    position="relative"
-                    gap={"$2"}
-                  >
-                    <Input
-                      placeholder="Enter your username"
-                      value={field.value}
-                      onChangeText={(rest) => {
-                        field.onChange(rest);
-
-                        debouncedGetUserByUsername(rest);
-                      }}
-                      borderColor={error ? "$red8" : undefined}
-                      // disabled={authStage !== "avatarAndUsername"}
-                      // opacity={authStage !== "avatarAndUsername" ? 0.5 : 1}
-                      // bg={authStage !== "avatarAndUsername" ? "$accent11" : undefined}
-                      // cursor={authStage !== "avatarAndUsername" ? "not-allowed" : "auto"}
-                    />
-
-                    {(usernameLoading || isUsernameAvailable) && allValues.username && !error && (
-                      <View
-                        position="absolute"
-                        t={0}
-                        r={"$4"}
-                        b={0}
-                        items="flex-end"
-                        justify="center"
-                        animation={"quick"}
-                        enterStyle={{ opacity: 0, scale: 0.5 }}
-                        exitStyle={{ opacity: 0, scale: 0.5 }}
-                      >
-                        {usernameLoading && (
-                          <Spinner
-                            size="small"
-                            color="$accent11"
-                          />
-                        )}
-
-                        {!usernameLoading && isUsernameAvailable && (
-                          <CircleCheck
-                            size={20}
-                            color="$green10"
-                          />
-                        )}
-                      </View>
-                    )}
-                  </YStack>
-                )}
-              />
-
-              {errors.username && (
-                <Text
-                  color="$red10"
-                  fontSize="$1"
-                >
-                  {errors.username.message}
-                </Text>
-              )}
-            </YStack>
-
-            <LocationInput
-              cb={(location) => {
-                if (location.status === "granted" && location.location) {
-                  const locationObject = {
-                    latitude: location.location.coords.latitude,
-                    longitude: location.location.coords.longitude
-                  };
-
-                  setValue("location", locationObject);
+            <InputGroup
+              control={control}
+              name="username"
+              rules={{
+                required: "Username is required",
+                pattern: {
+                  value: /^[a-zA-Z0-9_]{8,20}$/,
+                  message: "Please enter a valid username"
                 }
               }}
+              onChange={debouncedGetUserByUsername}
+              iconAfter={
+                (usernameLoading || isUsernameAvailable) &&
+                allValues.username &&
+                !errors.username && (
+                  <View
+                    items="flex-end"
+                    justify="center"
+                    animation={"quick"}
+                    enterStyle={{ opacity: 0, scale: 0.5 }}
+                    exitStyle={{ opacity: 0, scale: 0.5 }}
+                  >
+                    {usernameLoading && <Loader />}
+
+                    {!usernameLoading && isUsernameAvailable && (
+                      <CircleCheck
+                        size={20}
+                        color="$green10"
+                      />
+                    )}
+                  </View>
+                )
+              }
+              placeHolder="Enter your username"
+              label="Username"
+              rightLabel="Required"
+              error={errors.username}
+            />
+
+            <InputGroup
+              control={control}
+              name="_location"
+              label="Location"
+              placeHolder="Use your current location"
+              rules={{ required: "Location is required" }}
+              error={errors._location}
+              containerProps={{
+                onPress: askForLocation,
+                cursor: "pointer"
+              }}
+              inputProps={{
+                editable: false
+              }}
+              iconAfter={
+                isLocationLoading ? (
+                  <Loader />
+                ) : allValues._location ? (
+                  <Tooltip delay={200}>
+                    <Tooltip.Trigger>
+                      <SquareArrowOutUpRight
+                        size={20}
+                        onPress={handleEditLocation}
+                      />
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>
+                      <Text fontSize={"$2"}>Edit location</Text>
+                    </Tooltip.Content>
+                  </Tooltip>
+                ) : (
+                  <MapPin size={20} />
+                )
+              }
             />
           </>
         )}
 
-        {authStage === AuthStage.InterestSelection && <InterestSelection cb={(tags) => {}} />}
-        {/* 
-        {authStage === "location" && (
-          <Mapbox.MapView
-            style={{
-              width: "100%",
-              height: 200
+        {authStage === AuthStage.InterestSelection && (
+          <InterestSelection
+            cb={(tags) => {
+              setValue("interests", tags);
             }}
           />
-        )} */}
+        )}
+
         <XStack
           mt={"auto"}
           width={"100%"}
@@ -659,10 +663,10 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
             opacity={isContinueButtonDisabled ? 0.5 : 1}
             cursor={isContinueButtonDisabled ? "not-allowed" : "pointer"}
             items={"center"}
-            iconAfter={isLoading ? <Spinner size="small" /> : undefined}
+            iconAfter={isLoading ? <Loader /> : undefined}
             width={[AuthStage.EmailCheck, AuthStage.Login].includes(authStage) ? "100%" : "auto"}
           >
-            {authStage !== AuthStage.AvatarAndUsername ? "Continue" : "Finish"}
+            {authStage !== AuthStage.InterestSelection ? "Continue" : "Finish"}
           </FilledButton>
         </XStack>
       </YStack>
@@ -760,6 +764,7 @@ const OnBoarding = () => {
         onPositionChange={setPosition}
         position={position}
         snapPointsMode="mixed"
+        disableDrag={true}
       >
         <Sheet.Overlay
           animation="quick"

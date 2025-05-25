@@ -1,1 +1,1 @@
-export { default as SecureMethodCache } from "./securemethodcache";
+export { default as MethodCacheSync } from "./methodcachesync";

@@ -7,7 +7,6 @@ import Base, { BaseQueryArgs } from "../Base";
 import { EQueryOperator } from "@/definitions/enums";
 import { validateMessageCreate, validateMessageUpdate } from "./validation";
 import { MESSAGE_TABLE_NAME } from "./constants";
-import { SecureMethodCache } from "@decorators";
 import MediaService from "@features/media/service";
 import { isEmpty } from "@utils";
 
@@ -114,17 +113,14 @@ class MessageService extends Base<IMessage> {
     return { data };
   }
 
-  @SecureMethodCache<IMessage>({})
   async create<U extends Partial<Omit<IMessage, "id" | "updatedAt">>>(data: U) {
     return validateMessageCreate(data, (data) => super.create(data));
   }
 
-  @SecureMethodCache<IMessage>({})
   async update<U extends Partial<IMessage>>(id: string, data: U) {
     return validateMessageUpdate(data, (data) => super.update(id, data));
   }
 
-  @SecureMethodCache<IMessage>({})
   getById(id: string) {
     return super.getById(id);
   }

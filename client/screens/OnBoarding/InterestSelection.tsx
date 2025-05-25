@@ -2,8 +2,9 @@ import { getAllTags, getSubTags } from "@/common/api/tags.action";
 import { ITag } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
 import React, { Fragment, useRef, useState } from "react";
-import { Spinner, Text, View, XStack } from "tamagui";
+import { Text, View, XStack } from "tamagui";
 import { ChevronRight } from "@tamagui/lucide-icons";
+import Loader from "@/components/ui/Loader";
 
 const TagButton = ({
   tag,
@@ -46,7 +47,7 @@ const TagButton = ({
         {tag.name}
       </Text>
       {isLoading ? (
-        <Spinner color="$color08" />
+        <Loader />
       ) : hasChildren && (!isExpanded || !tag.subTags) ? (
         <ChevronRight
           size={16}
@@ -109,7 +110,7 @@ const InterestSelection = ({ cb }: { cb: (tag: ITag[]) => void }) => {
         justify="center"
         items="center"
       >
-        <Spinner color={"$color08"} />
+        <Loader />
       </View>
     );
   }

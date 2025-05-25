@@ -44,6 +44,14 @@ const createSchema = {
       type: "string",
       errorMessage: "SID must be a string",
     },
+    interests: {
+      type: ["array", "null"],
+      errorMessage: "Interests must be an array or null",
+    },
+    username: {
+      type: ["string", "null"],
+      errorMessage: "Username must be a string or null",
+    },
   },
   required: ["name", "email", "gender"],
   additionalProperties: false,
@@ -73,6 +81,22 @@ const updateSchema = {
     isVerified: {
       type: "boolean",
       errorMessage: "isVerified must be a boolean value",
+    },
+    interests: {
+      type: ["array", "null"],
+      errorMessage: "Interests must be an array or null",
+    },
+    profilePic: {
+      type: ["object", "null"],
+      errorMessage: "Profile picture must be an object or null",
+    },
+    username: {
+      type: ["string", "null"],
+      errorMessage: "Username must be a string or null",
+    },
+    meta: {
+      type: ["object", "null"],
+      errorMessage: "Meta must be an object or null",
     },
   },
   additionalProperties: false,

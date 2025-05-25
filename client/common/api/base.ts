@@ -8,7 +8,13 @@ const axiosClient = axios.create({
 
 axiosClient.interceptors.response.use(
   (response) => response,
-  (error) => Promise.reject(error?.response?.data || error)
+  (error) => {
+    let errorData = error?.response?.data;
+    if (!errorData) {
+      errorData = { error };
+    }
+    return Promise.reject(errorData);
+  }
 );
 
 export default axiosClient;
