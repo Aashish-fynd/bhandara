@@ -1,4 +1,4 @@
-import { BaseButton } from "@/components/ui/Buttons";
+import { OutlineButton } from "@/components/ui/Buttons";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Button, Input, Label, Paragraph, Text, XStack, YStack } from "tamagui";
@@ -218,14 +218,14 @@ const AuthForm = ({ isSignUp = false, cb }: { isSignUp?: boolean; cb: (data: For
       </YStack>
 
       {/* Submit Button */}
-      <BaseButton
+      <OutlineButton
         onPress={handleSubmit(onSubmit)}
         animation="quick"
         enterStyle={{ opacity: 0, scale: 0.9 }}
         exitStyle={{ opacity: 0, scale: 0.9 }}
       >
         Continue
-      </BaseButton>
+      </OutlineButton>
     </YStack>
   );
 };

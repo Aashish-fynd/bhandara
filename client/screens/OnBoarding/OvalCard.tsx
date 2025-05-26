@@ -58,7 +58,7 @@ const OvalCardStack = ({ config }: { config?: OnBoardingConfig }) => {
       gap={"$4"}
       items={"center"}
       justify={"center"}
-      mt={"7vh"}
+      height={"70%"}
     >
       {_config.stacks.map((stack, i) => (
         <YStack

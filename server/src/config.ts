@@ -45,8 +45,13 @@ const config = {
   ip2location: {
     apiKey: process.env.IP2LOCATION_API_KEY || "",
   },
-  cookie: {
+  sessionCookie: {
     keyName: "bh_session",
+    maxAge: 60 * 60 * 24 * 30,
+  },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || "",
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   },
 };
 

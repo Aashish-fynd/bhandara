@@ -1,5 +1,5 @@
 import GoogleIcon from "@/assets/svg/GoogleIcon";
-import { BaseButton, FilledButton } from "@/components/ui/Buttons";
+import { OutlineButton, FilledButton } from "@/components/ui/Buttons";
 import { ArrowLeft, CircleCheck, Mail, MapPin, Navigation, SquareArrowOutUpRight } from "@tamagui/lucide-icons";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { debounce, H3, Sheet, Text, Tooltip, useDebounce, View, XStack, YStack } from "tamagui";
@@ -22,10 +22,11 @@ import { isEmpty } from "@/utils";
 import { getNavState, setNavState } from "@/lib/navigationStore";
 import { getUUIDv4 } from "@/helpers";
 import Loader from "@/components/ui/Loader";
-import { loginWithEmailAndPassword, signupWithEmailAndPassword } from "@/common/api/auth.action";
+import { loginWithEmailAndPassword, signInWithIdToken, signupWithEmailAndPassword } from "@/common/api/auth.action";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri, useAuthRequest } from "expo-auth-session";
 import config from "@/config";
+import { Platform } from "react-native";
 
 type FormData = {
   firstName: string;
@@ -55,28 +56,58 @@ const SignUpCard = ({
   setPosition: (position: number) => void;
   setShowForm: (showForm: boolean) => void;
 }) => {
+  const toastController = useToastController();
+  const [isSocialAuthenticationInProgress, setIsSocialAuthenticationInProgress] = useState(false);
+
   const discovery = {
     authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenEndpoint: "https://oauth2.googleapis.com/token"
   };
 
   const redirectUri = makeRedirectUri({});
+  const clientIds = {
+    web: config.google.webClientId,
+    ios: config.google.iosClientId,
+    android: config.google.androidClientId
+  };
 
-  console.log("redirectUri", redirectUri);
+  const clientId = clientIds[Platform.OS as keyof typeof clientIds] || config.google.webClientId;
+
   const [request, response, promptAsync] = useAuthRequest(
     {
-      clientId: config.google.webClientId,
+      clientId,
       scopes: ["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
-      redirectUri: redirectUri
+      redirectUri: redirectUri,
+      responseType: "code"
     },
     discovery
   );
 
   useEffect(() => {
-    console.log("response", response);
-    if (response?.type === "success") {
-      const { code } = response.params;
-    }
+    const handleGoogleAuth = async (response: any) => {
+      try {
+        if (response?.type === "dismissed") {
+          throw new Error("Google sign in cancelled");
+        }
+
+        if (response?.type !== "success") throw new Error(response?.error?.message || "Error signing in with Google");
+
+        const { code } = response?.params || {};
+
+        if (!code) throw new Error("No code received from Google");
+
+        const res = await signInWithIdToken(code, request?.codeVerifier || "", redirectUri);
+        const { session, user } = res.data;
+
+        if (!session || !user) throw new Error("No session or user received from Google");
+        toastController.show("Signed in successfully");
+      } catch (error: any) {
+        toastController.show(error?.message || "Error signing in with Google");
+      } finally {
+        setIsSocialAuthenticationInProgress(false);
+      }
+    };
+    handleGoogleAuth(response);
   }, [response]);
 
   return (
@@ -94,7 +125,12 @@ const SignUpCard = ({
         ml={"auto"}
         mr={"auto"}
         icon={<GoogleIcon size={20} />}
-        onPress={() => promptAsync()}
+        disabled={isSocialAuthenticationInProgress}
+        onPress={() => {
+          setIsSocialAuthenticationInProgress(true);
+          promptAsync();
+        }}
+        iconAfter={isSocialAuthenticationInProgress ? <Loader /> : undefined}
       >
         <Text
           fontSize={"$2"}
@@ -103,9 +139,18 @@ const SignUpCard = ({
           Sign up with Google
         </Text>
       </FilledButton>
-      <BaseButton icon={<Mail size={20} />}>
-        <Text fontSize={"$2"}>Sign up with Email</Text>
-      </BaseButton>
+      {!isSocialAuthenticationInProgress && (
+        <OutlineButton
+          icon={<Mail size={20} />}
+          onPress={() => {
+            setShowForm(true);
+            setPosition(0);
+          }}
+        >
+          <Text fontSize={"$2"}>Sign up with Email</Text>
+        </OutlineButton>
+      )}
+
       <Text
         fontSize={"$2"}
         fontWeight={"100"}
@@ -717,7 +762,7 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
               ))}
             </XStack>
 
-            <BaseButton
+            <OutlineButton
               width={"auto"}
               onPress={() => {
                 const isLastTab = currentTab === tabs.length - 1;
@@ -727,7 +772,7 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
               }}
             >
               <Text fontSize={"$2"}>Next</Text>
-            </BaseButton>
+            </OutlineButton>
           </XStack>
         </>
       )}
@@ -750,6 +795,7 @@ const SheetContents = memo(({ setPosition, position }: any) => {
 
 const OnBoarding = () => {
   const [position, setPosition] = useState(0);
+
   return (
     <>
       <OvalCardStack />
@@ -760,7 +806,7 @@ const OnBoarding = () => {
         animation={"quick"}
         dismissOnOverlayPress={false}
         dismissOnSnapToBottom={false}
-        snapPoints={["100%", 300]}
+        snapPoints={["90%", 300]}
         onPositionChange={setPosition}
         position={position}
         snapPointsMode="mixed"

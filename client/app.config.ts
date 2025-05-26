@@ -38,7 +38,7 @@ const config: ExpoConfig = {
     },
     package: "com.anonymous.bhandara"
   },
-  scheme: "com.supabase",
+  scheme: "com.anonymous.bhandara",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
   ios: {
@@ -53,7 +53,12 @@ const config: ExpoConfig = {
   experiments: {
     typedRoutes: true
   },
-  icon: "./assets/images/icon.png"
+  icon: "./assets/images/icon.png",
+  extra: {
+    eas: {
+      projectId: "259f5464-f305-47f9-bb02-abf41276e4f7"
+    }
+  }
 };
 
 export default config;

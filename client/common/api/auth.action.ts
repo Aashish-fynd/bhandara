@@ -25,3 +25,13 @@ export const logout = async () => {
   const response = await axiosClient.post("/logout");
   return response.data;
 };
+
+export const signInWithIdToken = async (code: string, codeVerifier: string, redirectUri: string) => {
+  const response = await axiosClient.post("/auth/oauth/signin-with-id-token", {
+    code,
+    codeVerifier,
+    redirectUri
+  });
+
+  return response.data;
+};

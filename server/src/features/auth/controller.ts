@@ -63,8 +63,8 @@ const login = async (req: Request, res: Response) => {
     existingUser,
   });
 
-  res.cookie(config.cookie.keyName, sessionId, {
-    maxAge: 30 * 60 * 24 * 60 * 1000,
+  res.cookie(config.sessionCookie.keyName, sessionId, {
+    maxAge: config.sessionCookie.maxAge,
   });
 
   return res.status(200).json({
@@ -74,8 +74,11 @@ const login = async (req: Request, res: Response) => {
 };
 
 const logOut = async (req: ICustomRequest, res: Response) => {
-  await deleteUserSessionCache(req.user.id, req.cookies[config.cookie.keyName]);
-  res.clearCookie(config.cookie.keyName);
+  await deleteUserSessionCache(
+    req.user.id,
+    req.cookies[config.sessionCookie.keyName]
+  );
+  res.clearCookie(config.sessionCookie.keyName);
   return res.status(200).json({ data: "Logout successful", success: true });
 };
 
@@ -109,16 +112,63 @@ const googleCallback = async (req: Request, res: Response) => {
     sessionData: exchangeCodeResponse,
   });
 
-  res.cookie(config.cookie.keyName, sessionId, {
-    maxAge: 60 * 60 * 24 * 30,
+  res.cookie(config.sessionCookie.keyName, sessionId, {
+    maxAge: config.sessionCookie.maxAge,
   });
 
   return res.json({
     data: {
-      session: { id: sessionId, user },
+      session: { id: sessionId },
+      user,
     },
     success: true,
   });
+};
+
+export const signInWithIdToken = async (req: Request, res: Response) => {
+  const queryParams = new URLSearchParams();
+  queryParams.set("client_id", config.google.clientId);
+  queryParams.set("client_secret", config.google.clientSecret);
+  queryParams.set("code", req.body.code);
+  queryParams.set("grant_type", "authorization_code");
+  queryParams.set("code_verifier", req.body.codeVerifier);
+  queryParams.set("redirect_uri", req.body.redirectUri);
+
+  const tokenRequest = await fetch(
+    "https://www.googleapis.com/oauth2/v4/token",
+    {
+      method: "POST",
+      body: queryParams,
+    }
+  );
+
+  const tokenResponse = await tokenRequest.json();
+
+  const { access_token, id_token } = tokenResponse;
+
+  if (!access_token) {
+    throw new BadRequestError("Invalid access token");
+  }
+
+  const signInResponse = await supabase.auth.signInWithIdToken({
+    provider: "google",
+    token: id_token,
+  });
+
+  if (signInResponse.error) throw new Error(signInResponse.error.message);
+
+  const { sessionId, user } = await authService.createPlatformUser({
+    req,
+    sessionData: signInResponse,
+  });
+
+  res.cookie(config.sessionCookie.keyName, sessionId, {
+    maxAge: config.sessionCookie.maxAge,
+  });
+
+  return res
+    .status(200)
+    .json({ data: { session: { id: sessionId }, user }, success: true });
 };
 
 export const sessionsList = async (req: ICustomRequest, res: Response) => {
@@ -152,8 +202,8 @@ export const signUp = async (req: Request, res: Response) => {
     sessionData: signUpData,
   });
 
-  res.cookie(config.cookie.keyName, sessionId, {
-    maxAge: 60 * 60 * 24 * 30,
+  res.cookie(config.sessionCookie.keyName, sessionId, {
+    maxAge: config.sessionCookie.maxAge,
   });
 
   return res.status(200).json({

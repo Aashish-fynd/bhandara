@@ -11,7 +11,7 @@ export const FilledButton = styled(Button, {
   width: "100%"
 });
 
-export const BaseButton = styled(Button, {
+export const OutlineButton = styled(Button, {
   rounded: 1000,
   height: "auto",
   pt: "$2.5",

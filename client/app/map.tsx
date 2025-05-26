@@ -7,7 +7,7 @@ import { getNavState } from "@/lib/navigationStore";
 import { ArrowLeft } from "@tamagui/lucide-icons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import React, { memo, useEffect, useRef, useState } from "react";
-import { Sheet, Text, XStack, YStack } from "tamagui";
+import { Sheet, XStack, YStack } from "tamagui";
 
 const SheetContents = memo(({ initialData, mapViewRef, pushDataKeyRef }: any) => {
   return (

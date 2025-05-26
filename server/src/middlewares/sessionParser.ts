@@ -16,8 +16,7 @@ const sessionParser = async (
   res: Response,
   next: NextFunction
 ) => {
-  const jwtCookie =
-    req.cookies?.[config.cookie.keyName] || "R0V0-vy05fRD1HKxTwjit";
+  const jwtCookie = req.cookies?.[config.sessionCookie.keyName];
 
   if (!Boolean(jwtCookie))
     throw new UnauthorizedError(`Missing or invalid token`);
