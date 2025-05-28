@@ -98,6 +98,10 @@ const updateSchema = {
       type: ["object", "null"],
       errorMessage: "Meta must be an object or null",
     },
+    hasOnboarded: {
+      type: ["boolean", "null"],
+      errorMessage: "Has onboarded must be a boolean value",
+    },
   },
   additionalProperties: false,
   errorMessage: {

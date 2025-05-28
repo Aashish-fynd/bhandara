@@ -29,20 +29,26 @@ class UserService extends Base<IBaseUser> {
     return validateUserCreate(data, (data) => super.create(data));
   }
 
-  async update(id: string, data: Partial<IBaseUser & { interests: ITag[] }>) {
+  async update(
+    id: string,
+    data: Partial<IBaseUser & { interests: ITag[]; hasOnboarded: boolean }>
+  ) {
     return validateUserUpdate(data, async (validData) => {
       const { data: userData } = await this._getByIdNoCache(id);
 
       if (isEmpty(userData)) throw new NotFoundError("User not found");
 
-      const { interests, meta, ...rest } = validData;
-      const newMeta = { ...userData.meta, ...meta };
-
-      if (interests) {
-        newMeta.interests = [
-          ...new Set([...(userData.meta?.interests || []), ...interests]),
-        ];
-      }
+      const { interests, hasOnboarded, ...rest } = validData;
+      const newMeta = {
+        ...userData.meta,
+        hasOnboarded,
+        interests: [
+          ...new Set([
+            ...(userData.meta?.interests || []),
+            ...(interests || []),
+          ]),
+        ],
+      };
 
       const res = await super.update(id, { ...rest, meta: newMeta });
 

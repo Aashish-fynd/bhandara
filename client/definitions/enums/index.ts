@@ -64,3 +64,16 @@ export enum EEventParticipantStatus {
   Confirmed = "confirmed",
   Declined = "declined"
 }
+
+export enum EGender {
+  Male = "male",
+  Female = "female"
+}
+
+export enum EOnboardingStages {
+  EmailVerification = "emailVerification",
+  BasicInfo = "basicInfo",
+  ProfileSetup = "profileSetup",
+  InterestSelection = "interestSelection",
+  Login = "login"
+}

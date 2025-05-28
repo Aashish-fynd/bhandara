@@ -160,6 +160,7 @@ class Auth {
           auth: {
             authProvider: user.app_metadata.provider,
           },
+          hasOnboarded: false,
         },
       };
 

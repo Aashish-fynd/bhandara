@@ -1,5 +1,5 @@
 import { Control, Controller } from "react-hook-form";
-import { Input, Paragraph, Text, YStack, XStack, View } from "tamagui";
+import { Input, Paragraph, Text, YStack, XStack, View, styled } from "tamagui";
 import React from "react";
 
 export const InputGroup = ({
@@ -46,7 +46,7 @@ export const InputGroup = ({
         {rightLabel && (
           <Paragraph
             size="$1"
-            color="$color8"
+            color="$color10"
           >
             {rightLabel}
           </Paragraph>
@@ -59,7 +59,7 @@ export const InputGroup = ({
         render={({ field }) => (
           <XStack
             borderWidth={1}
-            borderColor={"$borderColor"}
+            borderColor={error ? "$red8" : "$borderColor"}
             rounded={"$4"}
             overflow={"hidden"}
             focusWithinStyle={{ outlineWidth: 2, outlineColor: "$color7", outlineStyle: "solid" }}
@@ -67,10 +67,10 @@ export const InputGroup = ({
             position={"relative"}
             items="center"
             px={"$3.5"}
-            bg={inputProps?.bg || "$background02"}
+            bg={inputProps?.disabled ? "$color6" : inputProps?.bg || "$background"}
           >
             {iconBefore}
-            <Input
+            <StyledInput
               rounded={0}
               borderWidth={0}
               borderColor={"transparent"}
@@ -78,7 +78,7 @@ export const InputGroup = ({
               value={field.value}
               display={"flex"}
               flex={1}
-              focusVisibleStyle={{ outline: "none" }}
+              focusVisibleStyle={{ outline: "none", outlineColor: "transparent", outlineWidth: 0 }}
               outline="none"
               px={0}
               focusStyle={null}
@@ -106,3 +106,25 @@ export const InputGroup = ({
     </View>
   );
 };
+
+export const StyledInput = styled(Input, {
+  name: "StyledInput",
+  variants: {
+    disabled: {
+      true: {
+        opacity: 0.5,
+        bg: "$color6",
+        cursor: "not-allowed",
+        pointerEvents: "none",
+        color: "$color11",
+        placeholderTextColor: "$color11"
+      }
+    }
+    // TODO: Add error variant
+    // error: {
+    //   true: {
+    //     borderColor: "$red10"
+    //   }
+    // }
+  }
+});

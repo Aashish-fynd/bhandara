@@ -3,8 +3,6 @@ import { createTamagui } from "tamagui";
 import { defaultConfig } from "@tamagui/config/v4";
 import { createInterFont } from "@tamagui/font-inter";
 
-console.log("🔍 tamagui.config.ts loaded");
-
 const animations = createAnimations({
   bouncy: {
     type: "spring",

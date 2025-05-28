@@ -1,11 +1,25 @@
 import { BASE_AVATAR_URL } from "@/constants/global";
-import { CheckCircle, CircleCheck } from "@tamagui/lucide-icons";
+import { CircleCheck } from "@tamagui/lucide-icons";
 import React, { useState } from "react";
 import { Image, Text, View, XStack, YStack } from "tamagui";
 
-const AvatarSelection = ({ cb }: { cb: (avatar: string) => void }) => {
-  const avatars = Array.from({ length: 15 }, (_, index) => BASE_AVATAR_URL.replace("{num}", (index + 1).toString()));
-  const [selectedAvatarIndex, setSelectedAvatarIndex] = useState<number | null>(null);
+const AvatarSelection = ({ cb, preSelectedAvatar }: { cb: (avatar: string) => void; preSelectedAvatar?: string }) => {
+  const [avatars, setAvatars] = useState<string[]>(() =>
+    Array.from({ length: 15 }, (_, index) => BASE_AVATAR_URL.replace("{num}", (index + 1).toString()))
+  );
+
+  const [selectedAvatarIndex, setSelectedAvatarIndex] = useState<number | null>(() => {
+    if (!preSelectedAvatar) return null;
+    const avatar = avatars.findIndex((avatar) => avatar === preSelectedAvatar);
+    if (avatar !== -1) return avatar;
+    try {
+      new URL(preSelectedAvatar);
+      setAvatars([preSelectedAvatar, ...avatars]);
+      return 0;
+    } catch (error) {
+      return null;
+    }
+  });
 
   return (
     <YStack gap="$2">
@@ -25,6 +39,7 @@ const AvatarSelection = ({ cb }: { cb: (avatar: string) => void }) => {
             rounded={"$4"}
             cursor="pointer"
             bg={"$accent11"}
+            overflow="hidden"
           >
             <Image
               source={{ uri: avatar }}

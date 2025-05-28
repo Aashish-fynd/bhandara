@@ -58,12 +58,12 @@ const RootLayoutNav = () => {
         >
           <Stack screenOptions={{ header: () => null }}>
             <Stack.Screen
-              name="(tabs)"
+              name="(app)"
               options={{ headerShown: false }}
             />
-            <Stack.Screen name="+not-found" />
-            <Stack.Screen name="map" />
             <Stack.Screen name="onboarding" />
+            <Stack.Screen name="map" />
+            <Stack.Screen name="+not-found" />
           </Stack>
 
           <StatusBar style="auto" />

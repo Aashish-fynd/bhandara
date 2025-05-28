@@ -27,6 +27,7 @@ export interface IBaseUser extends ITimeStamp {
   meta: Record<string, any>;
   profilePic: Record<string, any> | null;
   mediaId: string | null;
+  username?: string;
 }
 
 // Message Content Type

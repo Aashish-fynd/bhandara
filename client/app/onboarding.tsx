@@ -1,5 +1,4 @@
 import OnBoarding from "@/screens/OnBoarding";
-import { useLocalSearchParams } from "expo-router";
 import React from "react";
 import { SafeAreaView } from "react-native";
 
