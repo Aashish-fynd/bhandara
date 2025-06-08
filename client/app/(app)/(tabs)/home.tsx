@@ -1,12 +1,17 @@
+import HomeScreen from "@/screens/Home";
 import React from "react";
-import { View, Text } from "react-native";
+import { View } from "tamagui";
 
-const Home = () => {
-  return (
-    <View>
-      <Text>Home</Text>
-    </View>
-  );
-};
+const Home = () => (
+  <View
+    flex={1}
+    height="100%"
+    width="100%"
+    overflow="scroll"
+    items={"center"}
+  >
+    <HomeScreen />
+  </View>
+);
 
 export default Home;

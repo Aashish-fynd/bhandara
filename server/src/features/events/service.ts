@@ -99,65 +99,48 @@ class EventService extends Base<IEvent> {
 
     // there will always be only one qna thread and one discussion thread
     if (!isEmpty(qnaThread)) {
-      promises.qnaMessages = this.messageService.getAll({
-        query: [
-          {
-            value: qnaThread[0].id || "",
-            operator: EQueryOperator.Eq,
-            column: "threadId",
-          },
-        ],
-      });
+      promises.qnaMessages = this.messageService.getAll(
+        {
+          query: [
+            {
+              value: qnaThread[0].id || "",
+              operator: EQueryOperator.Eq,
+              column: "threadId",
+            },
+          ],
+        },
+        { limit: 1 }
+      );
     }
 
     if (!isEmpty(discussionThread)) {
-      promises.discussionMessages = this.messageService.getAll({
-        query: [
-          {
-            value: discussionThread.id,
-            operator: EQueryOperator.Eq,
-            column: "threadId",
-          },
-        ],
-      });
+      promises.discussionMessages = this.messageService.getAll(
+        {
+          query: [
+            {
+              value: discussionThread.id,
+              operator: EQueryOperator.Eq,
+              column: "threadId",
+            },
+          ],
+        },
+        { limit: 1 }
+      );
     }
 
     promises.tags = this.tagService.getAllEventTags(id);
     promises.media = this.mediaService.getEventMedia(id);
+    promises.creator = this.userService.getById(eventData.createdBy);
 
-    const participantIds = eventData.participants.map(
-      (participant) => participant.user
-    ) as string[];
+    promises.participants = this.userService.getAndPopulateUserProfiles(
+      eventData.participants,
+      "user"
+    );
 
-    promises.participants = new Promise(async (resolve) => {
-      const participants = await this.getEventUsers(
-        id,
-        "participants",
-        participantIds
-      );
-      eventData.participants = eventData.participants.map((participant) => {
-        return {
-          ...participant,
-          user: participants.data[participant.user as string],
-        };
-      });
-      resolve(eventData.participants);
-    });
-
-    const verifierIds = eventData.verifiers.map(
-      (verifier) => verifier.user
-    ) as string[];
-
-    promises.verifiers = new Promise(async (resolve) => {
-      const verifiers = await this.getEventUsers(id, "verifiers", verifierIds);
-      eventData.verifiers = eventData.verifiers.map((verifier) => {
-        return {
-          ...verifier,
-          user: verifiers.data[verifier.user as string],
-        };
-      });
-      resolve(eventData.verifiers);
-    });
+    promises.verifiers = this.userService.getAndPopulateUserProfiles(
+      eventData.verifiers,
+      "user"
+    );
 
     // Wait for all promises to settle
     const settledResults = await Promise.allSettled(Object.values(promises));
@@ -174,6 +157,7 @@ class EventService extends Base<IEvent> {
 
     eventData.tags = resolvedData.tags?.data || [];
     eventData.media = resolvedData.media?.data || [];
+    eventData.creator = resolvedData.creator?.data || null;
 
     // Construct the final response
     return {
@@ -226,10 +210,32 @@ class EventService extends Base<IEvent> {
         data.items.map(async (event) => {
           const mediaPromise = this.mediaService.getEventMedia(event.id, 3);
           const tagsPromise = this.tagService.getAllEventTags(event.id);
-          const [media, tags] = await Promise.all([mediaPromise, tagsPromise]);
+          const participantsPromise =
+            this.userService.getAndPopulateUserProfiles(
+              event.participants,
+              "user"
+            );
+          const verifiersPromise = this.userService.getAndPopulateUserProfiles(
+            event.verifiers,
+            "user"
+          );
+          const [media, tags, participants, verifiers] = await Promise.all([
+            mediaPromise,
+            tagsPromise,
+            participantsPromise,
+            verifiersPromise,
+          ]);
           event.media = media.data || [];
           event.tags = tags.data || [];
+          event.participants = participants || [];
+          event.verifiers = verifiers || [];
         })
+      );
+
+      data.items = await this.userService.getAndPopulateUserProfiles(
+        data.items,
+        "createdBy",
+        "creator"
       );
     }
     return { data, error: null };

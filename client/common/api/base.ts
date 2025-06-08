@@ -29,18 +29,9 @@ axiosClient.interceptors.response.use(
       await AsyncStorage.removeItem("sessionId");
       // Possibly trigger logout or redirect logic
     }
-    return Promise.reject(error);
-  }
-);
-
-axiosClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
     let errorData = error?.response?.data;
-    if (!errorData) {
-      errorData = { error };
-    }
-    return Promise.reject(errorData);
+
+    return Promise.reject(errorData?.error || errorData);
   }
 );
 

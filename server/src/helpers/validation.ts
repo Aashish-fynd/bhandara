@@ -51,7 +51,12 @@ export const validateSchema = (schemaName: string, schema: object) => {
   ): R | { data: null; error: PostgrestError } => {
     const isValid = validate(data);
     if (!isValid) {
-      const errors = validate.errors?.map((error) => error.message).join(", ");
+      const errors = validate.errors
+        ?.map(
+          (error) =>
+            error.message + " " + Object.values(error.params).join(", ")
+        )
+        .join(", ");
       throw new BadRequestError(errors);
     }
     return callback(data);

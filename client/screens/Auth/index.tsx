@@ -81,7 +81,10 @@ function Auth({ isLogin }: { isLogin?: boolean }) {
       </XStack>
 
       {/* Form Fields */}
-      <AuthForm isSignUp={isSignUp} />
+      <AuthForm
+        isSignUp={isSignUp}
+        cb={() => {}}
+      />
 
       {/* Form Toggle */}
       <XStack

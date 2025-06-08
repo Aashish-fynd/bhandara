@@ -21,9 +21,9 @@ export type QueryFilter =
 
 const throwSupabaseError = (res: any) => {
   throw new SupabaseCustomError(
-    res.error?.message,
+    res.message || res.error?.message,
     res?.status,
-    res?.statusText
+    res.name || res?.statusText
   );
 };
 
@@ -476,6 +476,28 @@ class SupabaseService {
     const res = await this.supabaseClient.storage
       .from(bucket)
       .createSignedUrl(path, expiresIn, options);
+
+    if (res.error) throwSupabaseError(res);
+
+    return res;
+  }
+
+  async getBulkPublicUrls({
+    bucket,
+    paths,
+    expiresIn = 60,
+    options = { download: false },
+  }: {
+    bucket: string;
+    paths: string[];
+    expiresIn?: number;
+    options?: {
+      download: boolean;
+    };
+  }) {
+    const res = await this.supabaseClient.storage
+      .from(bucket)
+      .createSignedUrls(paths, expiresIn, options);
 
     if (res.error) throwSupabaseError(res);
 

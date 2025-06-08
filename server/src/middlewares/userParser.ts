@@ -6,11 +6,14 @@ import asyncHandler from "./asyncHandler";
 import {
   getSafeUser,
   getUserCache,
+  MediaService,
   setUserCache,
   UserService,
 } from "@features";
+import { isEmpty } from "@utils";
 
 const userService = new UserService();
+const mediaService = new MediaService();
 
 const userParser = async (
   req: ICustomRequest,
@@ -21,7 +24,7 @@ const userParser = async (
 
   if (!user) {
     const { data } = await userService.getById(req.session.user.id);
-    if (!data) throw new NotFoundError("User not found");
+    if (isEmpty(data)) throw new NotFoundError("User not found");
     await setUserCache(req.session.user.id, data);
     user = data;
   }

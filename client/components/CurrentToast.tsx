@@ -19,7 +19,6 @@ const CurrentToast = () => {
       opacity={1}
       scale={1}
       viewportName={currentToast.viewportName}
-      maxW={"80%"}
       mt={"$6"}
     >
       <YStack>

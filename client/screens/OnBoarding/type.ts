@@ -1,4 +1,4 @@
-import { ITag } from "@/definitions/types";
+import { IAddress, ITag } from "@/definitions/types";
 
 export interface IFormData {
   firstName: string;
@@ -11,10 +11,7 @@ export interface IFormData {
   };
   username?: string;
   tags?: ITag[];
-  location?: {
-    latitude: number;
-    longitude: number;
-  };
+  location?: IAddress | undefined;
   _location?: string;
   interests?: ITag[];
   gender?: string;

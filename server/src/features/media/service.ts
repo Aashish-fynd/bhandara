@@ -20,12 +20,16 @@ import {
   updateMediaCache,
   getMediaPublicUrlCache,
   deleteMediaPublicUrlCache,
+  setMediaBulkCache,
 } from "./helpers";
 import { getMediaCache } from "./helpers";
 import { PostgrestError } from "@supabase/postgrest-js";
 import { get32BitMD5Hash } from "@helpers";
 import logger from "@logger";
 import { appendUUIDToFilename } from "./utils";
+import { BadRequestError } from "@exceptions";
+import CustomError from "@exceptions/CustomError";
+import { CACHE_NAMESPACE_CONFIG } from "@constants";
 
 class MediaService extends Base<IMedia> {
   private readonly getCache = getMediaCache;
@@ -66,16 +70,16 @@ class MediaService extends Base<IMedia> {
       { limit }
     );
 
-    const publicUrlPromises = (data?.items || []).map(async (item) => {
-      const publicUrl = await this.getPublicUrl(item.url, item.storage.bucket);
-      return {
-        ...item,
-        publicUrl: publicUrl.data.signedUrl,
-        publicUrlExpiresAt: publicUrl.data.expiresAt,
-      };
-    });
+    // const publicUrlPromises = (data?.items || []).map(async (item) => {
+    //   const publicUrl = await this.getPublicUrl(item.url, item.storage.bucket);
+    //   return {
+    //     ...item,
+    //     publicUrl: publicUrl.data.signedUrl,
+    //     publicUrlExpiresAt: publicUrl.data.expiresAt,
+    //   };
+    // });
 
-    const publicUrls = await Promise.all(publicUrlPromises);
+    const publicUrls = await Promise.all([]);
 
     return {
       data: publicUrls,
@@ -167,8 +171,8 @@ class MediaService extends Base<IMedia> {
 
         const bucketConfig = MEDIA_BUCKET_CONFIG[validatedData.bucket];
         if (!bucketConfig) throw new Error("Bucket not found");
-        if (validatedData.options.size > bucketConfig.maxFileSize)
-          throw new Error("File size too large");
+        if (validatedData.options.size > bucketConfig.maxSize)
+          throw new BadRequestError("File size too large");
 
         const path = appendUUIDToFilename(validatedData.path);
 
@@ -274,6 +278,38 @@ class MediaService extends Base<IMedia> {
     };
   }
 
+  async getBulkPublicUrls(
+    paths: string[],
+    bucket: string,
+    expiresIn: number = CACHE_NAMESPACE_CONFIG.Media.ttl
+  ) {
+    const { data: publicUrls, error } =
+      await this._supabaseService.getBulkPublicUrls({
+        bucket,
+        paths,
+        expiresIn,
+      });
+
+    if (error) throw error;
+
+    const publicUrlsWithExpiresAt = publicUrls.map((url) => {
+      return {
+        ...url,
+        expiresAt: new Date(Date.now() + expiresIn * 1000),
+      };
+    });
+
+    const mediaWithPublicUrls = publicUrlsWithExpiresAt.reduce((acc, url) => {
+      acc[url.path] = url;
+      return acc;
+    }, {} as Record<string, { signedUrl: string; expiresAt: Date }>);
+
+    return {
+      data: mediaWithPublicUrls,
+      error: null,
+    };
+  }
+
   @MethodCacheSync<IMedia>({
     cacheDeleter: (id: string, existingData: IMedia) =>
       Promise.all([
@@ -291,35 +327,77 @@ class MediaService extends Base<IMedia> {
     return res;
   }
 
-  async getMediaByIds(
-    ids: string[]
-  ): Promise<{ data: Record<string, IMedia>; error: PostgrestError | null }> {
+  async getMediaByIds(ids: string[]): Promise<{
+    data: Record<string, IMedia>;
+    error: PostgrestError | CustomError | null;
+  }> {
     const mediaData = await this._supabaseService.querySupabase<IMedia>({
       table: MEDIA_TABLE_NAME,
       query: [{ column: "id", operator: EQueryOperator.In, value: ids }],
     });
     if (!isEmpty(mediaData.data)) {
-      const mediaDataWithPublicUrl = await Promise.all(
-        (mediaData.data as IMedia[]).map(async (media: IMedia) => {
-          const publicUrl = await this.getPublicUrl(
-            media.url,
-            media.storage.bucket
-          );
-          return {
-            ...media,
-            publicUrl: publicUrl.data.signedUrl,
-            publicUrlExpiresAt: publicUrl.data.expiresAt,
-          };
-        })
+      // split according to buckets
+      const bucketPathsMapping = (mediaData.data as IMedia[]).reduce(
+        (acc, media) => {
+          if (!acc[media.storage.bucket]) {
+            acc[media.storage.bucket] = [];
+          }
+          acc[media.storage.bucket].push(media.url);
+          return acc;
+        },
+        {} as Record<string, string[]>
       );
 
-      // Convert array to object with id as key
-      const mediaMap = mediaDataWithPublicUrl.reduce((acc, media) => {
-        acc[media.id] = media;
-        return acc;
-      }, {} as Record<string, IMedia>);
+      const bucketGroupedPublicUrls = await Promise.all(
+        Object.entries(bucketPathsMapping).map(([bucket, paths]) =>
+          this.getBulkPublicUrls(paths, bucket)
+        )
+      );
 
-      return { data: mediaMap, error: null };
+      const publicUrls = bucketGroupedPublicUrls.reduce(
+        (acc, bucketPublicUrls) => {
+          return {
+            ...acc,
+            ...bucketPublicUrls.data,
+          };
+        },
+        {} as Record<
+          string,
+          { signedUrl: string; expiresAt: Date; error?: any }
+        >
+      );
+
+      // Create a map of media data with their public URLs
+      const mediaWithUrls = (mediaData.data as IMedia[]).reduce(
+        (acc, media) => {
+          const publicUrl = publicUrls[media.url];
+
+          if (!publicUrl) {
+            logger.error(`Public url not found for media ${media.id}`);
+            return acc;
+          }
+
+          if ("error" in publicUrl && publicUrl.error) {
+            logger.error("Error getting public url for media", {
+              mediaId: media.id,
+              error: publicUrl.error,
+            });
+            return acc;
+          }
+
+          acc[media.id] = {
+            ...media,
+            publicUrl: publicUrl?.signedUrl,
+            publicUrlExpiresAt: publicUrl?.expiresAt,
+          };
+          return acc;
+        },
+        {}
+      );
+
+      await setMediaBulkCache(Object.values(mediaWithUrls));
+
+      return { data: mediaWithUrls, error: null };
     }
     return { data: {}, error: mediaData.error };
   }

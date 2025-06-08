@@ -68,7 +68,7 @@ const login = async (req: Request, res: Response) => {
   });
 
   return res.status(200).json({
-    data: { session: { id: sessionId, user } },
+    data: { session: { id: sessionId }, user },
     success: true,
   });
 };
@@ -85,7 +85,9 @@ const logOut = async (req: ICustomRequest, res: Response) => {
 const session = (req: ICustomRequest, res: Response) => {
   const { user } = req;
 
-  return res.status(200).json({ data: user });
+  return res.status(200).json({
+    data: { user, session: { id: req.cookies[config.sessionCookie.keyName] } },
+  });
 };
 
 const googleAuth = async (req: Request, res: Response) => {
@@ -207,7 +209,7 @@ export const signUp = async (req: Request, res: Response) => {
   });
 
   return res.status(200).json({
-    data: { session: { id: sessionId, user } },
+    data: { session: { id: sessionId }, user },
     success: true,
   });
 };

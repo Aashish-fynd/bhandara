@@ -1,5 +1,6 @@
 import { EOnboardingStages } from "@/definitions/enums";
 import { EApplicableStage } from "./enum";
+import { IFormData } from "./type";
 
 export const GET_STARTED_TABS = [
   {
@@ -41,7 +42,7 @@ export const ONBOARDING_STAGES_TEXT = {
 export const APPLICABLE_STAGES_MAP = {
   [EApplicableStage.EmailExists]: {
     stages: [EOnboardingStages.EmailVerification, EOnboardingStages.Login],
-    skippableStages: [EOnboardingStages.Login]
+    skippableStages: []
   },
   [EApplicableStage.NotOnboarded]: {
     stages: [EOnboardingStages.BasicInfo, EOnboardingStages.ProfileSetup, EOnboardingStages.InterestSelection],
@@ -51,4 +52,21 @@ export const APPLICABLE_STAGES_MAP = {
     stages: [EOnboardingStages.BasicInfo, EOnboardingStages.ProfileSetup, EOnboardingStages.InterestSelection],
     skippableStages: [EOnboardingStages.InterestSelection]
   }
+};
+
+export const getStageLevelFields = (stage: EOnboardingStages, isUserComingFromSocialAuth: boolean) => {
+  const stageFields = {
+    [EOnboardingStages.EmailVerification]: ["email"],
+    [EOnboardingStages.Login]: ["email", "password"],
+    [EOnboardingStages.BasicInfo]: [
+      "firstName",
+      "lastName",
+      "email",
+      ...(isUserComingFromSocialAuth ? [] : ["password", "verifyPassword"])
+    ],
+    [EOnboardingStages.ProfileSetup]: ["username", "profilePic", "location"],
+    [EOnboardingStages.InterestSelection]: ["interests"]
+  };
+
+  return stageFields[stage] as (keyof IFormData)[];
 };

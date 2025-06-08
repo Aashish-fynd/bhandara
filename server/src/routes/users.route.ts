@@ -3,7 +3,6 @@ import {
   paginationParser,
   sessionParser,
   userParser,
-  validateParams,
 } from "@middlewares";
 import { Router } from "express";
 import {
@@ -12,6 +11,7 @@ import {
   deleteUser,
   updateUser,
   getUserByQuery,
+  getUserInterests,
 } from "@features/users/controller";
 
 const router = Router();
@@ -27,5 +27,7 @@ router
   .get(asyncHandler(getUserById))
   .delete(asyncHandler(deleteUser))
   .patch(asyncHandler(updateUser));
+
+router.get("/:id/interests", asyncHandler(getUserInterests));
 
 export default router;

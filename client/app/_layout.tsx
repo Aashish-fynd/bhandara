@@ -8,11 +8,11 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { ToastProvider, ToastViewport } from "@tamagui/toast";
+import { ToastProvider } from "@tamagui/toast";
 
 import Provider from "@/components/Provider";
-import { Theme, View } from "tamagui";
-import SafeAreaToastViewport from "@/components/SafeAreaToasViewport";
+import { Theme } from "tamagui";
+import SafeAreaToastViewport from "@/components/SafeAreaToastViewport";
 import CurrentToast from "@/components/CurrentToast";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -21,7 +21,8 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [interLoaded, interError] = useFonts({
     Inter: require("@tamagui/font-inter/otf/Inter-Medium.otf"),
-    InterBold: require("@tamagui/font-inter/otf/Inter-Bold.otf")
+    InterBold: require("@tamagui/font-inter/otf/Inter-Bold.otf"),
+    InterRegular: require("@tamagui/font-inter/otf/Inter-Regular.otf")
   });
 
   useEffect(() => {
@@ -67,8 +68,8 @@ const RootLayoutNav = () => {
           </Stack>
 
           <StatusBar style="auto" />
-          <CurrentToast />
           <SafeAreaToastViewport />
+          <CurrentToast />
         </ToastProvider>
       </ThemeProvider>
     </Theme>

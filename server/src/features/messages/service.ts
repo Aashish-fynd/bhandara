@@ -9,13 +9,16 @@ import { validateMessageCreate, validateMessageUpdate } from "./validation";
 import { MESSAGE_TABLE_NAME } from "./constants";
 import MediaService from "@features/media/service";
 import { isEmpty } from "@utils";
+import UserService from "@features/users/service";
 
 class MessageService extends Base<IMessage> {
   private readonly mediaService: MediaService;
+  private readonly userService: UserService;
 
   constructor() {
     super(MESSAGE_TABLE_NAME);
     this.mediaService = new MediaService();
+    this.userService = new UserService();
   }
 
   async getAll(
@@ -56,8 +59,15 @@ class MessageService extends Base<IMessage> {
 
     const childMessages = await Promise.all(childMessagesPromises);
 
+    const parentMessageWithPopulatedUsers =
+      await this.userService.getAndPopulateUserProfiles(
+        parentLevelMessages?.items || [],
+        "userId",
+        "user"
+      );
+
     // Using the same index ensures each child is matched with its correct parent
-    const messagesWithChildren = parentLevelMessages?.items?.map(
+    const messagesWithChildren = parentMessageWithPopulatedUsers?.map(
       (parent, index) => ({
         ...parent,
         children: childMessages[index].data,
@@ -108,6 +118,15 @@ class MessageService extends Base<IMessage> {
           );
         }
       });
+
+      const userPopulatedMessages =
+        await this.userService.getAndPopulateUserProfiles(
+          data.items,
+          "userId",
+          "user"
+        );
+
+      return { data: userPopulatedMessages };
     }
 
     return { data };

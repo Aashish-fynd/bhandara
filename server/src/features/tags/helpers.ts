@@ -32,7 +32,7 @@ export const setEventTagsCache = async (
       [tag.id]: jnstringify(tag),
     });
   });
-  pipeline.expire(eventTagsKey, eventTagsCache.getDefaultTTL());
+  pipeline.expire(eventTagsKey, eventTagsCache.defaultTTLMs);
   const res = await pipeline.exec();
   logger.debug(
     `Result set event tags cache for event ${eventId}: ${jnstringify(res)}`

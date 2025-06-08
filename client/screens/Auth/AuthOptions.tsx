@@ -14,12 +14,13 @@ import GoogleIcon from "@/assets/svg/GoogleIcon";
 import Loader from "@/components/ui/Loader";
 import { Mail } from "@tamagui/lucide-icons";
 import { EOnboardingStages } from "@/definitions/enums";
+import { EApplicableStage } from "../OnBoarding/enum";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const AuthOptions = ({
   setExistingAuthData,
-  setFormStage
+  setApplicableStages
 }: {
   setExistingAuthData: ({
     isUserComingFromSocialAuth,
@@ -29,7 +30,7 @@ const AuthOptions = ({
     user?: IBaseUser;
     hasOnboarded?: boolean;
   }) => void;
-  setFormStage: (formStage: EOnboardingStages) => void;
+  setApplicableStages: (formStage: EApplicableStage) => void;
 }) => {
   const toastController = useToastController();
   const router = useRouter();
@@ -123,7 +124,7 @@ const AuthOptions = ({
         <OutlineButton
           icon={<Mail size={20} />}
           onPress={() => {
-            setFormStage(EOnboardingStages.BasicInfo);
+            setApplicableStages(EApplicableStage.NewUser);
           }}
         >
           <Text fontSize={"$2"}>Sign up with Email</Text>
@@ -145,7 +146,7 @@ const AuthOptions = ({
           fontWeight={"100"}
           cursor={"pointer"}
           onPress={() => {
-            setFormStage(EOnboardingStages.Login);
+            setApplicableStages(EApplicableStage.EmailExists);
           }}
         >
           Login

@@ -22949,7 +22949,6 @@ var defaultSizes2 = {
 };
 
 // tamagui.config.ts
-console.log("\u{1F50D} tamagui.config.ts loaded");
 var animations = createAnimations({
   bouncy: {
     type: "spring",
@@ -22970,12 +22969,24 @@ var animations = createAnimations({
     stiffness: 250
   }
 });
-var headingFont = createInterFont();
-var bodyFont = createInterFont();
+var headingFont = createInterFont({
+  weight: {
+    regular: "400",
+    medium: "500",
+    bold: "700"
+  }
+});
+var bodyFont = createInterFont({
+  weight: {
+    regular: "400",
+    medium: "500",
+    bold: "700"
+  }
+});
 var config = createTamagui({
   ...defaultConfig,
   animations,
-  defaultTheme: "light",
+  defaultTheme: "dark",
   shouldAddPrefersColorThemes: false,
   themeClassNameOnRoot: false,
   fonts: {

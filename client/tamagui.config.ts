@@ -24,13 +24,26 @@ const animations = createAnimations({
   }
 });
 
-const headingFont = createInterFont();
-const bodyFont = createInterFont();
+const headingFont = createInterFont({
+  weight: {
+    regular: "400",
+    medium: "500",
+    bold: "700"
+  }
+});
+
+const bodyFont = createInterFont({
+  weight: {
+    regular: "400",
+    medium: "500",
+    bold: "700"
+  }
+});
 
 const config = createTamagui({
   ...defaultConfig,
   animations,
-  defaultTheme: "light",
+  defaultTheme: "dark",
   shouldAddPrefersColorThemes: false,
   themeClassNameOnRoot: false,
   fonts: {

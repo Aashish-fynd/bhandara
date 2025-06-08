@@ -1,6 +1,7 @@
 import { IMedia } from "@definitions/types";
 import { RedisCache } from "@features/cache";
 import { CACHE_NAMESPACE_CONFIG } from "@constants";
+import { jnstringify } from "@utils";
 
 const mediaCache = new RedisCache({
   namespace: CACHE_NAMESPACE_CONFIG.Media.namespace,
@@ -18,7 +19,7 @@ export const getMediaCache = async (mediaId: string) => {
 export const setMediaCache = async (
   mediaId: string,
   media: IMedia,
-  ttl = 3600 * 24
+  ttl = mediaCache.defaultTTLMs
 ) => {
   return mediaCache.setItem(mediaId, media, ttl);
 };
@@ -34,9 +35,24 @@ export const updateMediaCache = async (mediaId: string, media: IMedia) => {
 export const setMediaPublicUrlCache = async (
   mediaId: string,
   publicUrl: string,
-  ttl = 3600 * 24
+  ttl = mediaPublicUrlCache.defaultTTLMs
 ) => {
   return mediaPublicUrlCache.setItem(mediaId, publicUrl, ttl);
+};
+
+export const setMediaBulkCache = async (
+  medias: IMedia[],
+  ttl = mediaCache.defaultTTLMs
+) => {
+  const pipeline = mediaCache.getPipeline();
+  medias.forEach((media) => {
+    const key = `${mediaCache.namespace}:${media.id}`;
+    pipeline.set(key, jnstringify(media));
+    pipeline.expire(key, ttl);
+  });
+
+  await pipeline.exec();
+  return "OK";
 };
 
 export const deleteMediaPublicUrlCache = async (mediaId: string) => {

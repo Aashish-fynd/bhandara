@@ -47,7 +47,7 @@ const config = {
   },
   sessionCookie: {
     keyName: "bh_session",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 1000 * 60 * 60 * 24 * 30,
   },
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID || "",

@@ -57,7 +57,8 @@ export const deleteUser = async (req: ICustomRequest, res: Response) => {
 export const updateUser = async (req: ICustomRequest, res: Response) => {
   const { id } = req.params;
   const updateBody = omit(req.body, ["password", "email"]);
-  const { data } = await userService.update(id, updateBody);
+  const { data, error } = await userService.update(id, updateBody);
+  if (error) throw error;
   return res.status(200).json({ data: getSafeUser(data), error: null });
 };
 
@@ -83,4 +84,11 @@ export const getUserByQuery = async (req: ICustomRequest, res: Response) => {
   }
 
   return res.status(200).json({ data: getSafeUser(data), error: null });
+};
+
+export const getUserInterests = async (req: ICustomRequest, res: Response) => {
+  const { id } = req.params;
+  const { data, error } = await userService.getUserInterests(id);
+  if (error) throw error;
+  return res.status(200).json({ data, error: null });
 };

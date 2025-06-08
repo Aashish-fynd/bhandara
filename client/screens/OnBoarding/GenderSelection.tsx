@@ -14,11 +14,24 @@ const genders = [
     icon: Venus
   }
 ];
-const GenderSelection = ({ cb, preSelectedGender }: { cb: (gender: string) => void; preSelectedGender?: string }) => {
+
+interface IGenderSelectionProps {
+  cb: (gender: string) => void;
+  preSelectedGender?: string;
+  disabled?: boolean;
+}
+
+const GenderSelection = ({ cb, preSelectedGender, disabled }: IGenderSelectionProps) => {
   const [selectedGender, setSelectedGender] = useState<string | null>(() => {
     const gender = genders.find((gender) => gender.value === preSelectedGender);
     return gender ? gender.value : null;
   });
+
+  const handlePress = (gender: string) => {
+    if (disabled) return;
+    setSelectedGender(gender);
+    cb(gender);
+  };
 
   return (
     <YStack
@@ -36,10 +49,7 @@ const GenderSelection = ({ cb, preSelectedGender }: { cb: (gender: string) => vo
             gap={"$2"}
             items={"center"}
             key={gender.value}
-            onPress={() => {
-              setSelectedGender(gender.value);
-              cb(gender.value);
-            }}
+            onPress={() => handlePress(gender.value)}
             borderWidth={1}
             borderColor={selectedGender === gender.value ? "$color7" : "$borderColor"}
             bg={selectedGender === gender.value ? "$accent1" : "transparent"}
@@ -47,7 +57,7 @@ const GenderSelection = ({ cb, preSelectedGender }: { cb: (gender: string) => vo
             px={"$3"}
             py={"$2"}
             rounded={"$3"}
-            cursor={"pointer"}
+            cursor={disabled ? "initial" : "pointer"}
           >
             <gender.icon color={selectedGender === gender.value ? "$color7" : "$color11"} />
             <Text

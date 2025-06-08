@@ -232,11 +232,11 @@ class RedisCache {
     return this.redisClient.expire(namespacedKey, ttl);
   }
 
-  getDefaultTTL() {
+  get defaultTTLMs() {
     return this.defaultTTLSeconds;
   }
 
-  getCacheNamespace() {
+  get namespace() {
     return this.cacheNamespace;
   }
 }

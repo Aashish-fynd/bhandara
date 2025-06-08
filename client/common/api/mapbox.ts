@@ -70,3 +70,55 @@ export const getAddressFromCoordinates = async ({
     ...addressInfo
   } as any;
 };
+
+interface IGSMParams {
+  latitude: number;
+  longitude: number;
+  zoom?: number;
+  pitch?: number;
+  bearing?: number;
+  width?: number;
+  height?: number;
+  theme?: "light-v11" | "dark-v11";
+  markerConfig?: {
+    color: string;
+    size: "s" | "l";
+  };
+}
+
+export const getStaticMapImageUrl = ({
+  latitude,
+  longitude,
+  zoom,
+  pitch,
+  bearing,
+  width,
+  height,
+  theme,
+  markerConfig
+}: IGSMParams) => {
+  // Default values
+  const _defaults = {
+    theme: "light-v11", // Default Mapbox style
+    width: 300, // Default image width
+    height: 200, // Default image height
+    zoom: 12, // Default zoom level
+    pitch: 15, // Default pitch (tilt angle)
+    bearing: 60 // Default bearing (rotation angle)
+  };
+
+  // Validate latitude and longitude if a pin is included
+  if (markerConfig && (!latitude || !longitude)) {
+    throw new Error("Latitude and longitude are required to include a pin marker.");
+  }
+
+  // Construct the Mapbox Static Images API URL
+  const baseUrl =
+    `https://api.mapbox.com/styles/v1/mapbox/${theme || _defaults.theme}/static/` +
+    (markerConfig ? `pin-${markerConfig.size}+${markerConfig.color}(${longitude},${latitude})/` : "") + // Include pin only if requested
+    `${longitude || 0},${latitude || 0},${zoom || _defaults.zoom},${pitch || _defaults.pitch},${bearing || _defaults.bearing}/` +
+    `${width || _defaults.width}x${height || _defaults.height}` +
+    `?access_token=${config.mapbox.accessToken}`;
+
+  return baseUrl;
+};

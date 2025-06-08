@@ -1,8 +1,8 @@
 import { getAllTags, getSubTags } from "@/common/api/tags.action";
 import { ITag } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
-import React, { Fragment, useRef, useState } from "react";
-import { Text, View, XStack } from "tamagui";
+import React, { Fragment, useEffect, useRef, useState } from "react";
+import { Text, View, XStack, XStackProps } from "tamagui";
 import { ChevronRight } from "@tamagui/lucide-icons";
 import Loader from "@/components/ui/Loader";
 
@@ -22,7 +22,8 @@ const TagButton = ({
   hasChildren: boolean;
 }) => {
   const borderColor = isExpanded ? "$color02" : isSelected ? "$color7" : "$borderColor";
-  const bg = isExpanded ? "$accent12" : !isSelected ? "inherit" : "$accent9";
+  const bg = isExpanded ? "$accent8" : !isSelected ? "inherit" : "$accent1";
+  const color = isExpanded ? "$color1" : isSelected ? "$color1" : "$color08";
 
   return (
     <XStack
@@ -42,7 +43,7 @@ const TagButton = ({
       <Text>{tag.icon}</Text>
       <Text
         fontSize={"$2"}
-        color={isSelected ? "$color1" : "$color08"}
+        color={color}
       >
         {tag.name}
       </Text>
@@ -51,15 +52,23 @@ const TagButton = ({
       ) : hasChildren && (!isExpanded || !tag.subTags) ? (
         <ChevronRight
           size={16}
-          color={isSelected ? "$color1" : "$color08"}
+          color={color}
         />
       ) : null}
     </XStack>
   );
 };
 
-const InterestSelection = ({ cb }: { cb: (tag: ITag[]) => void }) => {
-  const { loading, error } = useDataLoader(getAllTags, (data) => {
+const InterestSelection = ({
+  cb,
+  maxH,
+  preSelectedInterests
+}: {
+  cb: (tag: ITag[]) => void;
+  maxH?: XStackProps["maxH"];
+  preSelectedInterests?: ITag[];
+}) => {
+  const { loading } = useDataLoader(getAllTags, (data) => {
     setTags(data?.data || []);
   });
   const [tags, setTags] = useState<ITag[]>([]);
@@ -67,6 +76,12 @@ const InterestSelection = ({ cb }: { cb: (tag: ITag[]) => void }) => {
   const [selectedTags, setSelectedTags] = useState<ITag[]>([]);
   const [expandedTagIds, setExpandedTagIds] = useState<string[]>([]);
   const subTagsLoadedParentIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (preSelectedInterests) {
+      setSelectedTags(preSelectedInterests);
+    }
+  }, [preSelectedInterests]);
 
   const handleTagPress = async (tag: ITag) => {
     if (tag.hasChildren) {
@@ -119,7 +134,7 @@ const InterestSelection = ({ cb }: { cb: (tag: ITag[]) => void }) => {
     <XStack
       flexWrap="wrap"
       gap={"$4"}
-      maxH={"70%"}
+      maxH={maxH}
       overflow="scroll"
     >
       {tags?.map((tag) => {

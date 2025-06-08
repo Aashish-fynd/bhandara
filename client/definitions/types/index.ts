@@ -26,8 +26,10 @@ export interface IBaseUser extends ITimeStamp {
   password: string | null;
   meta: Record<string, any>;
   profilePic: Record<string, any> | null;
-  mediaId: string | null;
+  mediaId: string | null | IMedia;
   username?: string;
+  media?: IMedia;
+  bio?: string;
 }
 
 // Message Content Type
@@ -77,13 +79,6 @@ export interface IQnAThread extends IBaseThread {
   qaPairs: { question: IMessage; answers: IMessage[] }[];
 }
 
-// Location Interface
-export interface ILocation {
-  address: string;
-  coordinates?: { latitude: number; longitude: number }; // Optional geolocation
-  venueName?: string; // Optional venue name
-}
-
 // Event Participant Interface
 interface IParticipant {
   user: string | IBaseUser;
@@ -95,12 +90,13 @@ export interface IEvent extends ITimeStamp {
   id: string;
   name: string;
   description: string;
-  location: ILocation; // JSONB field
+  location: IAddress; // JSONB field
   participants: IParticipant[]; // JSONB field
   verifiers: { user: string | IBaseUser; verifiedAt: Date | string }[]; // Array of verifier IDs
   threadId: string; // References "Thread" table
   type: EEventType;
   createdBy: string; // References "User" table
+  creator: IBaseUser;
   status: EEventStatus;
   capacity: number;
   tags: ITag[]; // Array of tag IDs

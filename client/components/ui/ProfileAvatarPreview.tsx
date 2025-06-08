@@ -1,0 +1,95 @@
+import { IBaseUser } from "@/definitions/types";
+import React from "react";
+import { YStack, XStack, Text, Card, Separator } from "tamagui";
+import CustomAvatar from "../CustomAvatar";
+import { OutlineButton } from "./Buttons";
+import { formatDateToLongString } from "@/utils/date.utils";
+import { useAuth } from "@/contexts/AuthContext";
+import CustomTooltip from "../CustomTooltip";
+
+const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNode }) => {
+  const { user: _authenticatedUser } = useAuth();
+  const username = user.username ? `@${user.username}` : "";
+
+  return (
+    <Card
+      elevate
+      bordered
+      bg="$background"
+      width={250}
+      alignSelf="center"
+      rounded={"$6"}
+    >
+      <XStack
+        gap="$3"
+        items="center"
+        p="$5"
+      >
+        <CustomAvatar
+          size={40}
+          src={user.profilePic?.url || ""}
+          alt={user.name}
+        />
+        <YStack>
+          <Text
+            fontSize={"$8"}
+            fontWeight={"bold"}
+          >
+            {user.name}
+          </Text>
+          {username && <Text fontSize={"$3"}>{username}</Text>}
+        </YStack>
+      </XStack>
+      <YStack
+        gap="$4"
+        p="$5"
+        pt={0}
+      >
+        <YStack gap="$2">
+          <Text fontSize={"$3"}>Email</Text>
+          <Text fontSize={"$3"}>{user.email}</Text>
+        </YStack>
+        <YStack gap="$2">
+          <Text fontSize={"$3"}>Joined on</Text>
+          <Text fontSize={"$3"}>{formatDateToLongString(user.createdAt)}</Text>
+        </YStack>
+        {user?.bio && (
+          <YStack gap="$2">
+            <Text fontSize={"$3"}>Bio</Text>
+            <Text fontSize={"$3"}>{user.bio}</Text>
+          </YStack>
+        )}
+      </YStack>
+      {children && (
+        <>
+          <Separator />
+          <YStack
+            p="$5"
+            gap="$4"
+          >
+            {children}
+          </YStack>
+        </>
+      )}
+      {user.id === _authenticatedUser?.id && <OutlineButton size={"medium"}>Edit Profile</OutlineButton>}
+    </Card>
+  );
+};
+
+const ProfileAvatarPreview = ({ user, children }: { user: IBaseUser; children: React.ReactNode }) => {
+  return (
+    <CustomTooltip
+      trigger={children}
+      tooltipConfig={{
+        unstyled: true
+      }}
+      tooltipContentConfig={{
+        unstyled: true
+      }}
+    >
+      <Preview user={user} />
+    </CustomTooltip>
+  );
+};
+
+export default ProfileAvatarPreview;

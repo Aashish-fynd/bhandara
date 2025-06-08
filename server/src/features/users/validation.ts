@@ -45,8 +45,27 @@ const createSchema = {
       errorMessage: "SID must be a string",
     },
     interests: {
-      type: ["array", "null"],
-      errorMessage: "Interests must be an array or null",
+      type: ["object", "null"],
+      properties: {
+        added: {
+          type: "array",
+          errorMessage: "Added interests must be an array",
+          items: {
+            type: "string",
+            errorMessage: "Interest must be a string",
+            uniqueItems: true,
+          },
+        },
+        deleted: {
+          type: "array",
+          items: {
+            type: "string",
+            errorMessage: "Interest must be a string",
+            uniqueItems: true,
+          },
+          errorMessage: "Deleted interests must be an array",
+        },
+      },
     },
     username: {
       type: ["string", "null"],
@@ -83,8 +102,27 @@ const updateSchema = {
       errorMessage: "isVerified must be a boolean value",
     },
     interests: {
-      type: ["array", "null"],
-      errorMessage: "Interests must be an array or null",
+      type: ["object", "null"],
+      properties: {
+        added: {
+          type: "array",
+          errorMessage: "Added interests must be an array",
+          items: {
+            type: "string",
+            errorMessage: "Interest must be a string",
+            uniqueItems: true,
+          },
+        },
+        deleted: {
+          type: "array",
+          items: {
+            type: "string",
+            errorMessage: "Interest must be a string",
+            uniqueItems: true,
+          },
+          errorMessage: "Deleted interests must be an array",
+        },
+      },
     },
     profilePic: {
       type: ["object", "null"],
@@ -101,6 +139,16 @@ const updateSchema = {
     hasOnboarded: {
       type: ["boolean", "null"],
       errorMessage: "Has onboarded must be a boolean value",
+    },
+    gender: {
+      type: ["string", "null"],
+      enum: ["male", "female"], // TODO: move to enums
+      errorMessage: "Gender must be a valid string",
+    },
+    mediaId: {
+      type: ["string", "null"],
+      format: "uuid",
+      errorMessage: "Media ID must be a string or null",
     },
   },
   additionalProperties: false,

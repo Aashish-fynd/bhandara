@@ -155,7 +155,7 @@ var require_es5 = __commonJS({
           return null;
         };
       }
-      targets.push.apply(targets, Array.from(activeParentNode.querySelectorAll("[aria-live]")));
+      targets.push.apply(targets, Array.from(activeParentNode.querySelectorAll("[aria-live], script")));
       return applyAttributeToOthers2(targets, activeParentNode, markerName, "aria-hidden");
     }, "hideOthers");
     exports2.hideOthers = hideOthers2;
@@ -1421,14 +1421,14 @@ var require_UI = __commonJS({
         onWheelCapture: nothing,
         onTouchMoveCapture: nothing
       }), callbacks = _a[0], setCallbacks = _a[1];
-      var forwardProps = props.forwardProps, children = props.children, className = props.className, removeScrollBar = props.removeScrollBar, enabled = props.enabled, shards = props.shards, sideCar = props.sideCar, noIsolation = props.noIsolation, inert = props.inert, allowPinchZoom = props.allowPinchZoom, _b = props.as, Container = _b === void 0 ? "div" : _b, gapMode = props.gapMode, rest = tslib_1.__rest(props, ["forwardProps", "children", "className", "removeScrollBar", "enabled", "shards", "sideCar", "noIsolation", "inert", "allowPinchZoom", "as", "gapMode"]);
+      var forwardProps = props.forwardProps, children = props.children, className = props.className, removeScrollBar = props.removeScrollBar, enabled = props.enabled, shards = props.shards, sideCar = props.sideCar, noRelative = props.noRelative, noIsolation = props.noIsolation, inert = props.inert, allowPinchZoom = props.allowPinchZoom, _b = props.as, Container = _b === void 0 ? "div" : _b, gapMode = props.gapMode, rest = tslib_1.__rest(props, ["forwardProps", "children", "className", "removeScrollBar", "enabled", "shards", "sideCar", "noRelative", "noIsolation", "inert", "allowPinchZoom", "as", "gapMode"]);
       var SideCar = sideCar;
       var containerRef = (0, use_callback_ref_1.useMergeRefs)([ref, parentRef]);
       var containerProps = tslib_1.__assign(tslib_1.__assign({}, rest), callbacks);
       return React78.createElement(
         React78.Fragment,
         null,
-        enabled && React78.createElement(SideCar, { sideCar: medium_1.effectCar, removeScrollBar, shards, noIsolation, inert, setCallbacks, allowPinchZoom: !!allowPinchZoom, lockRef: ref, gapMode }),
+        enabled && React78.createElement(SideCar, { sideCar: medium_1.effectCar, removeScrollBar, shards, noRelative, noIsolation, inert, setCallbacks, allowPinchZoom: !!allowPinchZoom, lockRef: ref, gapMode }),
         forwardProps ? React78.cloneElement(React78.Children.only(children), tslib_1.__assign(tslib_1.__assign({}, containerProps), { ref: containerRef })) : React78.createElement(Container, tslib_1.__assign({}, containerProps, { className, ref: containerRef }), children)
       );
     });
@@ -1830,11 +1830,7 @@ var require_handleScroll = __commonJS({
             availableScrollTop += position;
           }
         }
-        if (target instanceof ShadowRoot) {
-          target = target.host;
-        } else {
-          target = target.parentNode;
-        }
+        target = target.parentNode.host || target.parentNode;
       } while (
         // portaled content
         !targetInLock && target !== document.body || // self content
@@ -2014,7 +2010,7 @@ var require_SideEffect = __commonJS({
         React78.Fragment,
         null,
         inert ? React78.createElement(Style, { styles: generateStyle(id) }) : null,
-        removeScrollBar ? React78.createElement(react_remove_scroll_bar_1.RemoveScrollBar, { gapMode: props.gapMode }) : null
+        removeScrollBar ? React78.createElement(react_remove_scroll_bar_1.RemoveScrollBar, { noRelative: props.noRelative, gapMode: props.gapMode }) : null
       );
     }
     __name(RemoveScrollSideCar, "RemoveScrollSideCar");
@@ -31875,7 +31871,9 @@ function getGridCellIndices(indices, cellMap) {
 }
 __name(getGridCellIndices, "getGridCellIndices");
 function isListIndexDisabled(listRef, index3, disabledIndices) {
-  if (disabledIndices) {
+  if (typeof disabledIndices === "function") {
+    return disabledIndices(index3);
+  } else if (disabledIndices) {
     return disabledIndices.includes(index3);
   }
   const element = listRef.current[index3];
@@ -32103,11 +32101,11 @@ function useHover(context2, props) {
   const unbindMouseMoveRef = React50.useRef(() => {
   });
   const restTimeoutPendingRef = React50.useRef(false);
-  const isHoverOpen = React50.useCallback(() => {
+  const isHoverOpen = useEffectEvent(() => {
     var _dataRef$current$open;
     const type = (_dataRef$current$open = dataRef.current.openEvent) == null ? void 0 : _dataRef$current$open.type;
     return (type == null ? void 0 : type.includes("mouse")) && type !== "mousedown";
-  }, [dataRef]);
+  });
   React50.useEffect(() => {
     if (!enabled) return;
     function onOpenChange2(_ref) {
@@ -32299,7 +32297,7 @@ function useHover(context2, props) {
   index2(() => {
     var _handleCloseRef$curre;
     if (!enabled) return;
-    if (open && (_handleCloseRef$curre = handleCloseRef.current) != null && _handleCloseRef$curre.__options.blockPointerEvents && isHoverOpen()) {
+    if (open && (_handleCloseRef$curre = handleCloseRef.current) != null && (_handleCloseRef$curre = _handleCloseRef$curre.__options) != null && _handleCloseRef$curre.blockPointerEvents && isHoverOpen()) {
       performedPointerEventsMutationRef.current = true;
       const floatingEl = elements.floating;
       if (isElement(elements.domReference) && floatingEl) {
@@ -33068,6 +33066,10 @@ function FloatingFocusManager(props) {
             nodeToFocus.focus();
           }
         }
+        if (dataRef.current.insideReactTree) {
+          dataRef.current.insideReactTree = false;
+          return;
+        }
         if ((isUntrappedTypeableCombobox ? true : !modal) && relatedTarget && movedToUnrelatedNode && !isPointerDownRef.current && // Fix React 18 Strict Mode returnFocus due to double rendering.
         relatedTarget !== getPreviouslyFocusedElement()) {
           preventReturnFocusRef.current = true;
@@ -33086,7 +33088,7 @@ function FloatingFocusManager(props) {
         floating.removeEventListener("focusout", handleFocusOutside);
       };
     }
-  }, [disabled, domReference, floating, floatingFocusElement, modal, tree, portalContext, onOpenChange, closeOnFocusOut, restoreFocus, getTabbableContent, isUntrappedTypeableCombobox, getNodeId, orderRef]);
+  }, [disabled, domReference, floating, floatingFocusElement, modal, tree, portalContext, onOpenChange, closeOnFocusOut, restoreFocus, getTabbableContent, isUntrappedTypeableCombobox, getNodeId, orderRef, dataRef]);
   const beforeGuardRef = React50.useRef(null);
   const afterGuardRef = React50.useRef(null);
   const mergedBeforeGuardRef = useLiteMergeRefs([beforeGuardRef, portalContext == null ? void 0 : portalContext.beforeInsideRef]);
@@ -33129,7 +33131,6 @@ function FloatingFocusManager(props) {
   }, [disabled, open, floatingFocusElement, ignoreInitialFocus, getTabbableElements, initialFocusRef]);
   index2(() => {
     if (disabled || !floatingFocusElement) return;
-    let preventReturnFocusScroll = false;
     const doc = getDocument(floatingFocusElement);
     const previouslyFocusedElement = activeElement(doc);
     addPreviouslyFocusedElement(previouslyFocusedElement);
@@ -33145,7 +33146,6 @@ function FloatingFocusManager(props) {
       if (reason !== "outside-press") return;
       if (nested) {
         preventReturnFocusRef.current = false;
-        preventReturnFocusScroll = true;
       } else if (isVirtualClick(event) || isVirtualPointerEvent(event)) {
         preventReturnFocusRef.current = false;
       } else {
@@ -33158,7 +33158,6 @@ function FloatingFocusManager(props) {
         });
         if (isPreventScrollSupported) {
           preventReturnFocusRef.current = false;
-          preventReturnFocusScroll = true;
         } else {
           preventReturnFocusRef.current = true;
         }
@@ -33199,7 +33198,7 @@ function FloatingFocusManager(props) {
           (tabbableReturnElement !== activeEl && activeEl !== doc.body ? isFocusInsideFloatingTree : true)
         ) {
           tabbableReturnElement.focus({
-            preventScroll: preventReturnFocusScroll
+            preventScroll: true
           });
         }
         fallbackEl.remove();
@@ -33285,8 +33284,11 @@ function FloatingFocusManager(props) {
 }
 __name(FloatingFocusManager, "FloatingFocusManager");
 var lockCount = 0;
+var scrollbarProperty = "--floating-ui-scrollbar-width";
 function enableScrollLock() {
-  const isIOS = /iP(hone|ad|od)|iOS/.test(getPlatform());
+  const platform2 = getPlatform();
+  const isIOS = /iP(hone|ad|od)|iOS/.test(platform2) || // iPads can claim to be MacIntel
+  platform2 === "MacIntel" && navigator.maxTouchPoints > 1;
   const bodyStyle = document.body.style;
   const scrollbarX = Math.round(document.documentElement.getBoundingClientRect().left) + document.documentElement.scrollLeft;
   const paddingProp = scrollbarX ? "paddingLeft" : "paddingRight";
@@ -33294,6 +33296,7 @@ function enableScrollLock() {
   const scrollX = bodyStyle.left ? parseFloat(bodyStyle.left) : window.scrollX;
   const scrollY = bodyStyle.top ? parseFloat(bodyStyle.top) : window.scrollY;
   bodyStyle.overflow = "hidden";
+  bodyStyle.setProperty(scrollbarProperty, scrollbarWidth + "px");
   if (scrollbarWidth) {
     bodyStyle[paddingProp] = scrollbarWidth + "px";
   }
@@ -33313,6 +33316,7 @@ function enableScrollLock() {
       overflow: "",
       [paddingProp]: ""
     });
+    bodyStyle.removeProperty(scrollbarProperty);
     if (isIOS) {
       Object.assign(bodyStyle, {
         position: "",
@@ -33502,7 +33506,6 @@ function useDismiss(context2, props) {
   const tree = useFloatingTree();
   const outsidePressFn = useEffectEvent(typeof unstable_outsidePress === "function" ? unstable_outsidePress : () => false);
   const outsidePress = typeof unstable_outsidePress === "function" ? outsidePressFn : unstable_outsidePress;
-  const insideReactTreeRef = React50.useRef(false);
   const endedOrStartedInsideRef = React50.useRef(false);
   const {
     escapeKey: escapeKeyBubbles,
@@ -33513,6 +33516,7 @@ function useDismiss(context2, props) {
     outsidePress: outsidePressCapture
   } = normalizeProp(capture);
   const isComposingRef = React50.useRef(false);
+  const blurTimeoutRef = React50.useRef(-1);
   const closeOnEscapeKeyDown = useEffectEvent((event) => {
     var _dataRef$current$floa;
     if (!open || !enabled || !escapeKey || event.key !== "Escape") {
@@ -33552,8 +33556,8 @@ function useDismiss(context2, props) {
   });
   const closeOnPressOutside = useEffectEvent((event) => {
     var _dataRef$current$floa2;
-    const insideReactTree = insideReactTreeRef.current;
-    insideReactTreeRef.current = false;
+    const insideReactTree = dataRef.current.insideReactTree;
+    dataRef.current.insideReactTree = false;
     const endedOrStartedInside = endedOrStartedInsideRef.current;
     endedOrStartedInsideRef.current = false;
     if (outsidePressEvent === "click" && endedOrStartedInside) {
@@ -33699,8 +33703,8 @@ function useDismiss(context2, props) {
     };
   }, [dataRef, elements, escapeKey, outsidePress, outsidePressEvent, open, onOpenChange, ancestorScroll, enabled, escapeKeyBubbles, outsidePressBubbles, closeOnEscapeKeyDown, escapeKeyCapture, closeOnEscapeKeyDownCapture, closeOnPressOutside, outsidePressCapture, closeOnPressOutsideCapture]);
   React50.useEffect(() => {
-    insideReactTreeRef.current = false;
-  }, [outsidePress, outsidePressEvent]);
+    dataRef.current.insideReactTree = false;
+  }, [dataRef, outsidePress, outsidePressEvent]);
   const reference = React50.useMemo(() => ({
     onKeyDown: closeOnEscapeKeyDown,
     ...referencePress && {
@@ -33723,9 +33727,16 @@ function useDismiss(context2, props) {
       endedOrStartedInsideRef.current = true;
     },
     [captureHandlerKeys[outsidePressEvent]]: () => {
-      insideReactTreeRef.current = true;
+      dataRef.current.insideReactTree = true;
+    },
+    onBlurCapture() {
+      clearTimeoutIfSet(blurTimeoutRef);
+      dataRef.current.insideReactTree = true;
+      blurTimeoutRef.current = window.setTimeout(() => {
+        dataRef.current.insideReactTree = false;
+      });
     }
-  }), [closeOnEscapeKeyDown, outsidePressEvent]);
+  }), [closeOnEscapeKeyDown, outsidePressEvent, dataRef]);
   return React50.useMemo(() => enabled ? {
     reference,
     floating
@@ -34306,12 +34317,13 @@ function useListNavigation(context2, props) {
   index2(() => {
     if (!open) {
       keyRef.current = null;
+      focusItemOnOpenRef.current = focusItemOnOpen;
     }
-  }, [open]);
+  }, [open, focusItemOnOpen]);
   const hasActiveIndex = activeIndex != null;
   const item = React50.useMemo(() => {
     function syncCurrentTarget(currentTarget) {
-      if (!open) return;
+      if (!latestOpenRef.current) return;
       const index3 = listRef.current.indexOf(currentTarget);
       if (index3 !== -1 && indexRef.current !== index3) {
         indexRef.current = index3;
@@ -34365,7 +34377,7 @@ function useListNavigation(context2, props) {
       }
     };
     return props2;
-  }, [open, floatingFocusElementRef, focusItemOnHover, listRef, onNavigate, virtual]);
+  }, [latestOpenRef, floatingFocusElementRef, focusItemOnHover, listRef, onNavigate, virtual]);
   const getParentOrientation = React50.useCallback(() => {
     var _tree$nodesRef$curren;
     return parentOrientation != null ? parentOrientation : tree == null || (_tree$nodesRef$curren = tree.nodesRef.current.find((node) => node.id === parentId)) == null || (_tree$nodesRef$curren = _tree$nodesRef$curren.context) == null || (_tree$nodesRef$curren = _tree$nodesRef$curren.dataRef) == null ? void 0 : _tree$nodesRef$curren.current.orientation;
@@ -34428,7 +34440,7 @@ function useListNavigation(context2, props) {
         cols,
         // treat undefined (empty grid spaces) as disabled indices so we
         // don't end up in them
-        disabledIndices: getGridCellIndices([...disabledIndices || listRef.current.map((_, index4) => isListIndexDisabled(listRef, index4) ? index4 : void 0), void 0], cellMap),
+        disabledIndices: getGridCellIndices([...(typeof disabledIndices !== "function" ? disabledIndices : null) || listRef.current.map((_, index4) => isListIndexDisabled(listRef, index4, disabledIndices) ? index4 : void 0), void 0], cellMap),
         minIndex: minGridIndex,
         maxIndex: maxGridIndex,
         prevIndex: getGridCellIndexOfCorner(
@@ -35051,7 +35063,9 @@ function safePolygon(options) {
     blockPointerEvents = false,
     requireIntent = true
   } = options;
-  let timeoutId;
+  const timeoutRef = {
+    current: -1
+  };
   let hasLanded = false;
   let lastX = null;
   let lastY = null;
@@ -35087,11 +35101,11 @@ function safePolygon(options) {
     } = _ref;
     return /* @__PURE__ */ __name(function onMouseMove(event) {
       function close() {
-        clearTimeout(timeoutId);
+        clearTimeoutIfSet(timeoutRef);
         onClose();
       }
       __name(close, "close");
-      clearTimeout(timeoutId);
+      clearTimeoutIfSet(timeoutRef);
       if (!elements.domReference || !elements.floating || placement == null || x == null || y == null) {
         return;
       }
@@ -35204,7 +35218,7 @@ function safePolygon(options) {
       if (!isPointInPolygon([clientX, clientY], getPolygon([x, y]))) {
         close();
       } else if (!hasLanded && requireIntent) {
-        timeoutId = window.setTimeout(close, 40);
+        timeoutRef.current = window.setTimeout(close, 40);
       }
     }, "onMouseMove");
   }, "fn");

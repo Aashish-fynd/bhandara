@@ -35,3 +35,8 @@ export const signInWithIdToken = async (code: string, codeVerifier: string, redi
 
   return response.data;
 };
+
+export const getUserSession = async () => {
+  const response = await axiosClient.get("/auth/session");
+  return response.data;
+};

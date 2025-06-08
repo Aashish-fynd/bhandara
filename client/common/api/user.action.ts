@@ -20,3 +20,8 @@ export const updateUser = async (id: string, user: any) => {
   const response = await axiosClient.patch(`/users/${id}`, user);
   return response.data;
 };
+
+export const getUserInterests = async (id: string) => {
+  const response = await axiosClient.get(`/users/${id}/interests`);
+  return response.data;
+};

@@ -2,6 +2,89 @@ import { Control, Controller } from "react-hook-form";
 import { Input, Paragraph, Text, YStack, XStack, View, styled } from "tamagui";
 import React from "react";
 
+export const StyledInput = styled(Input, {
+  name: "StyledInput",
+  variants: {
+    disabled: {
+      true: {
+        opacity: 0.5,
+        bg: "$color6",
+        cursor: "not-allowed",
+        pointerEvents: "none",
+        color: "$color11",
+        placeholderTextColor: "$color11"
+      }
+    },
+    error: {
+      true: {
+        borderColor: "$red10"
+      },
+      false: {
+        borderColor: "$borderColor"
+      }
+    }
+  } as const
+});
+
+export const InputGroupWrapper = styled(View, {
+  name: "InputGroupWrapper",
+  gap: "$2",
+  flex: 1,
+  shrink: 0,
+  maxH: "min-content"
+});
+
+export const InputLabel = styled(Text, {
+  name: "InputLabel",
+  fontSize: "$3"
+});
+
+export const InputLabelWrapper = styled(XStack, {
+  name: "InputLabelWrapper",
+  gap: "$2",
+  justify: "space-between",
+  items: "center"
+});
+
+export const InputLabelRightText = styled(Paragraph, {
+  name: "InputLabelRightText",
+  size: "$1",
+  color: "$color10"
+});
+
+export const InputErrorText = styled(Text, {
+  name: "InputErrorText",
+  color: "$red10",
+  fontSize: "$1",
+  width: "auto"
+});
+
+export const InputFieldWrapper = styled(XStack, {
+  name: "InputFieldWrapper",
+  borderWidth: 1,
+  rounded: "$4",
+  overflow: "hidden",
+  focusWithinStyle: { outlineWidth: 2, outlineColor: "$color7", outlineStyle: "solid" },
+  gap: "$3",
+  position: "relative",
+  items: "center",
+  px: "$3.5"
+});
+
+export const InputField = styled(StyledInput, {
+  name: "InputField",
+  rounded: 0,
+  borderWidth: 0,
+  borderColor: "transparent",
+  display: "flex",
+  flex: 1,
+  focusVisibleStyle: { outline: "none", outlineColor: "transparent", outlineWidth: 0 },
+  outline: "none",
+  px: 0,
+  focusStyle: null,
+  focusWithinStyle: null
+});
+
 export const InputGroup = ({
   control,
   rules,
@@ -30,59 +113,25 @@ export const InputGroup = ({
   containerProps?: React.ComponentProps<typeof YStack>;
 }) => {
   return (
-    <View
-      gap="$2"
-      flex={1}
-      shrink={0}
-      maxH={"min-content"}
-      {...(containerProps || {})}
-    >
-      <XStack
-        gap="$2"
-        justify="space-between"
-        items="center"
-      >
-        <Text fontSize={"$3"}>{label}</Text>
-        {rightLabel && (
-          <Paragraph
-            size="$1"
-            color="$color10"
-          >
-            {rightLabel}
-          </Paragraph>
-        )}
-      </XStack>
+    <InputGroupWrapper {...(containerProps || {})}>
+      <InputLabelWrapper>
+        <InputLabel>{label}</InputLabel>
+        {rightLabel && <InputLabelRightText>{rightLabel}</InputLabelRightText>}
+      </InputLabelWrapper>
       <Controller
         control={control}
         name={name}
         rules={rules}
         render={({ field }) => (
-          <XStack
-            borderWidth={1}
-            borderColor={error ? "$red8" : "$borderColor"}
-            rounded={"$4"}
-            overflow={"hidden"}
-            focusWithinStyle={{ outlineWidth: 2, outlineColor: "$color7", outlineStyle: "solid" }}
-            gap={"$3"}
-            position={"relative"}
-            items="center"
-            px={"$3.5"}
+          <InputFieldWrapper
             bg={inputProps?.disabled ? "$color6" : inputProps?.bg || "$background"}
+            borderColor={error ? "$red8" : "$borderColor"}
           >
             {iconBefore}
-            <StyledInput
-              rounded={0}
-              borderWidth={0}
-              borderColor={"transparent"}
-              placeholder={placeHolder}
+            <InputField
               value={field.value}
-              display={"flex"}
-              flex={1}
-              focusVisibleStyle={{ outline: "none", outlineColor: "transparent", outlineWidth: 0 }}
-              outline="none"
-              px={0}
-              focusStyle={null}
-              focusWithinStyle={null}
+              placeholder={placeHolder}
+              error={!!error}
               autoComplete={inputProps?.secureTextEntry ? "off" : inputProps?.autoComplete}
               onChangeText={(value) => {
                 field.onChange(value);
@@ -91,40 +140,10 @@ export const InputGroup = ({
               {...(inputProps || {})}
             />
             {iconAfter}
-          </XStack>
+          </InputFieldWrapper>
         )}
       />
-      {error && (
-        <Text
-          color="$red10"
-          fontSize="$1"
-          width={"auto"}
-        >
-          {error.message}
-        </Text>
-      )}
-    </View>
+      {error && <InputErrorText>{error}</InputErrorText>}
+    </InputGroupWrapper>
   );
 };
-
-export const StyledInput = styled(Input, {
-  name: "StyledInput",
-  variants: {
-    disabled: {
-      true: {
-        opacity: 0.5,
-        bg: "$color6",
-        cursor: "not-allowed",
-        pointerEvents: "none",
-        color: "$color11",
-        placeholderTextColor: "$color11"
-      }
-    }
-    // TODO: Add error variant
-    // error: {
-    //   true: {
-    //     borderColor: "$red10"
-    //   }
-    // }
-  }
-});

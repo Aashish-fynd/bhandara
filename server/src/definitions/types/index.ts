@@ -27,17 +27,17 @@ export interface IBaseUser extends ITimeStamp {
   password: string | null;
   meta: Record<string, any>;
   profilePic: Record<string, any> | null;
-  mediaId: string | null;
+  mediaId: string | null | IMedia;
+  username?: string;
+  media?: IMedia;
 }
 
 // Message Content Type
-export type IMessageContent =
-  | { text: string } // Plain text message
-  | {
-      text?: string; // Optional caption
-      media?: IMedia[] | string[]; // Array of media IDs
-      links?: { url: string; title: string }[]; // Array of links with titles
-    }; // Rich object message
+export type IMessageContent = {
+  text?: string; // Optional caption
+  media?: IMedia[] | string[]; // Array of media IDs
+  links?: { url: string; title: string }[]; // Array of links with titles
+};
 
 // Message Interface
 export interface IMessage extends ITimeStamp {
@@ -47,6 +47,7 @@ export interface IMessage extends ITimeStamp {
   content: IMessageContent;
   isEdited: boolean;
   threadId: string;
+  user: IBaseUser;
 }
 
 // Thread Lock History
@@ -101,6 +102,7 @@ export interface IEvent extends ITimeStamp {
   threadId: string; // References "Thread" table
   type: EEventType;
   createdBy: string; // References "User" table
+  creator?: IBaseUser;
   status: EEventStatus;
   capacity: number;
   tags: ITag[]; // Array of tag IDs

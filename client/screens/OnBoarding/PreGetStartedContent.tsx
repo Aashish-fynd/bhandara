@@ -1,15 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { GET_STARTED_TABS } from "./constants";
 import { Text, View, XStack, YStack } from "tamagui";
 import { OutlineButton } from "@/components/ui/Buttons";
 
 interface IProps {
-  currentTab: number;
-  setCurrentTab: (tab: number) => void;
-  setShowSignUp: (show: boolean) => void;
+  setShowAuthOptions: (show: boolean) => void;
 }
 
-const PreGetStartedContent = ({ currentTab, setCurrentTab, setShowSignUp }: IProps) => {
+const PreGetStartedContent = ({ setShowAuthOptions }: IProps) => {
+  const [currentTab, setCurrentTab] = useState(0);
   return (
     <>
       <YStack gap={"$3"}>
@@ -47,7 +46,7 @@ const PreGetStartedContent = ({ currentTab, setCurrentTab, setShowSignUp }: IPro
           onPress={() => {
             const isLastTab = currentTab === GET_STARTED_TABS.length - 1;
             if (isLastTab) {
-              setShowSignUp(true);
+              setShowAuthOptions(true);
             } else setCurrentTab(currentTab + 1);
           }}
         >

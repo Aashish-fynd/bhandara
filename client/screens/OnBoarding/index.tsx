@@ -21,16 +21,21 @@ import { loginWithEmailAndPassword, signupWithEmailAndPassword } from "@/common/
 
 import { EGender, EOnboardingStages } from "@/definitions/enums";
 import AuthOptions from "../Auth/AuthOptions";
-import { APPLICABLE_STAGES_MAP, ONBOARDING_STAGES_TEXT } from "./constants";
+import { APPLICABLE_STAGES_MAP, getStageLevelFields, ONBOARDING_STAGES_TEXT } from "./constants";
 import { IFormData } from "./type";
 import ProfileSetup from "./ProfileSetup";
 import PreGetStartedContent from "./PreGetStartedContent";
 import { EApplicableStage } from "./enum";
 
-const GetStartedContents = ({ setPosition }: { setPosition: (position: number) => void }) => {
-  const [currentTab, setCurrentTab] = useState(0);
-  const [showSignUp, setShowSignUp] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+const GetStartedContents = ({
+  setPosition,
+  position
+}: {
+  setPosition: (position: number) => void;
+  position: number;
+}) => {
+  const { type } = useLocalSearchParams();
+  const [showAuthOptions, setShowAuthOptions] = useState(() => type !== "new");
   const [isLoading, setIsLoading] = useState(false);
   const toastController = useToastController();
   const [newUser, setNewUser] = useState<any>(null);
@@ -44,15 +49,9 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
     watch,
     formState: { errors },
     setError,
-    clearErrors,
     setValue,
     reset
   } = useForm<IFormData>({
-    defaultValues: {
-      email: "",
-      username: "",
-      _location: ""
-    },
     mode: "all"
   });
 
@@ -62,20 +61,11 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
   const [isUserComingFromSocialAuth, setIsUserComingFromSocialAuth] = useState<boolean>(false);
   const [applicableStage, setApplicableStage] = useState<EApplicableStage>(EApplicableStage.EmailExists);
 
-  const showMiniProgressBars = applicableStage !== EApplicableStage.EmailExists;
+  const showMiniProgressBars =
+    [EApplicableStage.NewUser, EApplicableStage.NotOnboarded].includes(applicableStage) &&
+    authStage !== EOnboardingStages.EmailVerification;
 
-  const stageFields = {
-    [EOnboardingStages.EmailVerification]: ["email"],
-    [EOnboardingStages.Login]: ["email", "password"],
-    [EOnboardingStages.BasicInfo]: [
-      "firstName",
-      "lastName",
-      "email",
-      ...(isUserComingFromSocialAuth ? [] : ["password", "verifyPassword"])
-    ],
-    [EOnboardingStages.ProfileSetup]: ["username", "profilePic", "location"],
-    [EOnboardingStages.InterestSelection]: ["interests"]
-  };
+  const stageFields = getStageLevelFields(authStage, isUserComingFromSocialAuth);
 
   useEffect(() => {
     if (params.dataKey) {
@@ -117,7 +107,11 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
             email: data.email,
             password: data.password
           });
-          setNewUser(res.data.session.user);
+          if (isEmpty(res.data.user)) {
+            toastController.show("Not able to create user");
+            return;
+          }
+          setNewUser(res.data.user);
         }
         setAuthStage(EOnboardingStages.ProfileSetup);
       } catch (error: any) {
@@ -134,7 +128,7 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
           address: data.location,
           username: data.username,
           profilePic: data.profilePic,
-          interests: data.interests?.map((tag) => tag.id),
+          interests: { added: data.interests?.map((tag) => tag.id) },
           gender: data.gender,
           hasOnboarded: true
         };
@@ -162,11 +156,12 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
   const isContinueButtonDisabled =
     !!Object.keys(errors).length ||
     isLoading ||
-    !stageFields[authStage]?.every((field) => !!allValues[field as keyof IFormData]);
+    !stageFields?.every((field: string) => !!allValues[field as keyof IFormData]);
 
   const { stages, skippableStages } = APPLICABLE_STAGES_MAP[applicableStage];
+
   const isFirstStage = stages[0] === authStage;
-  const isCurrentStageSkippable = skippableStages.includes(authStage);
+  const isCurrentStageSkippable = (skippableStages as EOnboardingStages[]).includes(authStage);
 
   const handleSetExistingDataAuth = ({
     isUserComingFromSocialAuth,
@@ -177,7 +172,6 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
     user?: any;
     hasOnboarded?: boolean;
   }) => {
-    debugger;
     if (user) {
       setNewUser(user);
     }
@@ -185,7 +179,6 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
     setIsUserComingFromSocialAuth(!!isUserComingFromSocialAuth);
 
     if (!hasOnboarded) {
-      setShowForm(true);
       setPosition(0);
       setAuthStage(EOnboardingStages.BasicInfo);
       setApplicableStage(EApplicableStage.NotOnboarded);
@@ -209,6 +202,8 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
     }
   };
 
+  const showForm = position === 0;
+
   if (showForm)
     return (
       <YStack
@@ -226,7 +221,6 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
                 const currentIndex = stages.indexOf(prev);
                 if (currentIndex === 0) {
                   setPosition(1);
-                  setShowForm(false);
                   return EOnboardingStages.EmailVerification;
                 }
                 return stages[currentIndex - 1];
@@ -235,13 +229,13 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
           />
         )}
         <YStack gap={"$2"}>
-          <H3>{ONBOARDING_STAGES_TEXT[authStage].title}</H3>
+          <H3>{ONBOARDING_STAGES_TEXT[authStage]?.title}</H3>
           <Text
             fontSize={"$2"}
             fontWeight={"100"}
             color={"$accent9"}
           >
-            {ONBOARDING_STAGES_TEXT[authStage].description}
+            {ONBOARDING_STAGES_TEXT[authStage]?.description}
           </Text>
         </YStack>
 
@@ -258,6 +252,7 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
             <InputGroup
               control={control}
               rules={{
+                required: "First name is required",
                 minLength: { value: 2, message: "First name must be at least 2 characters" },
                 pattern: { value: /^[A-Za-z]+$/, message: "Please enter valid characters" }
               }}
@@ -270,6 +265,7 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
             <InputGroup
               control={control}
               rules={{
+                required: "Last name is required",
                 minLength: { value: 2, message: "Last name must be at least 2 characters" },
                 pattern: { value: /^[A-Za-z]+$/, message: "Please enter valid characters" }
               }}
@@ -378,18 +374,21 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
         >
           {showMiniProgressBars && (
             <XStack gap={"$2"}>
-              {stages.map((stage, i) => (
-                <View
-                  key={i}
-                  onPress={handleSubmit(() => setAuthStage(stage))}
-                  bg={authStage !== stage ? "$accent10" : "$accent1"}
-                  rounded={10000}
-                  width={authStage === stage ? "$3" : "$0.75"}
-                  height={"$0.75"}
-                  cursor={"pointer"}
-                  animation={"quick"}
-                />
-              ))}
+              {stages.map((stage, i) => {
+                const hasError = stageFields?.some((field: string) => !!errors[field as keyof IFormData]);
+                return (
+                  <View
+                    key={i}
+                    onPress={handleSubmit(() => setAuthStage(stage))}
+                    bg={hasError ? "$red1" : authStage !== stage ? "$accent10" : "$accent1"}
+                    rounded={10000}
+                    width={authStage === stage ? "$3" : "$0.75"}
+                    height={"$0.75"}
+                    cursor={"pointer"}
+                    animation={"quick"}
+                  />
+                );
+              })}
             </XStack>
           )}
           <FilledButton
@@ -401,7 +400,7 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
             pointerEvents={isContinueButtonDisabled ? "none" : "auto"}
             items={"center"}
             iconAfter={isLoading ? <Loader /> : undefined}
-            width={applicableStage === EApplicableStage.EmailExists ? "100%" : "auto"}
+            width={!showMiniProgressBars ? "100%" : "auto"}
           >
             {authStage !== EOnboardingStages.InterestSelection ? "Continue" : "Finish"}
           </FilledButton>
@@ -417,21 +416,16 @@ const GetStartedContents = ({ setPosition }: { setPosition: (position: number) =
       justify={"space-between"}
       height={250}
     >
-      {showSignUp ? (
+      {showAuthOptions ? (
         <AuthOptions
           setExistingAuthData={handleSetExistingDataAuth}
-          setFormStage={(formStage) => {
+          setApplicableStages={(applicableStage) => {
             setPosition(0);
-            setShowForm(true);
-            setAuthStage(formStage);
+            setApplicableStage(applicableStage);
           }}
         />
       ) : (
-        <PreGetStartedContent
-          currentTab={currentTab}
-          setCurrentTab={setCurrentTab}
-          setShowSignUp={setShowSignUp}
-        />
+        <PreGetStartedContent setShowAuthOptions={setShowAuthOptions} />
       )}
     </YStack>
   );
@@ -445,7 +439,7 @@ const SheetContents = memo(({ setPosition, position }: any) => {
       width={"100%"}
       flex={1}
     >
-      <GetStartedContents {...{ setPosition }} />
+      <GetStartedContents {...{ setPosition, position }} />
     </YStack>
   );
 });
