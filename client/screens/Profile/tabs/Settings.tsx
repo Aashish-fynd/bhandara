@@ -1,9 +1,9 @@
+import { CardWrapper } from "@/components/ui/common-styles";
 import { Text } from "tamagui";
-import { CardWrapper } from "../common";
 
 const SettingsTabContent = () => {
   return (
-    <CardWrapper>
+    <CardWrapper width={"100%"}>
       <Text>Settings</Text>
     </CardWrapper>
   );

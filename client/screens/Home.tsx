@@ -251,13 +251,14 @@ const HomeScreen = () => {
   const { data: paginatedEvents, loading, error } = useDataLoader(fetchEvents);
 
   return (
-    <YStack
+    <ScrollView
       bg="$background"
       width="100%"
       items={"center"}
       p={"$4"}
       gap={"$4"}
       maxW={600}
+      scrollbarWidth="none"
     >
       {loading && <Loader />}
       {!loading &&
@@ -267,7 +268,7 @@ const HomeScreen = () => {
             event={event}
           />
         ))}
-    </YStack>
+    </ScrollView>
   );
 };
 

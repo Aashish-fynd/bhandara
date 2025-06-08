@@ -1,5 +1,4 @@
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Dialog, Popover, styled, YStack } from "tamagui";
+import { Card, Dialog, Popover, styled, YStack } from "tamagui";
 
 export const DialogContent = styled(Dialog.Content, {
   bordered: true,
@@ -65,4 +64,20 @@ export const Badge = styled(YStack, {
       }
     }
   }
+});
+
+export const CardWrapper = styled(Card, {
+  elevate: true,
+  bordered: true,
+  bg: "$background",
+  self: "center",
+  rounded: "$6",
+  shadowColor: "$color11",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+  elevation: 5,
+  overflow: "hidden",
+  p: "$4",
+  width: "100%"
 });

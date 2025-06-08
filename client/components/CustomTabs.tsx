@@ -1,4 +1,4 @@
-import { SizableText } from "tamagui";
+import { ScrollView, SizableText } from "tamagui";
 
 import { kebabCase } from "@/utils";
 import { Tabs } from "tamagui";
@@ -21,8 +21,9 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
       defaultValue={defaultValue}
       orientation={orientation}
       flexDirection={orientation !== "horizontal" ? "row" : "column"}
-      $gtMd={{ width: 500 }}
-      width={400}
+      $gtMd={{ maxW: 500 }}
+      width={350}
+      maxW={350}
       flex={1}
       gap={"$5"}
     >
@@ -67,7 +68,13 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
             flex={1}
             value={kebabCase(tab.label)}
           >
-            {tab.content}
+            <ScrollView
+              flex={1}
+              width={"100%"}
+              height={"100%"}
+            >
+              {tab.content}
+            </ScrollView>
           </Tabs.Content>
         );
       })}

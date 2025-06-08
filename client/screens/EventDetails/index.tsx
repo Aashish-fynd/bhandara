@@ -1,21 +1,23 @@
 import React, { useEffect, useState } from "react";
 
-import { H4, H5, Image, Text, View, XStack, YStack } from "tamagui";
-import { BackButtonHeader, IdentityCard } from "@/components/ui/common-components";
-import { useLocalSearchParams } from "expo-router";
 import { getEventById } from "@/common/api/events.action";
-import { useToastController } from "@tamagui/toast";
-import { useDataLoader } from "@/hooks";
-import Loader from "@/components/ui/Loader";
-import { Building, Crosshair, Landmark, MapPin, Navigation, Share, Share2 } from "@tamagui/lucide-icons";
-import { EEventType } from "@/definitions/enums";
-import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import { getStaticMapImageUrl } from "@/common/api/mapbox";
-import { CardWrapper } from "./wrapper";
+import { FilledButton } from "@/components/ui/Buttons";
+import { BackButtonHeader, IdentityCard } from "@/components/ui/common-components";
+import { CardWrapper } from "@/components/ui/common-styles";
+import Loader from "@/components/ui/Loader";
+import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
+import { EEventType } from "@/definitions/enums";
 import { IAddress } from "@/definitions/types";
-import { askForLocation, haversineDistanceInM } from "@/utils/location";
-import * as Location from "expo-location";
 import { formatDistance } from "@/helpers";
+import { useDataLoader } from "@/hooks";
+import { askForLocation, haversineDistanceInM } from "@/utils/location";
+import { Building, Crosshair, Landmark, MapPin, Navigation, Share2 } from "@tamagui/lucide-icons";
+import { useToastController } from "@tamagui/toast";
+import * as Location from "expo-location";
+import { useLocalSearchParams } from "expo-router";
+import { Linking } from "react-native";
+import { H4, Image, Text, View, XStack, YStack } from "tamagui";
 
 export const MapPreviewCard = (location: IAddress) => {
   const [currentLocation, setCurrentLocation] = useState<Location.LocationObjectCoords | null>(null);
@@ -102,8 +104,6 @@ export const MapPreviewCard = (location: IAddress) => {
           justify={"flex-start"}
           height={"100%"}
         >
-          <Text fontSize={"$4"}>{location.address}</Text>
-
           {location.building && (
             <XStack
               gap={"$2"}
@@ -160,6 +160,16 @@ export const MapPreviewCard = (location: IAddress) => {
               {distanceAway !== "-" ? formatDistance(distanceAway) : distanceAway} away
             </Text>
           </XStack>
+          <FilledButton
+            onPress={() => {
+              Linking.openURL(
+                `https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}`
+              );
+            }}
+            size={"small"}
+          >
+            Get Directions
+          </FilledButton>
         </YStack>
       </XStack>
     </CardWrapper>

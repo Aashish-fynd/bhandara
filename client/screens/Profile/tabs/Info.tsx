@@ -1,27 +1,24 @@
+import { getUserInterests, updateUser } from "@/common/api/user.action";
+import CustomTooltip from "@/components/CustomTooltip";
+import { InputGroup } from "@/components/Form";
+import LocationInput from "@/components/LocationInput";
+import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
+import { TagPreviewTooltip } from "@/components/ui/common-components";
+import { Badge, CardWrapper } from "@/components/ui/common-styles";
+import Loader from "@/components/ui/Loader";
+import UsernameInput from "@/components/UsernameInput";
 import { useAuth } from "@/contexts/AuthContext";
+import { IAddress, ITag } from "@/definitions/types";
+import { useDataLoader } from "@/hooks";
+import { useDialog } from "@/hooks/useModal";
+import GenderSelection from "@/screens/OnBoarding/GenderSelection";
+import InterestSelection from "@/screens/OnBoarding/InterestSelection";
+import { isEmpty, pick, startCase } from "@/utils";
+import { Check, Pencil, Plus, X } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
-import { useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { H5, Text, XStack, YStack } from "tamagui";
-import { CardWrapper } from "../common";
-import { getUserInterests, updateUser } from "@/common/api/user.action";
-import { pick, startCase } from "@/utils";
-import { IAddress, ITag } from "@/definitions/types";
-import { Pencil, Plus, X } from "@tamagui/lucide-icons";
-import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
-import { Check } from "@tamagui/lucide-icons";
-import { InputGroup } from "@/components/Form";
-import GenderSelection from "@/screens/OnBoarding/GenderSelection";
-import LocationInput from "@/components/LocationInput";
-import { isEmpty } from "@/utils";
-import UsernameInput from "@/components/UsernameInput";
-import React from "react";
-import { useDataLoader } from "@/hooks";
-import Loader from "@/components/ui/Loader";
-import CustomTooltip from "@/components/CustomTooltip";
-import { useDialog } from "@/hooks/useModal";
-import InterestSelection from "@/screens/OnBoarding/InterestSelection";
-import { TagPreviewTooltip } from "@/components/ui/common-components";
 
 type IFormData = {
   fullName: string;
@@ -33,19 +30,7 @@ type IFormData = {
 };
 
 const InterestBadge = ({ name }: { name: string }) => {
-  return (
-    <Text
-      fontSize={"$3"}
-      px={"$2"}
-      py={"$1"}
-      rounded={"$2"}
-      bg={"$color10"}
-      color={"$color12"}
-      cursor={"pointer"}
-    >
-      {name}
-    </Text>
-  );
+  return <Text fontSize={"$3"}>{name}</Text>;
 };
 
 const InterestsDialog = ({
@@ -172,9 +157,13 @@ const Interests = () => {
           >
             {data?.map((interest: ITag) => (
               <CustomTooltip
-                trigger={<InterestBadge name={interest.name} />}
+                trigger={
+                  <Badge>
+                    <InterestBadge name={interest.name} />
+                  </Badge>
+                }
                 key={interest.id}
-                tooltipConfig={{ placement: "top", delay: 0 }}
+                tooltipConfig={{ placement: "top", delay: 0, unstyled: false }}
               >
                 <TagPreviewTooltip tag={interest} />
               </CustomTooltip>
