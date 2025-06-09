@@ -1,19 +1,24 @@
 import { IBaseUser, ITag } from "@/definitions/types";
-import { H4, Text, View, XStack, YStack } from "tamagui";
+import { H4, Text, Theme, View, XStack, YStack } from "tamagui";
 import CustomAvatar from "../CustomAvatar";
 import ProfileAvatarPreview from "./ProfileAvatarPreview";
 import { Fragment } from "react";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "@tamagui/lucide-icons";
+import CustomTooltip from "../CustomTooltip";
+import { Badge, CardWrapper } from "./common-styles";
 
 export const TagPreviewTooltip = ({ tag }: { tag: ITag }) => {
   return (
-    <YStack gap={"$2"}>
+    <CardWrapper
+      gap={"$2"}
+      size={"small"}
+    >
       <Text fontSize={"$3"}>
         {tag.icon} {tag.name}
       </Text>
       <Text fontSize={"$2"}>{tag.description}</Text>
-    </YStack>
+    </CardWrapper>
   );
 };
 
@@ -39,7 +44,7 @@ export const UserCluster = ({ users, maxLimit = 3 }: { users: IBaseUser[]; maxLi
         const _Wrapper = remainingUsers < 0 ? ProfileAvatarPreview : Fragment;
         return (
           <View
-            l={28 * index}
+            l={25 * index + index}
             position={"absolute"}
             z={index}
             rounded={"$12"}
@@ -217,6 +222,34 @@ export const BackButtonHeader = ({
           {children}
         </View>
       )}
+    </XStack>
+  );
+};
+
+export const TagListing = ({ tags }: { tags: ITag[] }) => {
+  return (
+    <XStack
+      flexWrap="wrap"
+      gap={"$2"}
+    >
+      {tags?.map((tag: ITag) => (
+        <CustomTooltip
+          trigger={
+            <Badge cursor="pointer">
+              <Text
+                fontSize={"$3"}
+                color={"$color2"}
+              >
+                {tag.name}
+              </Text>
+            </Badge>
+          }
+          key={tag.id}
+          tooltipConfig={{ placement: "top" }}
+        >
+          <TagPreviewTooltip tag={tag} />
+        </CustomTooltip>
+      ))}
     </XStack>
   );
 };

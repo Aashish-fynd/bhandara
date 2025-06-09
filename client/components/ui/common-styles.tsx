@@ -1,4 +1,4 @@
-import { Card, Dialog, Popover, styled, YStack } from "tamagui";
+import { Card, Dialog, Popover, styled, View, YStack } from "tamagui";
 
 export const DialogContent = styled(Dialog.Content, {
   bordered: true,
@@ -43,6 +43,7 @@ export const Badge = styled(YStack, {
   },
   borderWidth: 1,
   borderColor: "$color12",
+  height: "min-content",
 
   variants: {
     outline: {
@@ -62,6 +63,12 @@ export const Badge = styled(YStack, {
         bg: "$red11",
         borderColor: "$red1"
       }
+    },
+    "outline-success": {
+      true: {
+        bg: "$green7",
+        borderColor: "$green11"
+      }
     }
   }
 });
@@ -79,5 +86,36 @@ export const CardWrapper = styled(Card, {
   elevation: 5,
   overflow: "hidden",
   p: "$4",
-  width: "100%"
+  width: "100%",
+
+  variants: {
+    size: {
+      medium: {
+        p: "$3",
+        rounded: "$4"
+      },
+      small: {
+        p: "$2",
+        rounded: "$2"
+      }
+    } as const
+  }
+});
+
+export const CircleBgWrapper = styled(View, {
+  items: "center",
+  justify: "center",
+  display: "flex",
+  bg: "$color",
+  rounded: "$12",
+  variants: {
+    size: {
+      "...size": (size, { tokens }) => {
+        return {
+          width: (tokens.size as any)[size] ?? size,
+          height: (tokens.size as any)[size] ?? size
+        };
+      }
+    }
+  } as const
 });

@@ -1,5 +1,4 @@
 import { getAllEvents } from "@/common/api/events.action";
-import CustomAvatar from "@/components/CustomAvatar";
 import CustomTooltip from "@/components/CustomTooltip";
 import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
 import { CircularFillIndicator, IdentityCard, TagPreviewTooltip, UserCluster } from "@/components/ui/common-components";
@@ -251,23 +250,25 @@ const HomeScreen = () => {
   const { data: paginatedEvents, loading, error } = useDataLoader(fetchEvents);
 
   return (
-    <ScrollView
-      bg="$background"
-      width="100%"
-      items={"center"}
-      p={"$4"}
-      gap={"$4"}
-      maxW={600}
-      scrollbarWidth="none"
-    >
-      {loading && <Loader />}
-      {!loading &&
-        paginatedEvents?.data?.items?.map((event) => (
-          <EventCard
-            key={event.id}
-            event={event}
-          />
-        ))}
+    <ScrollView mx={"auto"}>
+      <YStack
+        bg="$background"
+        width="100%"
+        items={"center"}
+        p={"$4"}
+        gap={"$4"}
+        maxW={600}
+        scrollbarWidth="none"
+      >
+        {loading && <Loader />}
+        {!loading &&
+          paginatedEvents?.data?.items?.map((event) => (
+            <EventCard
+              key={event.id}
+              event={event}
+            />
+          ))}
+      </YStack>
     </ScrollView>
   );
 };

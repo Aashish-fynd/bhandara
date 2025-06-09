@@ -3,21 +3,28 @@ import React, { useEffect, useState } from "react";
 import { getEventById } from "@/common/api/events.action";
 import { getStaticMapImageUrl } from "@/common/api/mapbox";
 import { FilledButton } from "@/components/ui/Buttons";
-import { BackButtonHeader, IdentityCard } from "@/components/ui/common-components";
-import { CardWrapper } from "@/components/ui/common-styles";
+import {
+  BackButtonHeader,
+  IdentityCard,
+  TagListing,
+  TagPreviewTooltip,
+  UserCluster
+} from "@/components/ui/common-components";
+import { Badge, CardWrapper, CircleBgWrapper } from "@/components/ui/common-styles";
 import Loader from "@/components/ui/Loader";
 import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import { EEventType } from "@/definitions/enums";
-import { IAddress } from "@/definitions/types";
+import { IAddress, IBaseUser } from "@/definitions/types";
 import { formatDistance } from "@/helpers";
 import { useDataLoader } from "@/hooks";
 import { askForLocation, haversineDistanceInM } from "@/utils/location";
-import { Building, Crosshair, Landmark, MapPin, Navigation, Share2 } from "@tamagui/lucide-icons";
+import { Building, Compass, Crosshair, Landmark, MapPin, Navigation, Share2 } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
 import * as Location from "expo-location";
 import { useLocalSearchParams } from "expo-router";
 import { Linking } from "react-native";
-import { H4, Image, Text, View, XStack, YStack } from "tamagui";
+import { H4, H5, H6, Image, ScrollView, Text, View, XStack, YStack } from "tamagui";
+import { formatDateToLongString } from "@/utils/date.utils";
 
 export const MapPreviewCard = (location: IAddress) => {
   const [currentLocation, setCurrentLocation] = useState<Location.LocationObjectCoords | null>(null);
@@ -72,10 +79,12 @@ export const MapPreviewCard = (location: IAddress) => {
         justify="flex-start"
         width={"100%"}
       >
-        <MapPin
-          size={16}
-          color={"$color10"}
-        />
+        <CircleBgWrapper size={"$2"}>
+          <MapPin
+            size={16}
+            color={"$color10"}
+          />
+        </CircleBgWrapper>
         <Text
           fontSize={"$5"}
           numberOfLines={1}
@@ -161,12 +170,15 @@ export const MapPreviewCard = (location: IAddress) => {
             </Text>
           </XStack>
           <FilledButton
+            rounded={"$4"}
+            width={"min-content"}
             onPress={() => {
               Linking.openURL(
                 `https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}`
               );
             }}
             size={"small"}
+            icon={<Compass size={16} />}
           >
             Get Directions
           </FilledButton>
@@ -192,13 +204,19 @@ const EventDetails: React.FC = () => {
     }
   }
 
-  const createdBy = eventData?.event?.creator;
-  const isOrganized = eventData?.event?.type === EEventType.Organized;
+  const _event = eventData?.event;
+
+  const createdBy = _event?.creator;
+  const isOrganized = _event?.type === EEventType.Organized;
+  const tags = _event?.tags;
+  const participants = _event?.participants;
 
   return (
     <YStack
       p={"$4"}
       gap={"$4"}
+      height={"100%"}
+      overflow="hidden"
     >
       <BackButtonHeader
         title={eventData?.event?.name ?? "Event Details"}
@@ -219,16 +237,20 @@ const EventDetails: React.FC = () => {
           />
         </View>
       </BackButtonHeader>
-      <YStack
+      <ScrollView
         gap={"$4"}
         mt={"$4"}
         flex={1}
+        showsVerticalScrollIndicator={false}
+        width={"100%"}
+        $gtMd={{ items: "center" }}
       >
         {loading && <Loader />}
         {eventData && (
           <YStack
             gap={"$4"}
             flex={1}
+            $gtMd={{ maxW: 600 }}
           >
             <H4>{eventData.event.name}</H4>
             {createdBy && (
@@ -242,9 +264,68 @@ const EventDetails: React.FC = () => {
               </ProfileAvatarPreview>
             )}
             <MapPreviewCard {...eventData.event.location} />
+            <CardWrapper gap={"$2"}>
+              <H6>Tags</H6>
+              <TagListing tags={tags || []} />
+            </CardWrapper>
+
+            {!!participants?.length && (
+              <CardWrapper gap={"$2"}>
+                <XStack
+                  items={"center"}
+                  justify={"space-between"}
+                  gap={"$4"}
+                >
+                  <H6>Attendees</H6>
+                  {_event?.capacity && (
+                    <Badge outline-success={true}>
+                      <Text
+                        fontSize={"$2"}
+                        color={"$green11"}
+                      >
+                        {participants.length}/{_event.capacity}
+                      </Text>
+                    </Badge>
+                  )}
+                </XStack>
+                <UserCluster
+                  users={participants.map((p) => p.user as IBaseUser)}
+                  maxLimit={6}
+                />
+              </CardWrapper>
+            )}
+
+            {!!_event?.verifiers.length && (
+              <CardWrapper gap={"$2"}>
+                <H6>Verifiers</H6>
+                {_event.verifiers.map((_verifier) => {
+                  const { user, verifiedAt } = _verifier;
+                  return (
+                    <XStack
+                      gap={"$4"}
+                      justify={"space-between"}
+                    >
+                      <IdentityCard
+                        imageUrl={(user as IBaseUser).profilePic?.url || ""}
+                        title={(user as IBaseUser).name}
+                        subtitle={(user as IBaseUser).username ? `@${(user as IBaseUser).username}` : ""}
+                      />
+                      <Badge outline-success>
+                        <Text
+                          fontSize={"$2"}
+                          color={"$green11"}
+                        >
+                          Verified on {formatDateToLongString(verifiedAt)}
+                        </Text>
+                      </Badge>
+                    </XStack>
+                  );
+                })}
+              </CardWrapper>
+            )}
           </YStack>
         )}
-      </YStack>
+      </ScrollView>
     </YStack>
   );
 };

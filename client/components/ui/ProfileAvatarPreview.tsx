@@ -1,24 +1,21 @@
 import { IBaseUser } from "@/definitions/types";
 import React from "react";
-import { YStack, XStack, Text, Card, Separator } from "tamagui";
+import { YStack, XStack, Text, Card, Separator, Theme } from "tamagui";
 import CustomAvatar from "../CustomAvatar";
 import { OutlineButton } from "./Buttons";
 import { formatDateToLongString } from "@/utils/date.utils";
 import { useAuth } from "@/contexts/AuthContext";
 import CustomTooltip from "../CustomTooltip";
+import { CardWrapper } from "./common-styles";
 
 const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNode }) => {
   const { user: _authenticatedUser } = useAuth();
   const username = user.username ? `@${user.username}` : "";
 
   return (
-    <Card
-      elevate
-      bordered
-      bg="$background"
-      width={250}
-      alignSelf="center"
-      rounded={"$6"}
+    <CardWrapper
+      width={300}
+      p={0}
     >
       <XStack
         gap="$3"
@@ -72,7 +69,7 @@ const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNo
         </>
       )}
       {user.id === _authenticatedUser?.id && <OutlineButton size={"medium"}>Edit Profile</OutlineButton>}
-    </Card>
+    </CardWrapper>
   );
 };
 
@@ -87,7 +84,9 @@ const ProfileAvatarPreview = ({ user, children }: { user: IBaseUser; children: R
         unstyled: true
       }}
     >
-      <Preview user={user} />
+      <Theme name={"dark"}>
+        <Preview user={user} />
+      </Theme>
     </CustomTooltip>
   );
 };

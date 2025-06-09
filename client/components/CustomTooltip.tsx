@@ -1,5 +1,5 @@
 import React from "react";
-import { PopoverContentTypeProps, Tooltip, TooltipProps } from "tamagui";
+import { PopoverContentTypeProps, Theme, Tooltip, TooltipProps } from "tamagui";
 
 const CustomTooltip = ({
   children,
@@ -14,12 +14,17 @@ const CustomTooltip = ({
 }) => {
   return (
     <Tooltip
-      placement="top"
       offset={10}
+      unstyled
       {...tooltipConfig}
     >
       <Tooltip.Trigger>{trigger}</Tooltip.Trigger>
-      <Tooltip.Content {...tooltipContentConfig}>{children}</Tooltip.Content>
+      <Tooltip.Content
+        unstyled
+        {...tooltipContentConfig}
+      >
+        <Theme name={"dark"}>{children}</Theme>
+      </Tooltip.Content>
     </Tooltip>
   );
 };

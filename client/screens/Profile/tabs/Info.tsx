@@ -3,7 +3,7 @@ import CustomTooltip from "@/components/CustomTooltip";
 import { InputGroup } from "@/components/Form";
 import LocationInput from "@/components/LocationInput";
 import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
-import { TagPreviewTooltip } from "@/components/ui/common-components";
+import { TagListing, TagPreviewTooltip } from "@/components/ui/common-components";
 import { Badge, CardWrapper } from "@/components/ui/common-styles";
 import Loader from "@/components/ui/Loader";
 import UsernameInput from "@/components/UsernameInput";
@@ -148,28 +148,7 @@ const Interests = () => {
             />
           )}
         </XStack>
-        {loading ? (
-          <Loader />
-        ) : (
-          <XStack
-            flexWrap="wrap"
-            gap={"$2"}
-          >
-            {data?.map((interest: ITag) => (
-              <CustomTooltip
-                trigger={
-                  <Badge>
-                    <InterestBadge name={interest.name} />
-                  </Badge>
-                }
-                key={interest.id}
-                tooltipConfig={{ placement: "top", delay: 0, unstyled: false }}
-              >
-                <TagPreviewTooltip tag={interest} />
-              </CustomTooltip>
-            ))}
-          </XStack>
-        )}
+        {loading ? <Loader /> : <TagListing tags={data} />}
       </CardWrapper>
 
       <RenderContent>

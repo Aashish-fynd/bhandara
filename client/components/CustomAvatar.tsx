@@ -16,28 +16,30 @@ const CustomAvatar = ({
 }) => {
   const extraStyles = bordered
     ? {
-        width: (size as any) + 5,
-        height: (size as any) + 5,
         borderColor: "$color11",
         borderWidth: "$0.5",
         p: "$1"
       }
     : {};
+
+  const _size = bordered ? (size as any) - 5 : size;
   return (
     <View
       rounded={"$12"}
       items={"center"}
       justify={"center"}
+      width={size}
+      height={size}
       {...(extraStyles as any)}
     >
       <Avatar
         circular
-        size={size as any}
+        size={_size as any}
         group={true}
       >
         <Avatar.Image
-          height={size as any}
-          width={size as any}
+          height={_size}
+          width={_size}
           accessibilityLabel={alt}
           src={src}
           $group-hover={{
@@ -51,7 +53,7 @@ const CustomAvatar = ({
           items={"center"}
         >
           <Text
-            fontSize={"$3"}
+            fontSize={(_size as number) * 0.4}
             color={"$color12"}
           >
             {fallbackGenerator ? fallbackGenerator(alt) : alt.charAt(0)}

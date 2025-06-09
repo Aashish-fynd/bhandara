@@ -158,6 +158,8 @@ class EventService extends Base<IEvent> {
     eventData.tags = resolvedData.tags?.data || [];
     eventData.media = resolvedData.media?.data || [];
     eventData.creator = resolvedData.creator?.data || null;
+    eventData.participants = resolvedData.participants || [];
+    eventData.verifiers = resolvedData.verifiers || [];
 
     // Construct the final response
     return {
