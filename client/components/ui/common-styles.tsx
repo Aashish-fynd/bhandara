@@ -87,6 +87,7 @@ export const CardWrapper = styled(Card, {
   overflow: "hidden",
   p: "$4",
   width: "100%",
+  gap: "$2",
 
   variants: {
     size: {

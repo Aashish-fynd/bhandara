@@ -5,6 +5,7 @@ import React, { Fragment, useEffect, useRef, useState } from "react";
 import { Text, View, XStack, XStackProps } from "tamagui";
 import { ChevronRight } from "@tamagui/lucide-icons";
 import Loader from "@/components/ui/Loader";
+import { useToastController } from "@tamagui/toast";
 
 const TagButton = ({
   tag,
@@ -68,10 +69,24 @@ const InterestSelection = ({
   maxH?: XStackProps["maxH"];
   preSelectedInterests?: ITag[];
 }) => {
-  const { loading } = useDataLoader(getAllTags, (data) => {
-    setTags(data?.data || []);
+  const toastController = useToastController();
+
+  const {
+    loading,
+    data: tags,
+    setData: setTags
+  } = useDataLoader({
+    promiseFunction: _getAllTags
   });
-  const [tags, setTags] = useState<ITag[]>([]);
+
+  async function _getAllTags() {
+    try {
+      const resp = await getAllTags();
+      return resp.data;
+    } catch (error: any) {
+      toastController.show(error?.message || "Failed to fetch tags");
+    }
+  }
   const [loadingSubTagOf, setLoadingSubTagOf] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<ITag[]>([]);
   const [expandedTagIds, setExpandedTagIds] = useState<string[]>([]);
@@ -94,7 +109,7 @@ const InterestSelection = ({
         const { data: subTags, error: subTagsError } = await getSubTags(tag.id);
 
         if (subTags && !subTagsError) {
-          setTags((prev) => prev.map((t) => (t.id === tag.id ? { ...t, subTags } : t)));
+          setTags((prev) => (prev || []).map((t) => (t.id === tag.id ? { ...t, subTags } : t)));
           subTagsLoadedParentIds.current.add(tag.id);
         }
         setLoadingSubTagOf(null);
