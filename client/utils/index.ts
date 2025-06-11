@@ -133,3 +133,5 @@ export const base64ToBlob = (base64DataUri: string): Blob => {
   const byteArray = Buffer.from(base64, "base64"); // No deprecated atob
   return new Blob([byteArray], { type: contentType });
 };
+
+export * from "./compression";
