@@ -1,21 +1,23 @@
 import { Platform } from "react-native";
 import axiosClient from "./base";
-import { base64ToBlob, uriToBlob } from "@/utils";
+import { base64ToBlob, uriToBlob, compressFile } from "@/utils";
 import axios from "axios";
 
 export const getSignedUrlForUpload = async (body: Record<string, any>) => {
-  const { file: fileUri, ...rest } = body;
+  const { file: fileUri, mimeType, ...rest } = body;
   const response = await axiosClient.post("/media/get-signed-upload-url", rest);
   const { data, error } = response.data;
 
   const { row, signedUrl } = data;
 
+  const compressed = await compressFile(fileUri, { mimeType });
+
   const isWebPlatform = Platform.OS === "web";
   let file: Blob | null = null;
   if (isWebPlatform) {
-    file = base64ToBlob(body.file);
+    file = compressed.blob ?? base64ToBlob(compressed.uri);
   } else {
-    file = await uriToBlob(body.file);
+    file = await uriToBlob(compressed.uri);
   }
 
   const uploadResponse = await axios.put(signedUrl, file, {
