@@ -44,15 +44,30 @@ const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNo
       >
         <YStack gap="$2">
           <Text fontSize={"$3"}>Email</Text>
-          <Text fontSize={"$3"}>{user.email}</Text>
+          <Text
+            fontSize={"$3"}
+            color={"$color11"}
+          >
+            {user.email}
+          </Text>
         </YStack>
         <YStack gap="$2">
           <Text fontSize={"$3"}>Joined on</Text>
-          <Text fontSize={"$3"}>{formatDateToLongString(user.createdAt)}</Text>
+          <Text
+            fontSize={"$3"}
+            color={"$color11"}
+          >
+            {formatDateToLongString(user.createdAt)}
+          </Text>
         </YStack>
         {user?.bio && (
           <YStack gap="$2">
-            <Text fontSize={"$3"}>Bio</Text>
+            <Text
+              fontSize={"$3"}
+              color={"$color11"}
+            >
+              Bio
+            </Text>
             <Text fontSize={"$3"}>{user.bio}</Text>
           </YStack>
         )}
@@ -62,7 +77,7 @@ const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNo
           <Separator />
           <YStack
             p="$5"
-            gap="$4"
+            gap="$2"
           >
             {children}
           </YStack>
@@ -73,7 +88,15 @@ const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNo
   );
 };
 
-const ProfileAvatarPreview = ({ user, children }: { user: IBaseUser; children: React.ReactNode }) => {
+const ProfileAvatarPreview = ({
+  user,
+  children,
+  extraMeta
+}: {
+  user: IBaseUser;
+  children: React.ReactNode;
+  extraMeta?: React.ReactNode;
+}) => {
   return (
     <CustomTooltip
       trigger={children}
@@ -85,7 +108,7 @@ const ProfileAvatarPreview = ({ user, children }: { user: IBaseUser; children: R
       }}
     >
       <Theme name={"dark"}>
-        <Preview user={user} />
+        <Preview user={user}>{extraMeta}</Preview>
       </Theme>
     </CustomTooltip>
   );

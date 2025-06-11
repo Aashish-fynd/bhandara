@@ -30,6 +30,7 @@ const CustomAvatar = ({
       justify={"center"}
       width={size}
       height={size}
+      z={10}
       {...(extraStyles as any)}
     >
       <Avatar

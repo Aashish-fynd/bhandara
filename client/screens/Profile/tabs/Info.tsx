@@ -119,7 +119,7 @@ const Interests = () => {
   const toastController = useToastController();
   const { close, open, RenderContent } = useDialog();
 
-  const { data, loading, setData } = useDataLoader(asyncGetUserInterests);
+  const { data, loading, setData } = useDataLoader({ promiseFunction: asyncGetUserInterests });
 
   async function asyncGetUserInterests() {
     try {

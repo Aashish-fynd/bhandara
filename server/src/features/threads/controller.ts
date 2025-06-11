@@ -2,9 +2,12 @@ import { ICustomRequest, IRequestPagination } from "@definitions/types";
 import { Response } from "express";
 import ThreadsService from "./service";
 import { NotFoundError } from "@exceptions";
-import { isEmpty, pick } from "@utils";
+import { isEmpty } from "@utils";
+import MessageService from "@features/messages/service";
+import { EQueryOperator, EThreadType } from "@definitions/enums";
 
 const threadsService = new ThreadsService();
+const messageService = new MessageService();
 
 export const getThreads = async (
   req: ICustomRequest & IRequestPagination,
@@ -22,16 +25,35 @@ export const createThread = async (req: ICustomRequest, res: Response) => {
 export const getThread = async (req: ICustomRequest, res: Response) => {
   const { threadId } = req.params;
   const { includeMessages } = req.query;
-  const thread = await threadsService.getById(
-    threadId,
-    includeMessages === "true"
-  );
+  const threadData = await threadsService.getById(threadId);
 
-  if (isEmpty(thread.data)) {
+  const thread = threadData.data;
+  if (isEmpty(thread)) {
     throw new NotFoundError("Thread not found");
   }
 
-  return res.status(200).json(thread);
+  // parse into boolean or number to get the number of messages to include, default 1 if `includeMessages` is boolean
+  const parsedIncludeMessages =
+    includeMessages === "true"
+      ? 1
+      : includeMessages === "false"
+      ? 0
+      : parseInt(includeMessages as string, 10) || 1;
+
+  if (parsedIncludeMessages) {
+    const messages = await messageService.getAll(
+      {
+        query: [
+          { column: "threadId", operator: EQueryOperator.Eq, value: threadId },
+        ],
+      },
+      { limit: parsedIncludeMessages }
+    );
+
+    threadData.data.messages = messages.data.items;
+  }
+
+  return res.status(200).json({ data: thread, error: null });
 };
 
 export const updateThread = async (req: ICustomRequest, res: Response) => {

@@ -10,10 +10,7 @@ import { Badge, CardWrapper } from "./common-styles";
 
 export const TagPreviewTooltip = ({ tag }: { tag: ITag }) => {
   return (
-    <CardWrapper
-      gap={"$2"}
-      size={"small"}
-    >
+    <CardWrapper size={"small"}>
       <Text fontSize={"$3"}>
         {tag.icon} {tag.name}
       </Text>
@@ -162,10 +159,12 @@ export const IdentityCard = ({
 export const BackButtonHeader = ({
   title,
   navigateTo,
+  arrowCb,
   children
 }: {
   title: string;
-  navigateTo: any;
+  navigateTo?: any;
+  arrowCb?: () => null | void;
   children?: React.ReactNode;
 }) => {
   const router = useRouter();
@@ -198,7 +197,8 @@ export const BackButtonHeader = ({
           color={"$accent1"}
           cursor={"pointer"}
           onPress={() => {
-            router.navigate(navigateTo);
+            if (navigateTo) router.navigate(navigateTo);
+            if (arrowCb) arrowCb?.();
           }}
         />
       </View>

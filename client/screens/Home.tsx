@@ -247,7 +247,7 @@ const HomeScreen = () => {
     }
   };
 
-  const { data: paginatedEvents, loading, error } = useDataLoader(fetchEvents);
+  const { data: paginatedEvents, loading, error } = useDataLoader({ promiseFunction: fetchEvents });
 
   return (
     <ScrollView mx={"auto"}>

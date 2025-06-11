@@ -3,7 +3,7 @@ import { kebabCase } from "@/utils";
 import { Calendar, LogOut, Settings } from "@tamagui/lucide-icons";
 import { User } from "@tamagui/lucide-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { Fragment } from "react";
 import { Popover, Separator, Text, XStack, YStack } from "tamagui";
 import { PopoverContent } from "../ui/common-styles";
 import ConfirmationDialog from "../ConfirmationDialog";
@@ -84,7 +84,7 @@ const UserProfilePopover = ({}) => {
       >
         <YStack gap="$3">
           {groups.map((group, index) => (
-            <>
+            <Fragment key={group.label + index}>
               <YStack
                 key={group.label}
                 gap={"$3"}
@@ -113,7 +113,7 @@ const UserProfilePopover = ({}) => {
                 ))}
               </YStack>
               {index !== groups.length - 1 && <Separator />}
-            </>
+            </Fragment>
           ))}
         </YStack>
       </PopoverContent>

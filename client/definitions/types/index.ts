@@ -49,6 +49,8 @@ export interface IMessage extends ITimeStamp {
   content: IMessageContent;
   isEdited: boolean;
   threadId: string;
+  children: IMessage[] | undefined;
+  user?: IBaseUser;
 }
 
 // Thread Lock History
@@ -58,25 +60,15 @@ interface ILockHistory {
 }
 
 // Base Thread Interface
-interface IBaseThread extends ITimeStamp {
+export interface IBaseThread extends ITimeStamp {
   id: string;
   type: EThreadType;
   status: EAccessLevel;
   visibility: EAccessLevel;
   lockHistory: ILockHistory[];
   eventId: string;
-}
-
-// Discussion Thread Interface
-export interface IDiscussionThread extends IBaseThread {
-  type: EThreadType.Discussion;
-  messages: IMessage[];
-}
-
-// Q&A Thread Interface
-export interface IQnAThread extends IBaseThread {
-  type: EThreadType.QnA;
-  qaPairs: { question: IMessage; answers: IMessage[] }[];
+  messages?: IMessage[];
+  user?: IBaseUser;
 }
 
 // Event Participant Interface

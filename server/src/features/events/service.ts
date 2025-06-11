@@ -1,10 +1,4 @@
-import {
-  IBaseUser,
-  IDiscussionThread,
-  IEvent,
-  IPaginationParams,
-  IQnAThread,
-} from "@/definitions/types";
+import { IBaseUser, IEvent, IPaginationParams } from "@/definitions/types";
 import ThreadsService from "../threads/service";
 import MessageService from "../messages/service";
 import Base, { BaseQueryArgs } from "../Base";
@@ -56,11 +50,14 @@ class EventService extends Base<IEvent> {
   }
 
   async getEventData(id: string): Promise<{
-    data?: {
-      event: IEvent;
-      qnaThread?: IQnAThread & { messages: any[] };
-      discussionThread?: IDiscussionThread & { messages: any[] };
-    } | null;
+    data?:
+      | (IEvent & {
+          threads: {
+            qna: string;
+            discussion: string;
+          };
+        })
+      | null;
     error: any;
   }> {
     // Fetch the event data
@@ -96,37 +93,6 @@ class EventService extends Base<IEvent> {
 
     // Create promises for fetching related data
     const promises: Record<string, Promise<any>> = {};
-
-    // there will always be only one qna thread and one discussion thread
-    if (!isEmpty(qnaThread)) {
-      promises.qnaMessages = this.messageService.getAll(
-        {
-          query: [
-            {
-              value: qnaThread[0].id || "",
-              operator: EQueryOperator.Eq,
-              column: "threadId",
-            },
-          ],
-        },
-        { limit: 1 }
-      );
-    }
-
-    if (!isEmpty(discussionThread)) {
-      promises.discussionMessages = this.messageService.getAll(
-        {
-          query: [
-            {
-              value: discussionThread.id,
-              operator: EQueryOperator.Eq,
-              column: "threadId",
-            },
-          ],
-        },
-        { limit: 1 }
-      );
-    }
 
     promises.tags = this.tagService.getAllEventTags(id);
     promises.media = this.mediaService.getEventMedia(id);
@@ -164,14 +130,10 @@ class EventService extends Base<IEvent> {
     // Construct the final response
     return {
       data: {
-        event: eventData,
-        qnaThread: {
-          ...qnaThread,
-          messages: resolvedData.qnaMessages?.data || [],
-        },
-        discussionThread: {
-          ...discussionThread,
-          messages: resolvedData.discussionMessages?.data || [],
+        ...eventData,
+        threads: {
+          qna: qnaThread?.id,
+          discussion: discussionThread?.id,
         },
       },
       error: null,

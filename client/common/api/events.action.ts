@@ -1,4 +1,4 @@
-import { IDiscussionThread, IEvent, IPaginationParams, IQnAThread } from "@/definitions/types";
+import { IEvent, IPaginationParams } from "@/definitions/types";
 import axiosClient from "./base";
 
 export const getAllEvents = async (): Promise<{
@@ -12,7 +12,7 @@ export const getAllEvents = async (): Promise<{
 export const getEventById = async (
   id: string
 ): Promise<{
-  data: { event: IEvent; discussionThread: IDiscussionThread[]; qnaThread: IQnAThread[] };
+  data: IEvent & { threads: { qna: string; discussion: string } };
   error: any;
 }> => {
   const response = await axiosClient.get(`/events/${id}`);

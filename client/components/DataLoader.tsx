@@ -15,7 +15,7 @@ const DataLoader = ({
   children: React.ReactNode;
   size?: "small" | "large";
 }) => {
-  const { loading } = useDataLoader(promiseFunc, onSuccess, onError);
+  const { loading } = useDataLoader({ promiseFunction: promiseFunc, onSuccess, onError });
 
   if (loading) {
     return (

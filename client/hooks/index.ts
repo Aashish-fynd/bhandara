@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 
-export const useDataLoader = <T>(
-  promiseFunction: () => Promise<T>,
-  onSuccess?: (data: T) => void,
-  onError?: (error: Error) => void
-) => {
+type UseDataLoaderProps<T> = {
+  promiseFunction: () => Promise<T>;
+  onSuccess?: (data: T) => void;
+  onError?: (error: Error) => void;
+  enabled?: boolean;
+};
+
+export const useDataLoader = <T>({ promiseFunction, onSuccess, onError, enabled = true }: UseDataLoaderProps<T>) => {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     setLoading(true);
     promiseFunction()
       .then((data) => {
@@ -21,7 +25,7 @@ export const useDataLoader = <T>(
         onError?.(error);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [enabled]);
 
   return { data, loading, error, setData };
 };
