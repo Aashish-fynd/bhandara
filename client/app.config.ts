@@ -36,7 +36,8 @@ const config: ExpoConfig = {
         locationAlwaysAndWhenInUsePermission: "Allow $(PRODUCT_NAME) to use your location.",
         isAndroidBackgroundLocationEnabled: true
       }
-    ]
+    ],
+    "react-native-compressor",
   ],
   android: {
     adaptiveIcon: {
