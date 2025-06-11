@@ -85,6 +85,20 @@ export const InputField = styled(StyledInput, {
   focusWithinStyle: null
 });
 
+export const TextareaField = styled(InputField, {
+  name: "TextareaField",
+  rounded: 0,
+  borderWidth: 0,
+  borderColor: "transparent",
+  display: "flex",
+  flex: 1,
+  focusVisibleStyle: { outline: "none", outlineColor: "transparent", outlineWidth: 0 },
+  outline: "none",
+  px: 0,
+  focusStyle: null,
+  focusWithinStyle: null
+});
+
 export const InputGroup = ({
   control,
   rules,

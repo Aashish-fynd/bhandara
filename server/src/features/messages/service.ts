@@ -126,7 +126,9 @@ class MessageService extends Base<IMessage> {
           "user"
         );
 
-      return { data: userPopulatedMessages };
+      return {
+        data: { items: userPopulatedMessages, pagination: data.pagination },
+      };
     }
 
     return { data };

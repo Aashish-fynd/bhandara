@@ -34,6 +34,7 @@ import { omit, startCase } from "@/utils";
 import { format } from "date-fns";
 import CustomAvatar from "@/components/CustomAvatar";
 import { getChildMessagesForThread, getMessageById, getMessagesForThread } from "@/common/api/messages.action";
+import MessageInputBar from "@/components/MessageInputBar";
 
 interface ThreadCardProps {
   thread: { id: string };
@@ -44,7 +45,8 @@ interface ThreadCardProps {
 export function MessageCard({ thread, message, handleClick }: ThreadCardProps) {
   const userProfileUrl = message?.user?.profilePic?.url || "";
   const userName = message?.user?.name || "";
-  const childMessages = message?.children;
+  const childMessages = message?.children?.items;
+  const totalChildMessages = message?.children?.pagination?.total || 0;
 
   const childMessagesUser = (childMessages || []).map((ch) => ch.user).filter((i) => !!i);
 
@@ -53,7 +55,7 @@ export function MessageCard({ thread, message, handleClick }: ThreadCardProps) {
 
   const lineRef = useRef<TamaguiElement>(null);
 
-  const remainingUserReplies = childMessagesUser.length - maxRepliesUserToShow;
+  const remainingUserReplies = totalChildMessages - userForCluster.length;
 
   return (
     <XStack
@@ -412,7 +414,7 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
   }
 
   const getFormattedData = (data: any) => {
-    if (currentView === ViewTypes.ChildMessages) return data || [];
+    if (currentView === ViewTypes.ChildMessages) return data?.items || [];
     if (currentView == ViewTypes.Message) return data;
     if (currentView === ViewTypes.Thread) return data?.items || [];
   };
@@ -427,7 +429,6 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
       width={"100%"}
       flex={1}
       style={style}
-      p={"$4"}
     >
       <BackButtonHeader
         title={headers[currentView]}
@@ -684,30 +685,34 @@ const EventDetails: React.FC = () => {
         <Sheet.Handle bg={"$color4"} />
         <Sheet.Frame
           p="$4"
-          py={"$6"}
           justify="flex-start"
           items="center"
-          gap="$5"
+          gap="$2"
           bg={"$accent12"}
           mx={"auto"}
         >
-          {sheetStack.map((sheetData, index) => (
-            <MessageView
-              key={`${sheetData.threadId}-${sheetData.parentId}-${sheetData.messageId}-${index}`}
-              {...sheetData}
-              onBack={handleSheetBack}
-              handleClick={handleClick}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: index,
-                display: index === sheetStack.length - 1 ? "flex" : "none"
-              }}
-            />
-          ))}
+          <View
+            position="relative"
+            width={"100%"}
+            flex={1}
+          >
+            {sheetStack.map((sheetData, index) => (
+              <MessageView
+                key={`${sheetData.threadId}-${sheetData.parentId}-${sheetData.messageId}-${index}`}
+                {...sheetData}
+                onBack={handleSheetBack}
+                handleClick={handleClick}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  zIndex: index,
+                  display: index === sheetStack.length - 1 ? "flex" : "none"
+                }}
+              />
+            ))}
+          </View>
+
+          <MessageInputBar />
         </Sheet.Frame>
       </Sheet>
     </>
