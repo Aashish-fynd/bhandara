@@ -26,21 +26,22 @@ export async function compressFile(uri: string, options: CompressOptions = {}): 
       });
       return { uri: URL.createObjectURL(compressed), blob: compressed };
     } else {
-      const ImageManipulator = await import("expo-image-manipulator");
-      const result = await ImageManipulator.manipulateAsync(uri, [], { compress: 0.7 });
-      return { uri: result.uri };
+      const { Image } = await import("react-native-compressor" as any);
+      const compressedUri: string = await Image.compress(uri, { compressionMethod: "auto" });
+      return { uri: compressedUri };
     }
   }
 
   if (isVideo) {
+    if (Platform.OS === "web") {
+      const blob = await fetch(uri).then((r) => r.blob());
+      return { uri, blob };
+    }
+
     const { Video } = await import("react-native-compressor" as any);
     const compressedUri: string = await Video.compress(uri, {
       compressionMethod: "auto"
     });
-    if (Platform.OS === "web") {
-      const blob = await fetch(compressedUri).then((r) => r.blob());
-      return { uri: compressedUri, blob };
-    }
     return { uri: compressedUri };
   }
 
