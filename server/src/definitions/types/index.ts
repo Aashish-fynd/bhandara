@@ -159,6 +159,7 @@ export interface IPaginationParams {
   page: number;
   next: string | null;
   hasNext?: boolean;
+  total?: number;
   sortBy: "createdAt" | "updatedAt";
   sortOrder: "asc" | "desc";
   startDate?: Date;

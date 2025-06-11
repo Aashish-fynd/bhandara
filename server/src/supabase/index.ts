@@ -61,6 +61,7 @@ class SupabaseService {
     query,
     select = "*",
     modifyQuery,
+    count,
   }: {
     table: string;
     query?: QueryFilter[];
@@ -68,10 +69,18 @@ class SupabaseService {
     modifyQuery?: (
       qb: PostgrestFilterBuilder<any, T, T[]>
     ) => PostgrestFilterBuilder<any, T, T[]> | PostgrestBuilder<T | T[] | null>;
-  }): Promise<{ data: T | T[] | null; error: PostgrestError | null }> {
+    count?: "exact" | "planned" | "estimated";
+  }): Promise<{
+    data: T | T[] | null;
+    error: PostgrestError | null;
+    count: number | null;
+  }> {
     let queryBuilder = this.supabaseClient
       .from(table)
-      .select(select) as PostgrestFilterBuilder<any, T, T[]>;
+      .select(select, count ? { count } : undefined) as PostgrestFilterBuilder<
+      any,
+      T,
+      T[]>;
 
     if (query && query.length > 0) {
       query.forEach((filter) => {

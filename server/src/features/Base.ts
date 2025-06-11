@@ -28,7 +28,9 @@ class Base<T extends Record<string, any>> {
   ): Promise<{
     data?: {
       items: T[];
-      pagination: Omit<IPaginationParams, "sortBy" | "sortOrder">;
+      pagination: Omit<IPaginationParams, "sortBy" | "sortOrder"> & {
+        total: number;
+      };
     };
     error: any;
   }> {
@@ -43,7 +45,7 @@ class Base<T extends Record<string, any>> {
 
     const from = (_pagination.page - 1) * _pagination.limit;
 
-    const { data, error } = await this._supabaseService.querySupabase<T>({
+    const { data, error, count } = await this._supabaseService.querySupabase<T>({
       table: this.tableName,
       modifyQuery: (qb: any) => {
         if (_pagination?.sortOrder && _pagination?.sortBy) {
@@ -73,6 +75,7 @@ class Base<T extends Record<string, any>> {
         return qb;
       },
       ...args,
+      count: "exact",
     });
 
     if (error) throw new Error(error.message);
@@ -85,6 +88,7 @@ class Base<T extends Record<string, any>> {
           ? (data as T[])[_pagination.limit - 1]?.createdAt
           : null,
       hasNext: data?.length > _pagination.limit,
+      total: count || 0,
     };
 
     if (_pagination.next) {
