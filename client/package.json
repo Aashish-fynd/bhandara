@@ -68,6 +68,8 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
+    "browser-image-compression": "^2.0.1",
+    "react-native-compressor": "^1.5.4",
     "tamagui": "^1.125.33",
     "uuid": "^11.1.0",
     "zustand": "^5.0.5"
