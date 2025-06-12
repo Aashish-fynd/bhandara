@@ -80,7 +80,8 @@ class SupabaseService {
       .select(select, count ? { count } : undefined) as PostgrestFilterBuilder<
       any,
       T,
-      T[]>;
+      T[]
+    >;
 
     if (query && query.length > 0) {
       query.forEach((filter) => {
@@ -412,10 +413,14 @@ class SupabaseService {
       // Commit transaction
       await this.supabaseClient.rpc("commit");
 
-      return { data: result, error: null };
+      return result as {
+        data: T | null;
+        error: PostgrestError | null;
+      };
     } catch (error) {
       // Rollback transaction on error
-      await this.supabaseClient.rpc("rollback");
+      const res = await this.supabaseClient.rpc("rollback");
+      console.log("res", res);
       throwSupabaseError(error);
     }
   }

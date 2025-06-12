@@ -40,6 +40,10 @@ class MediaService extends Base<IMedia> {
     super(MEDIA_TABLE_NAME);
   }
 
+  async _getByIdNoCache(id: string) {
+    return super.getById(id);
+  }
+
   @MethodCacheSync<IMedia>()
   async getEventMedia(eventId: string, limit: number | null = null) {
     const { data: eventMedia, error: eventMediaError } =
@@ -310,21 +314,25 @@ class MediaService extends Base<IMedia> {
     };
   }
 
-  @MethodCacheSync<IMedia>({
-    cacheDeleter: (id: string, existingData: IMedia) =>
-      Promise.all([
-        deleteMediaCache(id),
-        deleteMediaPublicUrlCache(get32BitMD5Hash(existingData.url)),
-      ]),
-  })
+  @MethodCacheSync<IMedia>({})
   async delete(id: string) {
-    const res = await super.delete(id);
-    const deletionResult = await this.deleteFile(
-      res.data.storage.bucket,
-      res.data.url
-    );
-    logger.debug(`Deleted media ${id}`, { deletionResult });
-    return res;
+    return this._supabaseService.transaction(async (client) => {
+      const { data, error } = await client
+        .from(MEDIA_TABLE_NAME)
+        .delete()
+        .match({ id })
+        .select()
+        .maybeSingle();
+
+      throw new Error("testing");
+
+      const deletionResult = await this.deleteFile(
+        data.storage.bucket,
+        data.url
+      );
+      logger.debug(`Deleted media ${id}`, { deletionResult });
+      return { data, error };
+    }) as any;
   }
 
   async getMediaByIds(ids: string[]): Promise<{

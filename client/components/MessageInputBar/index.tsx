@@ -2,24 +2,30 @@ import React, { useState, useRef, useEffect } from "react";
 import { CardWrapper } from "../ui/common-styles";
 import { XStack, YStack, Text, useIsomorphicLayoutEffect } from "tamagui";
 import { Plus, SendHorizontal, X } from "@tamagui/lucide-icons";
-import { FilledButton } from "../ui/Buttons";
+import { FilledButton, OutlineButton } from "../ui/Buttons";
 import { InputField, TextareaField } from "../Form";
 import { NativeSyntheticEvent, TextInputChangeEventData, Platform } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { PopoverWrapper } from "../PopoverWrapper";
 import AddPopoverContents from "./AddPopoverContents";
+import { deleteMedia, IPickerAsset } from "@/common/api/media.action";
+import AssetPreview from "./AssetPreview";
+import { IMedia } from "@/definitions/types";
 
-interface AttachedFile {
-  name: string;
-  type: string;
-  size: number;
-  data: File | string; // File for web, base64 string for native
-  uri?: string; // For displaying images in native
+interface IProps {
+  context: Record<string, any>;
 }
 
-const MessageInputBar = () => {
+export interface IAttachedFile extends IPickerAsset {
+  error?: string;
+  uploadPercentage?: number;
+  retryCallback?: () => void;
+  uploadResult?: IMedia;
+}
+
+const MessageInputBar = ({ context }: IProps) => {
   const [message, setMessage] = useState("");
-  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<IAttachedFile[]>([]);
   const textAreaRef = useRef<any>(null);
 
   const actions = [
@@ -50,7 +56,7 @@ const MessageInputBar = () => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
-    const fileItems: AttachedFile[] = [];
+    const fileItems: IAttachedFile[] = [];
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -127,9 +133,12 @@ const MessageInputBar = () => {
     }
   }, []);
 
-  const removeAttachedFile = (index: number) => {
+  const removeAttachedFile = async (index: number) => {
+    await deleteMedia(attachedFiles[index].name);
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
+
+  console.log("attachedFiles", attachedFiles);
 
   return (
     <CardWrapper
@@ -137,42 +146,40 @@ const MessageInputBar = () => {
       rounded={"$3"}
     >
       {attachedFiles.length > 0 && (
-        <YStack
+        <XStack
           gap={"$2"}
-          mb={"$2"}
+          flexWrap="wrap"
         >
-          <XStack
-            gap={"$2"}
-            flexWrap="wrap"
-          >
-            {attachedFiles.map((file, index) => (
-              <XStack
-                key={`${file.name}-${index}`}
-                bg={"$color4"}
-                px={"$2"}
-                py={"$1"}
-                rounded={"$2"}
-                gap={"$1"}
-                items="center"
-              >
-                <Text
-                  fontSize={12}
-                  numberOfLines={1}
-                  style={{ maxWidth: 150 }}
-                >
-                  {file.name}
-                </Text>
-                <FilledButton
-                  icon={<X size={12} />}
-                  size={"$1"}
-                  height={18}
-                  width={18}
-                  onPress={() => removeAttachedFile(index)}
-                />
-              </XStack>
-            ))}
-          </XStack>
-        </YStack>
+          {attachedFiles.map((file, index) => (
+            <XStack
+              key={`${file.name}-${index}`}
+              position="relative"
+              group
+              cursor="pointer"
+              height={50}
+              width={50}
+            >
+              <AssetPreview
+                type={file.type as "image" | "video"}
+                file={file.uri}
+              />
+              <OutlineButton
+                position="absolute"
+                t={2}
+                r={2}
+                icon={<X size={12} />}
+                height={18}
+                p={"$1"}
+                width={18}
+                display="none"
+                onPress={() => removeAttachedFile(index)}
+                $group-hover={{
+                  display: "flex"
+                }}
+              />
+            </XStack>
+          ))}
+        </XStack>
       )}
       <TextareaField
         onChangeText={handleMessageChange}
@@ -201,7 +208,11 @@ const MessageInputBar = () => {
             />
           }
         >
-          <AddPopoverContents />
+          <AddPopoverContents
+            eventId={context?.eventId || ""}
+            setAttachedFiles={setAttachedFiles}
+            attachedFiles={attachedFiles}
+          />
         </PopoverWrapper>
         <FilledButton
           icon={<SendHorizontal size={16} />}

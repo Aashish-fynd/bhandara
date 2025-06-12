@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import path, { dirname } from "path";
+import { DB_CONNECTION_NAMES } from "@constants";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -52,6 +53,12 @@ const config = {
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID || "",
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+  },
+  db: {
+    [DB_CONNECTION_NAMES.Default]: process.env.DATABASE_URL || "",
+  },
+  infrastructure: {
+    appName: "bhandara",
   },
 };
 

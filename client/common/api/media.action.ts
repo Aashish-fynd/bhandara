@@ -4,55 +4,32 @@ import { base64ToBlob, uriToBlob, compressFile } from "@/utils";
 import { MEDIA_BUCKET_CONFIG } from "@/constants/media";
 import axios from "axios";
 
-export const getSignedUrlForUpload = async (body: Record<string, any>) => {
-  const { file: fileUri, mimeType, ...rest } = body;
-  const compressed = await compressFile(fileUri, { mimeType });
-
-  const response = await axiosClient.post("/media/get-signed-upload-url", { ...rest, mimeType });
-  const { data, error } = response.data;
-
-  const { row, signedUrl } = data;
-
-  const isWebPlatform = Platform.OS === "web";
-  let file: Blob | null = null;
-  if (isWebPlatform) {
-    file = compressed.blob ?? base64ToBlob(compressed.uri);
-  } else {
-    file = await uriToBlob(compressed.uri);
-  }
-
-  const uploadResponse = await axios.put(signedUrl, file, {
-    headers: {
-      "Content-Type": file.type
-    }
-  });
-
-  if (uploadResponse.status !== 200) {
-    throw new Error("Failed to upload file");
-  }
-
-  return row;
-};
-
-export interface PickerAsset {
+export interface IPickerAsset {
   uri: string;
-  mimeType?: string | null;
-  fileName: string;
-  fileSize: number;
-  type?: string;
+  mimeType: string | null;
+  size: number;
+  type: string;
+  name: string;
 }
 
 export const uploadPickerAsset = async (
-  asset: PickerAsset,
-  options: { bucket: string; compressionPercentage: number } & Record<string, any>
+  asset: IPickerAsset,
+  options: { bucket: string; compressionPercentage: number; onProgress?: (progress: number) => void } & Record<
+    string,
+    any
+  >
 ) => {
-  const { bucket, compressionPercentage, ...rest } = options;
+  const { bucket, compressionPercentage, onProgress, customName, parentPath, ...rest } = options;
   const config = MEDIA_BUCKET_CONFIG[bucket];
   if (!config) throw new Error("Invalid bucket");
 
-  const { uri, mimeType, fileName, fileSize, type } = asset;
+  const { uri, mimeType, name, size: fileSize, type } = asset;
 
+  const parsedName = (customName || name).replace(`.${type}`, "");
+
+  onProgress?.(0.1);
   const compressed = await compressFile(uri, { mimeType: mimeType || undefined, percentage: compressionPercentage });
+  onProgress?.(0.3);
   const newSize = compressed.size ?? fileSize;
 
   if (newSize > config.maxSize) {
@@ -60,13 +37,14 @@ export const uploadPickerAsset = async (
   }
 
   const response = await axiosClient.post("/media/get-signed-upload-url", {
-    path: fileName,
+    path: name,
     bucket,
     mimeType,
     size: newSize,
-    name: fileName,
+    name: parsedName,
     type,
-    ...rest,
+    parentPath,
+    ...rest
   });
 
   const { data } = response.data;
@@ -82,8 +60,14 @@ export const uploadPickerAsset = async (
 
   const uploadResponse = await axios.put(signedUrl, file, {
     headers: {
-      "Content-Type": file.type,
+      "Content-Type": file.type
     },
+    onUploadProgress: (progressEvent) => {
+      if (progressEvent.total) {
+        const percentCompleted = Math.max(0.3, Math.round((progressEvent.loaded * 100) / progressEvent.total));
+        onProgress?.(percentCompleted);
+      }
+    }
   });
 
   if (uploadResponse.status !== 200) {
@@ -91,4 +75,9 @@ export const uploadPickerAsset = async (
   }
 
   return { ...row, size: newSize };
+};
+
+export const deleteMedia = async (mediaId: string) => {
+  const response = await axiosClient.delete(`/media/${mediaId}`);
+  return response.data;
 };

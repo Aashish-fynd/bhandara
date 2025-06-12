@@ -32,3 +32,9 @@ export const CACHE_NAMESPACE_CONFIG = {
     ttl: 3600 * 24,
   },
 };
+
+export enum DB_CONNECTION_NAMES {
+  Read = "read",
+  Write = "write",
+  Default = "default",
+}

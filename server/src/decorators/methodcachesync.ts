@@ -71,10 +71,13 @@ function MethodCacheSync<T = any>(options?: CacheDecoratorOptions<T>) {
       this: CacheableClass<T>,
       ...args: Parameters<M>
     ): Promise<ReturnType<M>> {
-      const getCache = options?.cacheGetter || this.getCache;
-      const setCache = options?.cacheSetter || this.setCache;
-      const deleteCache = options?.cacheDeleter || this.deleteCache;
-      const getById = this._getByIdNoCache || this.getById;
+      // Bind the methods to the current instance
+      const boundGetCache = (options?.cacheGetter || this.getCache).bind(this);
+      const boundSetCache = (options?.cacheSetter || this.setCache).bind(this);
+      const boundDeleteCache = (options?.cacheDeleter || this.deleteCache).bind(
+        this
+      );
+      const boundGetById = (this?._getByIdNoCache || this.getById).bind(this);
 
       const cacheKey = options?.customCacheKey
         ? options.customCacheKey(...args)
@@ -90,25 +93,26 @@ function MethodCacheSync<T = any>(options?: CacheDecoratorOptions<T>) {
 
             if (Array.isArray(result.data)) {
               const promises = result.data.map(async (item: any) => {
-                await setCache(getCacheKey(item.id), item);
+                await boundSetCache(getCacheKey(item.id), item);
               });
               await Promise.all(promises);
             } else {
-              await setCache(getCacheKey(result.data.id), result.data);
+              await boundSetCache(getCacheKey(result.data.id), result.data);
             }
           }
           return result;
         }
 
         case "update": {
-          let { data: existingData } = await this.getById(cacheKey);
+          let { data: existingData } = await boundGetById(cacheKey);
           if (isEmpty(existingData))
             throw new NotFoundError("Resource not found");
 
           const result = await originalMethod.apply(this, args);
           checkAndThrowRLSError(result, existingData);
 
-          const cacheSaver = options?.cacheSetterWithExistingTTL || setCache;
+          const cacheSaver =
+            options?.cacheSetterWithExistingTTL || boundSetCache;
 
           if (result?.data) {
             if (typeof result.data === "object") {
@@ -121,27 +125,28 @@ function MethodCacheSync<T = any>(options?: CacheDecoratorOptions<T>) {
         }
 
         case "delete": {
-          let { data: existingData } = await getById(cacheKey);
+          let { data: existingData } = await boundGetById(cacheKey);
           if (isEmpty(existingData))
             throw new NotFoundError("Resource not found");
 
           const result = await originalMethod.apply(this, args);
           checkAndThrowRLSError(result, existingData);
 
-          if (result?.data) await deleteCache(cacheKey, existingData);
+          if (result?.data) await boundDeleteCache(cacheKey, existingData);
 
           return result;
         }
 
         case "get": {
-          const cachedData = await getCache(cacheKey);
+          const cachedData = await boundGetCache(cacheKey);
           if (!isEmpty(cachedData))
             return { data: cachedData, error: null } as ReturnType<M>;
 
           const result = await originalMethod.apply(this, args);
           checkAndThrowRLSError(result, cachedData);
 
-          if (!isEmpty(result?.data)) await setCache(cacheKey, result.data);
+          if (!isEmpty(result?.data))
+            await boundSetCache(cacheKey, result.data);
 
           return result;
         }

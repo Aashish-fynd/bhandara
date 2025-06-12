@@ -712,7 +712,7 @@ const EventDetails: React.FC = () => {
             ))}
           </View>
 
-          <MessageInputBar />
+          <MessageInputBar context={{ eventId: id }} />
         </Sheet.Frame>
       </Sheet>
     </>
