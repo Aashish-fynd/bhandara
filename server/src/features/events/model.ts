@@ -5,6 +5,8 @@ import { DataTypes, Model } from "sequelize";
 
 export class Event extends Model {}
 
+export const EVENT_TABLE_NAME = "Events";
+
 Event.init(
   {
     id: {
@@ -57,7 +59,7 @@ Event.init(
   },
   {
     modelName: "Event",
-    tableName: "Events",
+    tableName: EVENT_TABLE_NAME,
     sequelize: getDBConnection(),
     timestamps: true,
     paranoid: true,

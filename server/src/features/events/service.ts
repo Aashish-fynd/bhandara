@@ -12,7 +12,6 @@ import TagService from "../tags/service";
 import MediaService from "../media/service";
 import UserService from "../users/service";
 import { validateEventCreate, validateEventUpdate } from "./validation";
-import { EVENT_TABLE_NAME } from "./constants";
 import { MethodCacheSync } from "@decorators";
 import {
   getEventCache,
@@ -24,6 +23,7 @@ import { deleteEventCache } from "./helpers";
 import { isEmpty } from "@utils";
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { getDistanceInMeters } from "@helpers";
+import { EVENT_TABLE_NAME } from "./model";
 
 class EventService extends Base<IEvent> {
   private readonly threadService: ThreadsService;
