@@ -49,8 +49,13 @@ export interface IMessage extends ITimeStamp {
   content: IMessageContent;
   isEdited: boolean;
   threadId: string;
-  children: IMessage[] | undefined;
+  children: IPaginatedDataResponse<IMessage>;
   user?: IBaseUser;
+}
+
+export interface IPaginatedDataResponse<T> {
+  items: T[] | undefined;
+  pagination: IPaginatedResponse;
 }
 
 // Thread Lock History
@@ -142,12 +147,15 @@ export interface IMediaEventJunction extends ITimeStamp {
   mediaId: string;
 }
 
-export interface IPaginationParams {
+export interface IPaginatedResponse {
   limit: number;
   page: number;
   next: string | null;
   hasNext?: boolean;
   total?: number;
+}
+
+export interface IPaginationParams extends IPaginatedResponse {
   sortBy: "createdAt" | "updatedAt";
   sortOrder: "asc" | "desc";
   startDate?: Date;
