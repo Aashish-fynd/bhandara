@@ -4,6 +4,7 @@ import MediaService from "./service";
 import { appendUUIDToFilename } from "./utils";
 import { NotFoundError } from "@exceptions";
 import { isEmpty, pick } from "@utils";
+import { get32BitMD5Hash } from "@helpers";
 
 const mediaService = new MediaService();
 
@@ -29,9 +30,11 @@ export const getSignedUploadUrl = async (
   req: ICustomRequest,
   res: Response
 ) => {
-  const { path, bucket, mimeType, format, ...rest } = req.body;
+  const { path, bucket, mimeType, parentPath, format, ...rest } = req.body;
 
-  const uploadPath = `${req.user.id}/${path}`;
+  const safePath = get32BitMD5Hash(path);
+
+  const uploadPath = `${parentPath || req.user.id}/${safePath}`;
   const insertData = {
     path: uploadPath,
     bucket,

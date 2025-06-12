@@ -17,7 +17,7 @@ export async function compressFile(uri: string, options: CompressOptions = {}): 
 
   if (isImage) {
     if (Platform.OS === "web") {
-      const { default: imageCompression } = await import("browser-image-compression");
+      const { default: imageCompression } = await require("browser-image-compression");
       const blob = await fetch(uri).then((r) => r.blob());
       const compressed = await imageCompression(blob, {
         maxSizeMB: 1,
@@ -26,7 +26,7 @@ export async function compressFile(uri: string, options: CompressOptions = {}): 
       });
       return { uri: URL.createObjectURL(compressed), blob: compressed };
     } else {
-      const { Image } = await import("react-native-compressor" as any);
+      const { Image } = await require("react-native-compressor" as any);
       const compressedUri: string = await Image.compress(uri, { compressionMethod: "auto" });
       return { uri: compressedUri };
     }
@@ -38,7 +38,7 @@ export async function compressFile(uri: string, options: CompressOptions = {}): 
       return { uri, blob };
     }
 
-    const { Video } = await import("react-native-compressor" as any);
+    const { Video } = await require("react-native-compressor" as any);
     const compressedUri: string = await Video.compress(uri, {
       compressionMethod: "auto"
     });

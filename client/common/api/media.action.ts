@@ -5,12 +5,12 @@ import axios from "axios";
 
 export const getSignedUrlForUpload = async (body: Record<string, any>) => {
   const { file: fileUri, mimeType, ...rest } = body;
-  const response = await axiosClient.post("/media/get-signed-upload-url", rest);
+  const compressed = await compressFile(fileUri, { mimeType });
+
+  const response = await axiosClient.post("/media/get-signed-upload-url", { ...rest, mimeType });
   const { data, error } = response.data;
 
   const { row, signedUrl } = data;
-
-  const compressed = await compressFile(fileUri, { mimeType });
 
   const isWebPlatform = Platform.OS === "web";
   let file: Blob | null = null;
