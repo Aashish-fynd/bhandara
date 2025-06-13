@@ -23,6 +23,7 @@ export async function findAllWithPagination<T extends Model>(
   } = pagination;
 
   const options: FindOptions = {
+    raw: true,
     where: { ...where },
     order: [[sortBy, sortOrder.toUpperCase() as any]],
   };
@@ -65,7 +66,10 @@ export async function findAllWithPagination<T extends Model>(
       : null;
   }
 
-  return { data: { items: resultItems, pagination: paginationObj }, error: null };
+  return {
+    data: { items: resultItems, pagination: paginationObj },
+    error: null,
+  };
 }
 
 export async function findById<T extends Model>(
@@ -89,9 +93,9 @@ export async function updateRecord<T extends Model>(
   id: string,
   data: Partial<T>
 ): Promise<{ data: T | null; error: any }> {
-  await model.update(data as any, { where: { id } });
+  await model.update(data as any, { where: { id: id as any } });
   const updated = await model.findByPk(id, { raw: true });
-  return { data: updated as any, error: null };
+  return { data: updated as T, error: null };
 }
 
 export async function deleteRecord<T extends Model>(
