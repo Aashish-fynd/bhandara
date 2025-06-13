@@ -157,7 +157,7 @@ class EventService {
     mediaIds: string[];
   }) {
     return validateEventCreate(body, (data) =>
-      runTransaction(Event, async (tx) => {
+      runTransaction(async (tx) => {
         const event = await Event.create(
           { ...(data as any), tags: tagIds, media: mediaIds },
           { transaction: tx }

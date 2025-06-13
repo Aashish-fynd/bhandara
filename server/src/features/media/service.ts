@@ -150,7 +150,7 @@ class MediaService {
     mimeType: string;
   }) {
     return validateMediaCreate(insertData, (validatedData) =>
-      runTransaction(Media, async (tx) => {
+      runTransaction(async (tx) => {
         const { name: fileName, ...restOptions } = validatedData.options || {};
 
         const bucket = validatedData.bucket;
@@ -297,7 +297,7 @@ class MediaService {
 
   @MethodCacheSync<IMedia>({})
   async delete(id: string) {
-    return runTransaction(Media, async (tx) => {
+    return runTransaction(async (tx) => {
       const media = await Media.findByPk(id, { transaction: tx });
       if (!media) return { data: null, error: null };
       await media.destroy({ transaction: tx });

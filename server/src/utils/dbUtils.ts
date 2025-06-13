@@ -1,5 +1,6 @@
 import { FindOptions, Model, ModelCtor, Op, Transaction } from "sequelize";
 import { IPaginationParams } from "@/definitions/types";
+import { getDBConnection } from "@connections/db";
 
 export interface PaginatedResult<T> {
   items: T[];
@@ -103,9 +104,7 @@ export async function deleteRecord<T extends Model>(
   return { data: row.toJSON() as any, error: null };
 }
 
-export async function runTransaction<T>(
-  model: ModelCtor<Model>,
-  cb: (t: Transaction) => Promise<T>
-) {
-  return model.sequelize!.transaction(cb);
+export async function runTransaction<T>(cb: (t: Transaction) => Promise<T>) {
+  const sequelize = getDBConnection();
+  return sequelize.transaction(cb);
 }
