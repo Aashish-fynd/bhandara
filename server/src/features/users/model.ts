@@ -3,12 +3,31 @@ import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { USER_TABLE_NAME } from "./constants";
 import { IBaseUser } from "@/definitions/types";
-type UserAttributes = Omit<IBaseUser, "createdAt" | "updatedAt" | "deletedAt" | "media" | "profilePic"> & {
+type UserAttributes = Omit<
+  IBaseUser,
+  "createdAt" | "updatedAt" | "deletedAt" | "media" | "profilePic"
+> & {
   profilePic: Record<string, any> | null;
   media?: any;
 };
 
-export class User extends Model<UserAttributes, UserAttributes> {}
+export class User extends Model<UserAttributes, UserAttributes> {
+  declare id: string;
+  declare name: string;
+  declare email: string;
+  declare gender: string;
+  declare address: Record<string, any> | null;
+  declare isVerified: boolean;
+  declare profilePic: Record<string, any> | null;
+  declare mediaId: string | null;
+  declare username?: string;
+  declare password: string | null;
+  declare meta: Record<string, any>;
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare deletedAt?: Date;
+  declare media?: any;
+}
 
 User.init(
   {
