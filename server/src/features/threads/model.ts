@@ -4,9 +4,25 @@ import { getUUIDv7 } from "@helpers";
 import { THREAD_TABLE_NAME } from "./constants";
 import { EThreadType, EAccessLevel } from "@definitions/enums";
 import { IBaseThread } from "@/definitions/types";
-type ThreadAttributes = Omit<IBaseThread, "createdAt" | "updatedAt" | "deletedAt" | "messages">;
 
-export class Thread extends Model<ThreadAttributes, ThreadAttributes> {}
+type ThreadAttributes = Omit<
+  IBaseThread,
+  "createdAt" | "updatedAt" | "deletedAt" | "messages"
+>;
+
+export class Thread extends Model<ThreadAttributes, ThreadAttributes> {
+  declare id: string;
+  declare type: EThreadType;
+  declare status: EAccessLevel;
+  declare visibility: EAccessLevel;
+  declare parentId?: string | null;
+  declare eventId: string;
+  declare lockHistory: Record<string, any>[];
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare deletedAt?: Date;
+  declare messages?: any[];
+}
 
 Thread.init(
   {

@@ -4,9 +4,37 @@ import { getUUIDv7 } from "@helpers";
 import { MEDIA_TABLE_NAME } from "./constants";
 import { EMediaType, EAccessLevel } from "@definitions/enums";
 import { IMedia } from "@/definitions/types";
-type MediaAttributes = Omit<IMedia, "createdAt" | "updatedAt" | "deletedAt" | "path" | "publicUrl" | "publicUrlExpiresAt">;
 
-export class Media extends Model<MediaAttributes, MediaAttributes> {}
+type MediaAttributes = Omit<
+  IMedia,
+  "createdAt" | "updatedAt" | "deletedAt" | "path" | "publicUrl" | "publicUrlExpiresAt"
+>;
+
+export class Media extends Model<MediaAttributes, MediaAttributes> {
+  declare id: string;
+  declare type: EMediaType;
+  declare url: string;
+  declare name: string;
+  declare caption?: string | null;
+  declare thumbnail?: string | null;
+  declare size?: number | null;
+  declare mimeType?: string | null;
+  declare duration?: number | null;
+  declare uploader: string;
+  declare storage: {
+    provider: string;
+    bucket: string;
+    metadata: Record<string, any>;
+  };
+  declare access: EAccessLevel;
+  declare metadata: Record<string, any>;
+  declare publicUrl?: string;
+  declare publicUrlExpiresAt?: Date;
+  declare path?: string;
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare deletedAt?: Date;
+}
 
 Media.init(
   {
