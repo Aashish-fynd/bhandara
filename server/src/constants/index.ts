@@ -19,6 +19,10 @@ export const CACHE_NAMESPACE_CONFIG = {
     namespace: "messages",
     ttl: 3600 * 24 * 2,
   },
+  Reactions: {
+    namespace: "reactions",
+    ttl: 1800,
+  },
   Sessions: {
     namespace: "session",
     ttl: 3600 * 24 * 30,

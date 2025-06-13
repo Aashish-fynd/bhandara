@@ -11,6 +11,7 @@ import {
 import TagService from "../tags/service";
 import MediaService from "../media/service";
 import UserService from "../users/service";
+import ReactionService from "../reactions/service";
 import { validateEventCreate, validateEventUpdate } from "./validation";
 import { MethodCacheSync } from "@decorators";
 import {
@@ -23,7 +24,8 @@ import { deleteEventCache } from "./helpers";
 import { isEmpty } from "@utils";
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { getDistanceInMeters } from "@helpers";
-import { EVENT_TABLE_NAME } from "./model";
+import { Event, EVENT_TABLE_NAME } from "./model";
+import { Thread } from "../threads/model";
 
 class EventService extends Base<IEvent> {
   private readonly threadService: ThreadsService;
@@ -31,17 +33,19 @@ class EventService extends Base<IEvent> {
   private readonly tagService: TagService;
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
+  private readonly reactionService: ReactionService;
   private readonly getCache = getEventCache;
   private readonly setCache = setEventCache;
   private readonly deleteCache = deleteEventCache;
 
   constructor() {
-    super(EVENT_TABLE_NAME);
+    super(Event);
     this.threadService = new ThreadsService();
     this.messageService = new MessageService();
     this.tagService = new TagService();
     this.mediaService = new MediaService();
     this.userService = new UserService();
+    this.reactionService = new ReactionService();
   }
 
   @MethodCacheSync<IEvent>({})
@@ -107,6 +111,7 @@ class EventService extends Base<IEvent> {
       eventData.verifiers,
       "user"
     );
+    promises.reactions = this.reactionService.getReactions(`events/${id}`);
 
     // Wait for all promises to settle
     const settledResults = await Promise.allSettled(Object.values(promises));
@@ -126,6 +131,7 @@ class EventService extends Base<IEvent> {
     eventData.creator = resolvedData.creator?.data || null;
     eventData.participants = resolvedData.participants || [];
     eventData.verifiers = resolvedData.verifiers || [];
+    eventData.reactions = resolvedData.reactions?.data || [];
 
     // Construct the final response
     return {
@@ -151,10 +157,34 @@ class EventService extends Base<IEvent> {
     mediaIds: string[];
   }) {
     return validateEventCreate(body, (data) =>
-      this._supabaseService.executeRpc<IEvent>("create_event", {
-        event_data: data,
-        tag_ids: tagIds,
-        media_ids: mediaIds,
+      this.withTransaction(async (tx) => {
+        const event = await Event.create(
+          { ...(data as any), tags: tagIds, media: mediaIds },
+          { transaction: tx }
+        );
+
+        await Thread.bulkCreate(
+          [
+            {
+              type: EThreadType.QnA,
+              status: "public",
+              visibility: "public",
+              eventId: event.id,
+              lockHistory: {},
+            },
+            {
+              type: EThreadType.Discussion,
+              status: "public",
+              visibility: "public",
+              eventId: event.id,
+              lockHistory: {},
+            },
+          ],
+          { transaction: tx }
+        );
+
+        // tags and media are already stored on Event
+        return { data: event, error: null };
       })
     );
   }
@@ -173,27 +203,33 @@ class EventService extends Base<IEvent> {
       await Promise.all(
         data.items.map(async (event) => {
           const mediaPromise = this.mediaService.getEventMedia(event.id, 3);
-          const tagsPromise = this.tagService.getAllEventTags(event.id);
-          const participantsPromise =
-            this.userService.getAndPopulateUserProfiles(
-              event.participants,
-              "user"
-            );
-          const verifiersPromise = this.userService.getAndPopulateUserProfiles(
-            event.verifiers,
+        const tagsPromise = this.tagService.getAllEventTags(event.id);
+        const participantsPromise =
+          this.userService.getAndPopulateUserProfiles(
+            event.participants,
             "user"
           );
-          const [media, tags, participants, verifiers] = await Promise.all([
+        const verifiersPromise = this.userService.getAndPopulateUserProfiles(
+          event.verifiers,
+          "user"
+        );
+        const reactionsPromise = this.reactionService.getReactions(
+          `events/${event.id}`
+        );
+        const [media, tags, participants, verifiers, reactions] =
+          await Promise.all([
             mediaPromise,
             tagsPromise,
             participantsPromise,
             verifiersPromise,
+            reactionsPromise,
           ]);
-          event.media = media.data || [];
-          event.tags = tags.data || [];
-          event.participants = participants || [];
-          event.verifiers = verifiers || [];
-        })
+        event.media = media.data || [];
+        event.tags = tags.data || [];
+        event.participants = participants || [];
+        event.verifiers = verifiers || [];
+        event.reactions = reactions.data || [];
+      })
       );
 
       data.items = await this.userService.getAndPopulateUserProfiles(

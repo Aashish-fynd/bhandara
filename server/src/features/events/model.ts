@@ -56,6 +56,16 @@ Event.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    tags: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: [],
+    },
+    media: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: [],
+    },
   },
   {
     modelName: "Event",

@@ -1,7 +1,9 @@
 import { IPaginationParams, ITag } from "@/definitions/types";
 import Base, { BaseQueryArgs } from "../Base";
 import { validateTagCreate, validateTagUpdate } from "./validation";
-import { TAG_TABLE_NAME, TAG_EVENT_JUNCTION_TABLE_NAME } from "./constants";
+import { TAG_TABLE_NAME } from "./constants";
+import { Tag } from "./model";
+import { Event } from "../events/model";
 import { EQueryOperator } from "@definitions/enums";
 import { MethodCacheSync } from "@decorators";
 import {
@@ -15,7 +17,6 @@ import {
   setSubTagsCache,
   deleteSubTagsCache,
 } from "./helpers";
-import { PostgrestError } from "@supabase/postgrest-js";
 
 class TagService extends Base<ITag> {
   private readonly getCache = getTagCache;
@@ -23,7 +24,7 @@ class TagService extends Base<ITag> {
   private readonly deleteCache = deleteTagCache;
 
   constructor() {
-    super(TAG_TABLE_NAME);
+    super(Tag);
   }
 
   async getAll(
@@ -38,10 +39,13 @@ class TagService extends Base<ITag> {
   }
 
   async getRootTags() {
-    return this._supabaseService.executeRpc(
-      "get_top_level_tags_with_children",
-      {}
+    const [results] = await Tag.sequelize!.query(
+      `SELECT t.*, COUNT(c.id) > 0 AS "hasChildren" FROM "Tags" t
+       LEFT JOIN "Tags" c ON c."parentId" = t."id" AND c."deletedAt" IS NULL
+       WHERE t."deletedAt" IS NULL AND t."parentId" IS NULL
+       GROUP BY t."id";`
     );
+    return { data: results as any, error: null };
   }
 
   @MethodCacheSync<ITag>({
@@ -50,31 +54,24 @@ class TagService extends Base<ITag> {
     cacheDeleter: deleteEventTagsCache,
   })
   async getAllEventTags(eventId: string) {
-    const { data: eventTags, error: eventTagsError } =
-      await this._supabaseService.querySupabase({
-        table: TAG_EVENT_JUNCTION_TABLE_NAME,
-        query: [
-          { column: "eventId", operator: EQueryOperator.Eq, value: eventId },
-        ],
-      });
+    const { data: event } = await this._dbService.query(Event, {
+      query: [
+        { column: "id", operator: EQueryOperator.Eq, value: eventId },
+      ],
+    });
+
+    const tagIds = (event[0]?.tags || []) as string[];
+
+    if (!tagIds.length) return { data: [], error: null };
 
     const { data } = await super.getAll(
       {
-        query: [
-          {
-            column: "id",
-            operator: EQueryOperator.In,
-            value: eventTags?.map((tag: { tagId: string }) => tag.tagId) || [],
-          },
-        ],
+        query: [{ column: "id", operator: EQueryOperator.In, value: tagIds }],
       },
-      { limit: 1000 }
+      { limit: tagIds.length }
     );
 
-    return {
-      data: data.items,
-      error: null,
-    };
+    return { data: data.items, error: null };
   }
 
   @MethodCacheSync<ITag>()
@@ -92,29 +89,30 @@ class TagService extends Base<ITag> {
   }
 
   @MethodCacheSync<ITag>()
-  delete(id: string): Promise<{ data: ITag; error: PostgrestError | null }> {
+  delete(id: string) {
     return super.delete(id);
   }
 
   @MethodCacheSync<ITag>({})
   async associateTagToEvent(eventId: string, tagId: string) {
-    return this._supabaseService.insertIntoDB({
-      table: TAG_EVENT_JUNCTION_TABLE_NAME,
-      data: {
-        eventId,
-        tagId,
-      },
+    const { data: event } = await this._dbService.query(Event, {
+      query: [{ column: "id", operator: EQueryOperator.Eq, value: eventId }],
     });
+    if (!event[0]) return { data: null, error: null };
+    const tags = new Set((event[0].tags || []) as string[]);
+    tags.add(tagId);
+    return this._dbService.updateById(Event, eventId, { tags: Array.from(tags) });
   }
 
   async dissociateTagFromEvent(eventId: string, tagId: string) {
     await deleteEventTagsCache(eventId);
-    return this._supabaseService.deleteByQuery({
-      table: TAG_EVENT_JUNCTION_TABLE_NAME,
-      query: [
-        { column: "eventId", operator: EQueryOperator.Eq, value: eventId },
-        { column: "tagId", operator: EQueryOperator.Eq, value: tagId },
-      ],
+    const { data: event } = await this._dbService.query(Event, {
+      query: [{ column: "id", operator: EQueryOperator.Eq, value: eventId }],
+    });
+    if (!event[0]) return { data: null, error: null };
+    const tags = (event[0].tags || []) as string[];
+    return this._dbService.updateById(Event, eventId, {
+      tags: tags.filter((t) => t !== tagId),
     });
   }
 
@@ -124,16 +122,11 @@ class TagService extends Base<ITag> {
     cacheDeleter: deleteSubTagsCache,
   })
   getSubTags(tagId: string, limit?: number) {
-    return this._supabaseService.querySupabase({
-      table: TAG_TABLE_NAME,
-      query: [
-        { column: "parentId", operator: EQueryOperator.Eq, value: tagId },
-      ],
-      modifyQuery: (qb) => {
-        if (limit) {
-          qb.limit(limit);
-        }
-        return qb;
+    return this._dbService.query(Tag, {
+      query: [{ column: "parentId", operator: EQueryOperator.Eq, value: tagId }],
+      modifyOptions: (opts) => {
+        if (limit) opts.limit = limit;
+        return opts;
       },
     });
   }

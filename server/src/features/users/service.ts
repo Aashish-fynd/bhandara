@@ -3,7 +3,7 @@ import Base from "../Base";
 import { validateUserCreate, validateUserUpdate } from "./validation";
 import { EQueryOperator } from "@/definitions/enums";
 import { USER_TABLE_NAME } from "./constants";
-import { PostgrestError } from "@supabase/supabase-js";
+import { User } from "./model";
 import {
   bulkGetUserCache,
   bulkSetUserCache,
@@ -11,6 +11,7 @@ import {
   deleteUserCache,
   deleteUserInterestsCache,
   getSafeUser,
+  getLeanUser,
   getUserCache,
   getUserCacheByEmail,
   getUserCacheByUsername,
@@ -35,7 +36,7 @@ class UserService extends Base<IBaseUser> {
   private readonly mediaService: MediaService;
 
   constructor() {
-    super(USER_TABLE_NAME);
+    super(User);
     this.tagService = new TagService();
     this.mediaService = new MediaService();
   }
@@ -47,7 +48,7 @@ class UserService extends Base<IBaseUser> {
   @MethodCacheSync<IBaseUser>()
   async create(
     data: Partial<IBaseUser>
-  ): Promise<{ data: IBaseUser[] | null; error: PostgrestError | null }> {
+  ): Promise<{ data: IBaseUser[] | null; error: any }> {
     return validateUserCreate(data, (data) => super.create(data));
   }
 
@@ -136,7 +137,7 @@ class UserService extends Base<IBaseUser> {
   @MethodCacheSync<IBaseUser>({})
   async getById(
     id: string
-  ): Promise<{ data: IBaseUser; error: PostgrestError | null }> {
+  ): Promise<{ data: IBaseUser; error: any }> {
     const { data, error } = await super.getById(id);
     if (error) throw error;
     if (data.mediaId) {
@@ -154,17 +155,11 @@ class UserService extends Base<IBaseUser> {
     cacheSetter: setUserCacheByEmail,
   })
   getUserByEmail(email: string) {
-    return this._supabaseService.querySupabase({
-      table: USER_TABLE_NAME,
+    return this._dbService.query(User, {
       query: [
-        {
-          column: "email",
-          operator: EQueryOperator.Eq,
-          value: email,
-        },
+        { column: "email", operator: EQueryOperator.Eq, value: email },
       ],
-      modifyQuery: (qb) => qb.maybeSingle(),
-    }) as Promise<{ data: IBaseUser | null; error: PostgrestError | null }>;
+    }) as any;
   }
 
   @MethodCacheSync<IBaseUser>({
@@ -172,17 +167,11 @@ class UserService extends Base<IBaseUser> {
     cacheSetter: setUserCacheByUsername,
   })
   getUserByUsername(username: string) {
-    return this._supabaseService.querySupabase({
-      table: USER_TABLE_NAME,
+    return this._dbService.query(User, {
       query: [
-        {
-          column: "username",
-          operator: EQueryOperator.Eq,
-          value: username,
-        },
+        { column: "username", operator: EQueryOperator.Eq, value: username },
       ],
-      modifyQuery: (qb) => qb.maybeSingle(),
-    }) as Promise<{ data: IBaseUser | null; error: PostgrestError | null }>;
+    }) as any;
   }
 
   @MethodCacheSync<IBaseUser>({
@@ -220,7 +209,7 @@ class UserService extends Base<IBaseUser> {
 
   async getUserProfiles(ids: string[]): Promise<{
     data: Record<string, IBaseUser>;
-    error: PostgrestError | null;
+    error: any;
   }> {
     let fetchedUsers = await bulkGetUserCache(ids);
 
@@ -259,11 +248,11 @@ class UserService extends Base<IBaseUser> {
     const { data: mediaData } = await this.mediaService.getMediaByIds(mediaIds);
 
     const safeUsers = fetchedUsers.reduce((acc, user) => {
-      acc[user.id] = getSafeUser({
+      acc[user.id] = getLeanUser({
         ...user,
         mediaId: mediaData[user.mediaId as string],
       });
-
+      
       return acc;
     }, {} as Record<string, IBaseUser>);
 

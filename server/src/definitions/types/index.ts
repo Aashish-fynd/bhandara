@@ -48,6 +48,7 @@ export interface IMessage extends ITimeStamp {
   isEdited: boolean;
   threadId: string;
   user: IBaseUser;
+  reactions?: IReaction[];
 }
 
 // Thread Lock History
@@ -63,6 +64,7 @@ export interface IBaseThread extends ITimeStamp {
   status: EAccessLevel;
   visibility: EAccessLevel;
   lockHistory: ILockHistory[];
+  parentId?: string | null;
   eventId: string;
   messages?: IMessage[];
 }
@@ -96,6 +98,7 @@ export interface IEvent extends ITimeStamp {
   capacity: number;
   tags: ITag[]; // Array of tag IDs
   media: IMedia[]; // Array of media IDs
+  reactions?: IReaction[];
 }
 
 // Tag Interface
@@ -141,6 +144,13 @@ export interface IMedia extends ITimeStamp {
 export interface IMediaEventJunction extends ITimeStamp {
   eventId: string;
   mediaId: string;
+}
+
+export interface IReaction extends ITimeStamp {
+  id: string;
+  contentId: string;
+  emoji: string;
+  userId: string;
 }
 
 export interface IPaginationParams {

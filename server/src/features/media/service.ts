@@ -6,11 +6,9 @@ import {
 import Base from "../Base";
 import { EMediaProvider, EQueryOperator } from "@/definitions/enums";
 import { validateMediaCreate, validateMediaUpdate } from "./validation";
-import {
-  MEDIA_TABLE_NAME,
-  MEDIA_EVENT_JUNCTION_TABLE_NAME,
-  MEDIA_BUCKET_CONFIG,
-} from "./constants";
+import { MEDIA_TABLE_NAME, MEDIA_BUCKET_CONFIG } from "./constants";
+import { Media } from "./model";
+import { Event } from "../events/model";
 import { isEmpty, omit } from "@utils";
 import { MethodCacheSync } from "@decorators";
 import {
@@ -23,7 +21,6 @@ import {
   setMediaBulkCache,
 } from "./helpers";
 import { getMediaCache } from "./helpers";
-import { PostgrestError } from "@supabase/postgrest-js";
 import { get32BitMD5Hash } from "@helpers";
 import logger from "@logger";
 import { appendUUIDToFilename } from "./utils";
@@ -37,7 +34,7 @@ class MediaService extends Base<IMedia> {
   private readonly deleteCache = deleteMediaCache;
 
   constructor() {
-    super(MEDIA_TABLE_NAME);
+    super(Media);
   }
 
   async _getByIdNoCache(id: string) {
@@ -46,32 +43,15 @@ class MediaService extends Base<IMedia> {
 
   @MethodCacheSync<IMedia>()
   async getEventMedia(eventId: string, limit: number | null = null) {
-    const { data: eventMedia, error: eventMediaError } =
-      await this._supabaseService.querySupabase({
-        table: MEDIA_EVENT_JUNCTION_TABLE_NAME,
-        query: [
-          { column: "eventId", operator: EQueryOperator.Eq, value: eventId },
-        ],
-        modifyQuery: (qb) => {
-          if (limit) qb.limit(limit);
-          return qb;
-        },
-      });
+    const { data: events } = await this._dbService.query(Event, {
+      query: [{ column: "id", operator: EQueryOperator.Eq, value: eventId }],
+    });
+    const mediaIds = (events[0]?.media || []) as string[];
+    if (!mediaIds.length) return { data: [], error: null };
 
-    if (eventMediaError) return { error: eventMediaError };
     const { data } = await super.getAll(
-      {
-        query: [
-          {
-            column: "id",
-            operator: EQueryOperator.In,
-            value:
-              eventMedia?.map((media: { mediaId: string }) => media.mediaId) ||
-              [],
-          },
-        ],
-      },
-      { limit }
+      { query: [{ column: "id", operator: EQueryOperator.In, value: mediaIds }] },
+      { limit: limit ?? mediaIds.length }
     );
 
     // const publicUrlPromises = (data?.items || []).map(async (item) => {
@@ -168,7 +148,7 @@ class MediaService extends Base<IMedia> {
     mimeType: string;
   }) {
     return validateMediaCreate(insertData, (validatedData) =>
-      this._supabaseService.transaction(async (client) => {
+      this.withTransaction(async (tx) => {
         const { name: fileName, ...restOptions } = validatedData.options || {};
 
         const bucket = validatedData.bucket;
@@ -198,10 +178,9 @@ class MediaService extends Base<IMedia> {
           access: "public",
         };
 
-        const { data: creationData } = await client
-          .from(MEDIA_TABLE_NAME)
-          .insert(createData)
-          .select();
+        const creationData = await Media.create(createData as any, {
+          transaction: tx,
+        });
 
         const signedUrl = await this._supabaseService.getSignedUrlForUpload({
           path,
@@ -210,7 +189,7 @@ class MediaService extends Base<IMedia> {
 
         delete signedUrl.data.token;
         return {
-          row: creationData[0] as IMedia,
+          row: creationData as IMedia,
           ...signedUrl.data,
         };
       })
@@ -248,7 +227,7 @@ class MediaService extends Base<IMedia> {
   @MethodCacheSync<IMedia>()
   async getById(
     id: string
-  ): Promise<{ data: IMedia; error: PostgrestError | null }> {
+  ): Promise<{ data: IMedia; error: any }> {
     const res = await super.getById(id);
     if (res.data) {
       const publicUrl = await this.getPublicUrl(
@@ -316,31 +295,21 @@ class MediaService extends Base<IMedia> {
 
   @MethodCacheSync<IMedia>({})
   async delete(id: string) {
-    return this._supabaseService.transaction(async (client) => {
-      const { data, error } = await client
-        .from(MEDIA_TABLE_NAME)
-        .delete()
-        .match({ id })
-        .select()
-        .maybeSingle();
-
-      throw new Error("testing");
-
-      const deletionResult = await this.deleteFile(
-        data.storage.bucket,
-        data.url
-      );
+    return this.withTransaction(async (tx) => {
+      const media = await Media.findByPk(id, { transaction: tx });
+      if (!media) return { data: null, error: null };
+      await media.destroy({ transaction: tx });
+      const deletionResult = await this.deleteFile(media.storage.bucket, media.url);
       logger.debug(`Deleted media ${id}`, { deletionResult });
-      return { data, error };
+      return { data: media, error: null };
     }) as any;
   }
 
   async getMediaByIds(ids: string[]): Promise<{
     data: Record<string, IMedia>;
-    error: PostgrestError | CustomError | null;
+    error: CustomError | null;
   }> {
-    const mediaData = await this._supabaseService.querySupabase<IMedia>({
-      table: MEDIA_TABLE_NAME,
+    const mediaData = await this._dbService.query<IMedia>(Media, {
       query: [{ column: "id", operator: EQueryOperator.In, value: ids }],
     });
     if (!isEmpty(mediaData.data)) {
@@ -411,29 +380,33 @@ class MediaService extends Base<IMedia> {
   }
 
   async getEventMediaJunctionRow(eventId: string, mediaId: string) {
-    return this._supabaseService.querySupabase({
-      table: MEDIA_EVENT_JUNCTION_TABLE_NAME,
+    const { data: event } = await this._dbService.query(Event, {
       query: [
-        { column: "eventId", operator: EQueryOperator.Eq, value: eventId },
-        { column: "mediaId", operator: EQueryOperator.Eq, value: mediaId },
+        { column: "id", operator: EQueryOperator.Eq, value: eventId },
       ],
     });
+    const exists = (event[0]?.media || []).includes(mediaId);
+    return { data: exists ? { eventId, mediaId } : null, error: null };
   }
 
   async createEventMediaJunctionRow(eventId: string, mediaId: string) {
-    return this._supabaseService.insertIntoDB({
-      table: MEDIA_EVENT_JUNCTION_TABLE_NAME,
-      data: { eventId, mediaId },
+    const { data: event } = await this._dbService.query(Event, {
+      query: [{ column: "id", operator: EQueryOperator.Eq, value: eventId }],
+    });
+    const mediaSet = new Set((event[0]?.media || []) as string[]);
+    mediaSet.add(mediaId);
+    return this._dbService.updateById(Event, eventId, {
+      media: Array.from(mediaSet),
     });
   }
 
   async deleteEventMediaJunctionRow(eventId: string, mediaId: string) {
-    return this._supabaseService.deleteByQuery({
-      table: MEDIA_EVENT_JUNCTION_TABLE_NAME,
-      query: [
-        { column: "eventId", operator: EQueryOperator.Eq, value: eventId },
-        { column: "mediaId", operator: EQueryOperator.Eq, value: mediaId },
-      ],
+    const { data: event } = await this._dbService.query(Event, {
+      query: [{ column: "id", operator: EQueryOperator.Eq, value: eventId }],
+    });
+    const media = (event[0]?.media || []) as string[];
+    return this._dbService.updateById(Event, eventId, {
+      media: media.filter((m) => m !== mediaId),
     });
   }
 }
