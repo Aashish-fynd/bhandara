@@ -3,8 +3,10 @@ import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { MEDIA_TABLE_NAME } from "./constants";
 import { EMediaType, EAccessLevel } from "@definitions/enums";
+import { IMedia } from "@/definitions/types";
+type MediaAttributes = Omit<IMedia, "createdAt" | "updatedAt" | "deletedAt" | "path" | "publicUrl" | "publicUrlExpiresAt">;
 
-export class Media extends Model {}
+export class Media extends Model<MediaAttributes, MediaAttributes> {}
 
 Media.init(
   {

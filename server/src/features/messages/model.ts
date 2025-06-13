@@ -2,8 +2,10 @@ import { getDBConnection } from "@connections/db";
 import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { MESSAGE_TABLE_NAME } from "./constants";
+import { IMessage } from "@/definitions/types";
+type MessageAttributes = Omit<IMessage, "createdAt" | "updatedAt" | "deletedAt" | "user" | "reactions">;
 
-export class Message extends Model {}
+export class Message extends Model<MessageAttributes, MessageAttributes> {}
 
 Message.init(
   {

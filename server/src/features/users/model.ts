@@ -2,8 +2,13 @@ import { getDBConnection } from "@connections/db";
 import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { USER_TABLE_NAME } from "./constants";
+import { IBaseUser } from "@/definitions/types";
+type UserAttributes = Omit<IBaseUser, "createdAt" | "updatedAt" | "deletedAt" | "media" | "profilePic"> & {
+  profilePic: Record<string, any> | null;
+  media?: any;
+};
 
-export class User extends Model {}
+export class User extends Model<UserAttributes, UserAttributes> {}
 
 User.init(
   {
