@@ -176,6 +176,12 @@ export const getSafeUser = (user: IBaseUser) => {
   return _user;
 };
 
+export const getLeanUser = (user: IBaseUser) => {
+  const safe = getSafeUser(user);
+  const { id, name, createdAt, deletedAt, username, email } = safe;
+  return { id, name, createdAt, deletedAt, username, email } as IBaseUser;
+};
+
 export const getUserInterestsCache = (userId: string) => {
   return userCache.getItem<ITag[]>(`${userId}:interests`);
 };

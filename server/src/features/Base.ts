@@ -1,7 +1,9 @@
 import { EQueryOperator } from "@/definitions/enums";
 import { IPaginationParams } from "@/definitions/types";
-import SupabaseService, { SimpleFilter, SupabaseClient } from "@supabase";
-import { PostgrestError } from "@supabase/supabase-js";
+// Deprecated: Supabase service retained for backward compatibility
+import SupabaseService from "@supabase"; // Deprecated for DB operations
+import DBService from "@/database/dbService";
+import { SimpleFilter } from "@supabase";
 import { omit } from "@utils";
 
 interface QuerySupabaseArgs<T> {
@@ -14,12 +16,15 @@ interface QuerySupabaseArgs<T> {
 export type BaseQueryArgs<T> = Omit<QuerySupabaseArgs<T>, "table">;
 
 class Base<T extends Record<string, any>> {
+  /** @deprecated Use _dbService for database operations */
   protected readonly _supabaseService: SupabaseService;
-  private readonly tableName: string;
+  protected readonly _dbService: DBService;
+  private readonly _model: any;
 
-  constructor(table: string) {
-    this.tableName = table;
+  constructor(model: any) {
+    this._model = model;
     this._supabaseService = new SupabaseService();
+    this._dbService = new DBService();
   }
 
   async getAll(
@@ -45,55 +50,52 @@ class Base<T extends Record<string, any>> {
 
     const from = (_pagination.page - 1) * _pagination.limit;
 
-    const { data, error, count } = await this._supabaseService.querySupabase<T>({
-      table: this.tableName,
-      modifyQuery: (qb: any) => {
-        if (_pagination?.sortOrder && _pagination?.sortBy) {
-          qb = qb.order(_pagination.sortBy, {
-            ascending: _pagination.sortOrder === "asc",
-          });
-        }
+    const filters = (args.query || []) as any[];
+    if (_pagination.next) {
+      filters.push({
+        column: _pagination.sortBy as any,
+        operator:
+          _pagination.sortOrder === "asc" ? EQueryOperator.Gt : EQueryOperator.Lt,
+        value: _pagination.next,
+      });
+    }
 
-        if (_pagination.startDate)
-          qb = qb.gte(_pagination.sortBy, _pagination.startDate);
-        if (_pagination.endDate)
-          qb = qb.lte(_pagination.sortBy, _pagination.endDate);
-
+    const { data, count } = await this._dbService.query<any>(this._model, {
+      query: filters,
+      select: args.select,
+      modifyOptions: (opts) => {
+        opts.order = [[_pagination.sortBy, _pagination.sortOrder.toUpperCase()]];
         if (_pagination.next) {
-          const params = [_pagination.sortBy, _pagination.next];
-          if (_pagination.sortOrder === "asc") {
-            qb = qb.gt(...params);
-          } else {
-            qb = qb.lt(...params);
-          }
-          qb = qb.limit(_pagination.limit + 1);
+          opts.limit = _pagination.limit + 1;
         } else {
-          qb = qb.range(from, from + _pagination.limit);
+          opts.offset = from;
+          opts.limit = _pagination.limit;
         }
-
-        if (args?.modifyQuery) qb = args.modifyQuery(qb);
-        return qb;
+        if (args.modifyQuery) opts = args.modifyQuery(opts) || opts;
+        return opts;
       },
-      ...args,
-      count: "exact",
+      count: true,
     });
 
-    if (error) throw new Error(error.message);
-
-    const paginationObj = {
+    let paginationObj: any = {
       limit: _pagination.limit,
       page: _pagination.page,
-      next:
-        data?.length > _pagination.limit
-          ? (data as T[])[_pagination.limit - 1]?.createdAt
-          : null,
-      hasNext: data?.length > _pagination.limit,
       total: count || 0,
+      hasNext: data?.length > _pagination.limit,
+      next: null as any,
     };
 
     if (_pagination.next) {
+      paginationObj.next =
+        data?.length > _pagination.limit
+          ? (data as T[])[_pagination.limit]?.createdAt
+          : null;
       delete paginationObj.page;
       delete paginationObj.hasNext;
+    } else {
+      paginationObj.next = paginationObj.hasNext
+        ? (data as T[])[_pagination.limit - 1]?.createdAt
+        : null;
     }
 
     return {
@@ -105,44 +107,24 @@ class Base<T extends Record<string, any>> {
     };
   }
 
-  getById(
-    id: string
-  ): Promise<{ data: T | null; error: PostgrestError | null }> {
-    return this._supabaseService.querySupabase<T>({
-      table: this.tableName,
-      query: [{ column: "id", operator: EQueryOperator.Eq, value: id }],
-      modifyQuery: (qb) => qb.maybeSingle(),
-    }) as Promise<{ data: T | null; error: PostgrestError | null }>;
+  getById(id: string): Promise<{ data: T | null; error: any }> {
+    return this._model
+      .findByPk(id)
+      .then((res: any) => ({ data: res, error: null }));
   }
 
-  async create(data: Partial<T>) {
+  async create(data: Partial<T>): Promise<{ data: T | null; error: any }> {
     const _data = omit(data, ["deletedAt", "updatedAt"]);
-    return this._supabaseService.insertIntoDB<Partial<T>>({
-      table: this.tableName,
-      data: _data,
-    }) as Promise<{
-      data: T[] | null;
-      error: PostgrestError | null;
-    }>;
+    return this._dbService.insert(this._model, _data);
   }
 
-  async update(id: string, data: Partial<T>) {
+  async update(id: string, data: Partial<T>): Promise<{ data: T | null; error: any }> {
     const _data = omit(data, ["id", "createdAt"]);
-    return this._supabaseService.updateById<T>({
-      table: this.tableName,
-      id,
-      data: _data,
-    });
+    return this._dbService.updateById(this._model, id, _data);
   }
 
-  delete(
-    id: string
-  ): Promise<{ data: T | null; error: PostgrestError | null }> {
-    return this._supabaseService.deleteById({
-      table: this.tableName,
-      id,
-      single: true,
-    });
+  delete(id: string): Promise<{ data: T | null; error: any }> {
+    return this._dbService.deleteById(this._model, id);
   }
 
   /**
@@ -168,8 +150,8 @@ class Base<T extends Record<string, any>> {
    *   return { user, profile };
    * });
    */
-  async withTransaction<T>(operation: (client: SupabaseClient) => Promise<T>) {
-    return this._supabaseService.transaction(operation);
+  async withTransaction<T>(operation: (tx: any) => Promise<T>) {
+    return this._dbService.transaction(operation);
   }
 }
 

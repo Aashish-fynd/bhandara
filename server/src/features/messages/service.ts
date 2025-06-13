@@ -7,18 +7,23 @@ import Base, { BaseQueryArgs } from "../Base";
 import { EQueryOperator } from "@/definitions/enums";
 import { validateMessageCreate, validateMessageUpdate } from "./validation";
 import { MESSAGE_TABLE_NAME } from "./constants";
+import { Message } from "./model";
 import MediaService from "@features/media/service";
 import { isEmpty } from "@utils";
 import UserService from "@features/users/service";
+import { BadRequestError } from "@exceptions";
+import ReactionService from "@features/reactions/service";
 
 class MessageService extends Base<IMessage> {
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
+  private readonly reactionService: ReactionService;
 
   constructor() {
-    super(MESSAGE_TABLE_NAME);
+    super(Message);
     this.mediaService = new MediaService();
     this.userService = new UserService();
+    this.reactionService = new ReactionService();
   }
 
   async getAll(
@@ -53,7 +58,12 @@ class MessageService extends Base<IMessage> {
           });
         }
 
-        return this.getChildren(m.threadId, m.id, { limit: 1 });
+        const [children, reactions] = await Promise.all([
+          this.getChildren(m.threadId, m.id, { limit: 1 }),
+          this.reactionService.getReactions(`messages/${m.id}`),
+        ]);
+        m.reactions = reactions.data;
+        return children;
       }
     );
 
@@ -126,6 +136,14 @@ class MessageService extends Base<IMessage> {
           "user"
         );
 
+      const reactionPromises = userPopulatedMessages.map((msg) =>
+        this.reactionService.getReactions(`messages/${msg.id}`)
+      );
+      const reactionResults = await Promise.all(reactionPromises);
+      userPopulatedMessages.forEach((msg, idx) => {
+        msg.reactions = reactionResults[idx].data;
+      });
+
       return {
         data: { items: userPopulatedMessages, pagination: data.pagination },
       };
@@ -135,11 +153,27 @@ class MessageService extends Base<IMessage> {
   }
 
   async create<U extends Partial<Omit<IMessage, "id" | "updatedAt">>>(data: U) {
-    return validateMessageCreate(data, (data) => super.create(data));
+    return validateMessageCreate(data, async (validData) => {
+      if (validData.parentId) {
+        const parent = await this.getById(validData.parentId);
+        if (!parent.data) throw new BadRequestError("Parent message not found");
+        if (parent.data.parentId)
+          throw new BadRequestError("Nested messages beyond one level are not allowed");
+      }
+      return super.create(validData);
+    });
   }
 
   async update<U extends Partial<IMessage>>(id: string, data: U) {
-    return validateMessageUpdate(data, (data) => super.update(id, data));
+    return validateMessageUpdate(data, async (validData) => {
+      if (validData.parentId) {
+        const parent = await this.getById(validData.parentId);
+        if (!parent.data) throw new BadRequestError("Parent message not found");
+        if (parent.data.parentId)
+          throw new BadRequestError("Nested messages beyond one level are not allowed");
+      }
+      return super.update(id, validData);
+    });
   }
 
   getById(id: string) {
