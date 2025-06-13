@@ -7,14 +7,24 @@ export class Tag extends Model {}
 
 Tag.init(
   {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => getUUIDv7() },
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: () => getUUIDv7(),
+    },
     name: { type: DataTypes.TEXT, allowNull: false },
     value: { type: DataTypes.TEXT, allowNull: false, unique: true },
     description: { type: DataTypes.TEXT },
     icon: { type: DataTypes.TEXT },
     color: { type: DataTypes.TEXT },
-    parentId: { type: DataTypes.UUID, references: { model: "Tags", key: "id" } },
-    createdBy: { type: DataTypes.UUID, references: { model: "Users", key: "id" } },
+    parentId: {
+      type: DataTypes.UUID,
+      references: { model: "Tags", key: "id" },
+    },
+    createdBy: {
+      type: DataTypes.UUID,
+      references: { model: "Users", key: "id" },
+    },
   },
   {
     modelName: "Tag",
@@ -26,5 +36,5 @@ Tag.init(
 );
 
 (async () => {
-  await Tag.sync({ alter: true });
+  await Tag.sync({ alter: false });
 })();

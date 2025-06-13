@@ -14,7 +14,7 @@ interface QuerySupabaseArgs<T> {
 }
 
 export type BaseQueryArgs<T> = Omit<QuerySupabaseArgs<T>, "table">;
-
+// @deprecated
 class Base<T extends Record<string, any>> {
   /** @deprecated Use _dbService for database operations */
   protected readonly _supabaseService: SupabaseService;
@@ -55,7 +55,9 @@ class Base<T extends Record<string, any>> {
       filters.push({
         column: _pagination.sortBy as any,
         operator:
-          _pagination.sortOrder === "asc" ? EQueryOperator.Gt : EQueryOperator.Lt,
+          _pagination.sortOrder === "asc"
+            ? EQueryOperator.Gt
+            : EQueryOperator.Lt,
         value: _pagination.next,
       });
     }
@@ -64,7 +66,9 @@ class Base<T extends Record<string, any>> {
       query: filters,
       select: args.select,
       modifyOptions: (opts) => {
-        opts.order = [[_pagination.sortBy, _pagination.sortOrder.toUpperCase()]];
+        opts.order = [
+          [_pagination.sortBy, _pagination.sortOrder.toUpperCase()],
+        ];
         if (_pagination.next) {
           opts.limit = _pagination.limit + 1;
         } else {
@@ -118,7 +122,10 @@ class Base<T extends Record<string, any>> {
     return this._dbService.insert(this._model, _data);
   }
 
-  async update(id: string, data: Partial<T>): Promise<{ data: T | null; error: any }> {
+  async update(
+    id: string,
+    data: Partial<T>
+  ): Promise<{ data: T | null; error: any }> {
     const _data = omit(data, ["id", "createdAt"]);
     return this._dbService.updateById(this._model, id, _data);
   }

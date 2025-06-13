@@ -51,6 +51,7 @@ export async function disconnect() {
 }
 
 export function getDBConnection(name?: DB_CONNECTION_NAMES.Default) {
+  name ??= DB_CONNECTION_NAMES.Default;
   if (postgresConnection[name]) {
     return postgresConnection[name];
   }

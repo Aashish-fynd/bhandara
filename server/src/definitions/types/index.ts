@@ -77,7 +77,7 @@ export interface ILocation {
 }
 
 // Event Participant Interface
-interface IParticipant {
+export interface IParticipant {
   user: string | IBaseUser;
   status: EEventParticipantStatus;
 }
@@ -89,8 +89,7 @@ export interface IEvent extends ITimeStamp {
   description: string;
   location: ILocation; // JSONB field
   participants: IParticipant[]; // JSONB field
-  verifiers: { user: string | IBaseUser; verifiedAt: Date | string }[]; // Array of verifier IDs
-  threadId: string; // References "Thread" table
+  verifiers: IVerifier[]; // Array of verifier IDs
   type: EEventType;
   createdBy: string; // References "User" table
   creator?: IBaseUser;
@@ -101,6 +100,10 @@ export interface IEvent extends ITimeStamp {
   reactions?: IReaction[];
 }
 
+export interface IVerifier {
+  user: string | IBaseUser;
+  verifiedAt: Date | string;
+}
 // Tag Interface
 export interface ITag extends ITimeStamp {
   id: string;

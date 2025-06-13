@@ -8,11 +8,27 @@ export class Thread extends Model {}
 
 Thread.init(
   {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => getUUIDv7() },
-    type: { type: DataTypes.ENUM(...Object.values(EThreadType)), allowNull: false },
-    status: { type: DataTypes.ENUM(...Object.values(EAccessLevel)), allowNull: false },
-    visibility: { type: DataTypes.ENUM(...Object.values(EAccessLevel)), allowNull: false },
-    parentId: { type: DataTypes.UUID, references: { model: "Threads", key: "id" } },
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: () => getUUIDv7(),
+    },
+    type: {
+      type: DataTypes.ENUM(...Object.values(EThreadType)),
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.ENUM(...Object.values(EAccessLevel)),
+      allowNull: false,
+    },
+    visibility: {
+      type: DataTypes.ENUM(...Object.values(EAccessLevel)),
+      allowNull: false,
+    },
+    parentId: {
+      type: DataTypes.UUID,
+      references: { model: "Threads", key: "id" },
+    },
     eventId: {
       type: DataTypes.UUID,
       references: { model: "Events", key: "id" },
@@ -29,5 +45,5 @@ Thread.init(
 );
 
 (async () => {
-  await Thread.sync({ alter: true });
+  await Thread.sync({ alter: false });
 })();

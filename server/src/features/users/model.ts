@@ -16,7 +16,11 @@ User.init(
     email: { type: DataTypes.TEXT, allowNull: false, unique: true },
     gender: { type: DataTypes.TEXT, allowNull: false },
     address: { type: DataTypes.JSONB },
-    isVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    isVerified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     profilePic: { type: DataTypes.JSONB },
     mediaId: {
       type: DataTypes.UUID,
@@ -36,5 +40,5 @@ User.init(
 );
 
 (async () => {
-  await User.sync({ alter: true });
+  await User.sync({ alter: false });
 })();

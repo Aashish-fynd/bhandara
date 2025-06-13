@@ -135,9 +135,7 @@ class UserService extends Base<IBaseUser> {
   }
 
   @MethodCacheSync<IBaseUser>({})
-  async getById(
-    id: string
-  ): Promise<{ data: IBaseUser; error: any }> {
+  async getById(id: string): Promise<{ data: IBaseUser; error: any }> {
     const { data, error } = await super.getById(id);
     if (error) throw error;
     if (data.mediaId) {
@@ -154,12 +152,16 @@ class UserService extends Base<IBaseUser> {
     cacheGetter: getUserCacheByEmail,
     cacheSetter: setUserCacheByEmail,
   })
-  getUserByEmail(email: string) {
-    return this._dbService.query(User, {
-      query: [
-        { column: "email", operator: EQueryOperator.Eq, value: email },
-      ],
-    }) as any;
+  async getUserByEmail(email: string) {
+    const { data, error } = await this._dbService.query(User, {
+      query: [{ column: "email", operator: EQueryOperator.Eq, value: email }],
+      modifyOptions(opts) {
+        return opts;
+      },
+    });
+    if (error) throw error;
+    if (data.length === 0) return { data: null, error: null };
+    return { data: data[0], error: null };
   }
 
   @MethodCacheSync<IBaseUser>({
@@ -252,7 +254,7 @@ class UserService extends Base<IBaseUser> {
         ...user,
         mediaId: mediaData[user.mediaId as string],
       });
-      
+
       return acc;
     }, {} as Record<string, IBaseUser>);
 

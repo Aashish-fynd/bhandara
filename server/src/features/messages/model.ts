@@ -7,7 +7,11 @@ export class Message extends Model {}
 
 Message.init(
   {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => getUUIDv7() },
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: () => getUUIDv7(),
+    },
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
@@ -18,7 +22,11 @@ Message.init(
       references: { model: "Messages", key: "id" },
     },
     content: { type: DataTypes.JSONB, allowNull: false },
-    isEdited: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    isEdited: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     threadId: {
       type: DataTypes.UUID,
       allowNull: false,
@@ -35,5 +43,5 @@ Message.init(
 );
 
 (async () => {
-  await Message.sync({ alter: true });
+  await Message.sync({ alter: false });
 })();

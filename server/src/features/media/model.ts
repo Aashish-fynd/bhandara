@@ -8,8 +8,15 @@ export class Media extends Model {}
 
 Media.init(
   {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => getUUIDv7() },
-    type: { type: DataTypes.ENUM(...Object.values(EMediaType)), allowNull: false },
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: () => getUUIDv7(),
+    },
+    type: {
+      type: DataTypes.ENUM(...Object.values(EMediaType)),
+      allowNull: false,
+    },
     url: { type: DataTypes.TEXT, allowNull: false },
     name: { type: DataTypes.TEXT, allowNull: false },
     caption: { type: DataTypes.TEXT },
@@ -23,7 +30,10 @@ Media.init(
       references: { model: "Users", key: "id" },
     },
     storage: { type: DataTypes.JSONB, allowNull: false },
-    access: { type: DataTypes.ENUM(...Object.values(EAccessLevel)), allowNull: false },
+    access: {
+      type: DataTypes.ENUM(...Object.values(EAccessLevel)),
+      allowNull: false,
+    },
     metadata: { type: DataTypes.JSONB, allowNull: false, defaultValue: {} },
   },
   {
@@ -36,5 +46,5 @@ Media.init(
 );
 
 (async () => {
-  await Media.sync({ alter: true });
+  await Media.sync({ alter: false });
 })();

@@ -31,5 +31,5 @@ Reaction.init(
 );
 
 (async () => {
-  await Reaction.sync({ alter: true });
+  await Reaction.sync({ alter: false });
 })();

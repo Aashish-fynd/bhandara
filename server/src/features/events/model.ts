@@ -2,8 +2,35 @@ import { getDBConnection } from "@connections/db";
 import { EEventStatus, EEventType } from "@definitions/enums";
 import { getUUIDv7 } from "@helpers";
 import { DataTypes, Model } from "sequelize";
+import {
+  IEvent,
+  ILocation,
+  ITag,
+  IMedia,
+  IParticipant,
+  IVerifier,
+} from "@definitions/types";
 
-export class Event extends Model {}
+// Create a type that makes timestamp fields optional for model attributes
+type EventAttributes = Omit<IEvent, "createdAt" | "updatedAt" | "deletedAt">;
+
+export class Event extends Model<EventAttributes, EventAttributes> {
+  declare id: string;
+  declare name: string;
+  declare description: string;
+  declare location: ILocation;
+  declare participants: IParticipant[];
+  declare verifiers: IVerifier[];
+  declare type: EEventType;
+  declare createdBy: string;
+  declare status: EEventStatus;
+  declare capacity: number;
+  declare tags: ITag[];
+  declare media: IMedia[];
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare deletedAt?: Date;
+}
 
 export const EVENT_TABLE_NAME = "Events";
 
@@ -77,5 +104,5 @@ Event.init(
 );
 
 (async () => {
-  await Event.sync({ alter: true });
+  await Event.sync({ alter: false });
 })();
