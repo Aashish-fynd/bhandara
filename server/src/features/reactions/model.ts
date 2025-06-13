@@ -1,7 +1,7 @@
 import { getDBConnection } from "@connections/db";
 import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
-import { REACTION_TABLE_NAME, ALLOWED_REACTION_TABLES } from "./constants";
+import { REACTION_TABLE_NAME } from "./constants";
 
 export class Reaction extends Model {}
 
@@ -12,18 +12,7 @@ Reaction.init(
       primaryKey: true,
       defaultValue: () => getUUIDv7(),
     },
-    contentId: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      validate: {
-        isValidContentId(value: string) {
-          const [table] = value.split("/");
-          if (!ALLOWED_REACTION_TABLES.includes(table)) {
-            throw new Error(`Invalid reaction table: ${table}`);
-          }
-        },
-      },
-    },
+    contentId: { type: DataTypes.TEXT, allowNull: false },
     emoji: { type: DataTypes.TEXT, allowNull: false },
     userId: {
       type: DataTypes.UUID,
