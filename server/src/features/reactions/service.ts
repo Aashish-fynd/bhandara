@@ -2,8 +2,18 @@ import { IReaction, IPaginationParams } from "@/definitions/types";
 import Base, { BaseQueryArgs } from "../Base";
 import { Reaction } from "./model";
 import { EQueryOperator } from "@/definitions/enums";
+import { MethodCacheSync } from "@decorators";
+import {
+  deleteReactionCache,
+  getReactionCache,
+  setReactionCache,
+} from "./helpers";
 
 class ReactionService extends Base<IReaction> {
+  private readonly getCache = getReactionCache;
+  private readonly setCache = setReactionCache;
+  private readonly deleteCache = deleteReactionCache;
+
   constructor() {
     super(Reaction);
   }
@@ -15,9 +25,18 @@ class ReactionService extends Base<IReaction> {
     return super.getAll(args, pagination);
   }
 
+  @MethodCacheSync<IReaction[]>({
+    cacheGetter: getReactionCache,
+    cacheSetter: setReactionCache,
+    cacheDeleter: deleteReactionCache,
+  })
   async getReactions(contentId: string) {
     const { data } = await super.getAll(
-      { query: [{ column: "contentId", operator: EQueryOperator.Eq, value: contentId }] },
+      {
+        query: [
+          { column: "contentId", operator: EQueryOperator.Eq, value: contentId },
+        ],
+      },
       { limit: 1000 }
     );
     return { data: data.items || [], error: null };

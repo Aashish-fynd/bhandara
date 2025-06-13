@@ -11,6 +11,7 @@ import {
   deleteUserCache,
   deleteUserInterestsCache,
   getSafeUser,
+  getLeanUser,
   getUserCache,
   getUserCacheByEmail,
   getUserCacheByUsername,
@@ -247,11 +248,11 @@ class UserService extends Base<IBaseUser> {
     const { data: mediaData } = await this.mediaService.getMediaByIds(mediaIds);
 
     const safeUsers = fetchedUsers.reduce((acc, user) => {
-      acc[user.id] = getSafeUser({
+      acc[user.id] = getLeanUser({
         ...user,
         mediaId: mediaData[user.mediaId as string],
       });
-
+      
       return acc;
     }, {} as Record<string, IBaseUser>);
 

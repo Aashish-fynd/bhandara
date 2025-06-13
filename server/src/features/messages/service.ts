@@ -136,12 +136,13 @@ class MessageService extends Base<IMessage> {
           "user"
         );
 
-      for (const msg of userPopulatedMessages) {
-        const { data: reactions } = await this.reactionService.getReactions(
-          `messages/${msg.id}`
-        );
-        msg.reactions = reactions;
-      }
+      const reactionPromises = userPopulatedMessages.map((msg) =>
+        this.reactionService.getReactions(`messages/${msg.id}`)
+      );
+      const reactionResults = await Promise.all(reactionPromises);
+      userPopulatedMessages.forEach((msg, idx) => {
+        msg.reactions = reactionResults[idx].data;
+      });
 
       return {
         data: { items: userPopulatedMessages, pagination: data.pagination },

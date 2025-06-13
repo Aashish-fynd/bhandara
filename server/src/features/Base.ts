@@ -1,5 +1,6 @@
 import { EQueryOperator } from "@/definitions/enums";
 import { IPaginationParams } from "@/definitions/types";
+// Deprecated: Supabase service retained for backward compatibility
 import SupabaseService from "@supabase"; // Deprecated for DB operations
 import DBService from "@/database/dbService";
 import { SimpleFilter } from "@supabase";

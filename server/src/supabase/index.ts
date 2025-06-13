@@ -1,3 +1,4 @@
+// Deprecated: Supabase service retained for legacy support
 import { PostgrestError } from "@supabase/supabase-js";
 import {
   PostgrestBuilder,

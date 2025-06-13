@@ -50,12 +50,7 @@ export const validateSchema = (schemaName: string, schema: object) => {
   ): R | { data: null; error: any } => {
     const isValid = validate(data);
     if (!isValid) {
-      const errors = validate.errors
-        ?.map(
-          (error) =>
-            error.message + " " + Object.values(error.params).join(", ")
-        )
-        .join(", ");
+      const errors = ajv.errorsText(validate.errors, { separator: ", " });
       throw new BadRequestError(errors);
     }
     return callback(data);
