@@ -63,6 +63,7 @@ export interface IBaseThread extends ITimeStamp {
   status: EAccessLevel;
   visibility: EAccessLevel;
   lockHistory: ILockHistory[];
+  parentId?: string | null;
   eventId: string;
   messages?: IMessage[];
 }

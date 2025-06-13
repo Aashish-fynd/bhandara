@@ -23,7 +23,8 @@ import { deleteEventCache } from "./helpers";
 import { isEmpty } from "@utils";
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { getDistanceInMeters } from "@helpers";
-import { EVENT_TABLE_NAME } from "./model";
+import { Event, EVENT_TABLE_NAME } from "./model";
+import { Thread } from "../threads/model";
 
 class EventService extends Base<IEvent> {
   private readonly threadService: ThreadsService;
@@ -36,7 +37,7 @@ class EventService extends Base<IEvent> {
   private readonly deleteCache = deleteEventCache;
 
   constructor() {
-    super(EVENT_TABLE_NAME);
+    super(Event);
     this.threadService = new ThreadsService();
     this.messageService = new MessageService();
     this.tagService = new TagService();
@@ -151,10 +152,34 @@ class EventService extends Base<IEvent> {
     mediaIds: string[];
   }) {
     return validateEventCreate(body, (data) =>
-      this._supabaseService.executeRpc<IEvent>("create_event", {
-        event_data: data,
-        tag_ids: tagIds,
-        media_ids: mediaIds,
+      this.withTransaction(async (tx) => {
+        const event = await Event.create(
+          { ...(data as any), tags: tagIds, media: mediaIds },
+          { transaction: tx }
+        );
+
+        await Thread.bulkCreate(
+          [
+            {
+              type: EThreadType.QnA,
+              status: "public",
+              visibility: "public",
+              eventId: event.id,
+              lockHistory: {},
+            },
+            {
+              type: EThreadType.Discussion,
+              status: "public",
+              visibility: "public",
+              eventId: event.id,
+              lockHistory: {},
+            },
+          ],
+          { transaction: tx }
+        );
+
+        // tags and media are already stored on Event
+        return { data: event, error: null };
       })
     );
   }

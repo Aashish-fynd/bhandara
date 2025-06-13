@@ -7,16 +7,18 @@ import Base, { BaseQueryArgs } from "../Base";
 import { EQueryOperator } from "@/definitions/enums";
 import { validateMessageCreate, validateMessageUpdate } from "./validation";
 import { MESSAGE_TABLE_NAME } from "./constants";
+import { Message } from "./model";
 import MediaService from "@features/media/service";
 import { isEmpty } from "@utils";
 import UserService from "@features/users/service";
+import { BadRequestError } from "@exceptions";
 
 class MessageService extends Base<IMessage> {
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
 
   constructor() {
-    super(MESSAGE_TABLE_NAME);
+    super(Message);
     this.mediaService = new MediaService();
     this.userService = new UserService();
   }
@@ -135,11 +137,27 @@ class MessageService extends Base<IMessage> {
   }
 
   async create<U extends Partial<Omit<IMessage, "id" | "updatedAt">>>(data: U) {
-    return validateMessageCreate(data, (data) => super.create(data));
+    return validateMessageCreate(data, async (validData) => {
+      if (validData.parentId) {
+        const parent = await this.getById(validData.parentId);
+        if (!parent.data) throw new BadRequestError("Parent message not found");
+        if (parent.data.parentId)
+          throw new BadRequestError("Nested messages beyond one level are not allowed");
+      }
+      return super.create(validData);
+    });
   }
 
   async update<U extends Partial<IMessage>>(id: string, data: U) {
-    return validateMessageUpdate(data, (data) => super.update(id, data));
+    return validateMessageUpdate(data, async (validData) => {
+      if (validData.parentId) {
+        const parent = await this.getById(validData.parentId);
+        if (!parent.data) throw new BadRequestError("Parent message not found");
+        if (parent.data.parentId)
+          throw new BadRequestError("Nested messages beyond one level are not allowed");
+      }
+      return super.update(id, validData);
+    });
   }
 
   getById(id: string) {
