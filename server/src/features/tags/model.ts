@@ -2,8 +2,10 @@ import { getDBConnection } from "@connections/db";
 import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { TAG_TABLE_NAME } from "./constants";
+import { ITag } from "@/definitions/types";
+type TagAttributes = Omit<ITag, "createdAt" | "updatedAt" | "deletedAt">;
 
-export class Tag extends Model {}
+export class Tag extends Model<TagAttributes, TagAttributes> {}
 
 Tag.init(
   {

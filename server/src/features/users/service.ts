@@ -1,8 +1,12 @@
 import { IBaseUser, IMedia, ITag } from "@/definitions/types";
-import Base from "../Base";
+import {
+  createRecord,
+  deleteRecord,
+  findAllWithPagination,
+  findById,
+  updateRecord,
+} from "@utils/dbUtils";
 import { validateUserCreate, validateUserUpdate } from "./validation";
-import { EQueryOperator } from "@/definitions/enums";
-import { USER_TABLE_NAME } from "./constants";
 import { User } from "./model";
 import {
   bulkGetUserCache,
@@ -27,7 +31,7 @@ import { isEmpty } from "@utils";
 import TagService from "@features/tags/service";
 import MediaService from "@features/media/service";
 
-class UserService extends Base<IBaseUser> {
+class UserService {
   private readonly getCache = getUserCache;
   private readonly setCache = setUserCache;
   private readonly deleteCache = deleteUserCache;
@@ -36,20 +40,27 @@ class UserService extends Base<IBaseUser> {
   private readonly mediaService: MediaService;
 
   constructor() {
-    super(User);
     this.tagService = new TagService();
     this.mediaService = new MediaService();
   }
 
   async _getByIdNoCache(id: string) {
-    return super.getById(id);
+    return findById(User, id);
+  }
+
+  async getAll(
+    where: Record<string, any> = {},
+    pagination?: Partial<IPaginationParams>,
+    select?: string
+  ) {
+    return findAllWithPagination(User, where, pagination, select);
   }
 
   @MethodCacheSync<IBaseUser>()
   async create(
     data: Partial<IBaseUser>
   ): Promise<{ data: IBaseUser[] | null; error: any }> {
-    return validateUserCreate(data, (data) => super.create(data));
+    return validateUserCreate(data, (data) => createRecord(User, data));
   }
 
   async update(
@@ -106,7 +117,7 @@ class UserService extends Base<IBaseUser> {
       }
 
       const promises: Promise<any>[] = [
-        super.update(id, {
+        updateRecord(User, id, {
           ...rest,
           meta: newMeta,
           username,
@@ -136,7 +147,7 @@ class UserService extends Base<IBaseUser> {
 
   @MethodCacheSync<IBaseUser>({})
   async getById(id: string): Promise<{ data: IBaseUser; error: any }> {
-    const { data, error } = await super.getById(id);
+    const { data, error } = await findById(User, id);
     if (error) throw error;
     if (data.mediaId) {
       const { data: mediaData, error: mediaError } =
@@ -153,15 +164,13 @@ class UserService extends Base<IBaseUser> {
     cacheSetter: setUserCacheByEmail,
   })
   async getUserByEmail(email: string) {
-    const { data, error } = await this._dbService.query(User, {
-      query: [{ column: "email", operator: EQueryOperator.Eq, value: email }],
-      modifyOptions(opts) {
-        return opts;
-      },
-    });
-    if (error) throw error;
-    if (data.length === 0) return { data: null, error: null };
-    return { data: data[0], error: null };
+    const { data } = await findAllWithPagination(
+      User,
+      { email },
+      { limit: 1 }
+    );
+    if (data.items.length === 0) return { data: null, error: null };
+    return { data: data.items[0], error: null };
   }
 
   @MethodCacheSync<IBaseUser>({
@@ -169,18 +178,18 @@ class UserService extends Base<IBaseUser> {
     cacheSetter: setUserCacheByUsername,
   })
   getUserByUsername(username: string) {
-    return this._dbService.query(User, {
-      query: [
-        { column: "username", operator: EQueryOperator.Eq, value: username },
-      ],
-    }) as any;
+    return findAllWithPagination(
+      User,
+      { username },
+      { limit: 1 }
+    );
   }
 
   @MethodCacheSync<IBaseUser>({
     cacheDeleter: deleteAllUserCache,
   })
   delete(id: string) {
-    return super.delete(id);
+    return deleteRecord(User, id);
   }
 
   @MethodCacheSync<ITag[]>({
@@ -196,15 +205,7 @@ class UserService extends Base<IBaseUser> {
 
     if (isEmpty(interests)) return { data: [], error: null };
 
-    const tags = await this.tagService.getAll({
-      query: [
-        {
-          column: "id",
-          operator: EQueryOperator.In,
-          value: interests,
-        },
-      ],
-    });
+    const tags = await this.tagService.getAll({ id: interests });
 
     return { data: tags.data.items, error: tags.error };
   }
@@ -225,15 +226,7 @@ class UserService extends Base<IBaseUser> {
       const toFetchIds = Array.from(usersToFetch);
 
       const { data: users, error: usersError } = await this.getAll(
-        {
-          query: [
-            {
-              column: "id",
-              operator: EQueryOperator.In,
-              value: toFetchIds,
-            },
-          ],
-        },
+        { id: toFetchIds },
         { limit: toFetchIds.length }
       );
 

@@ -3,8 +3,10 @@ import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { THREAD_TABLE_NAME } from "./constants";
 import { EThreadType, EAccessLevel } from "@definitions/enums";
+import { IBaseThread } from "@/definitions/types";
+type ThreadAttributes = Omit<IBaseThread, "createdAt" | "updatedAt" | "deletedAt" | "messages">;
 
-export class Thread extends Model {}
+export class Thread extends Model<ThreadAttributes, ThreadAttributes> {}
 
 Thread.init(
   {
