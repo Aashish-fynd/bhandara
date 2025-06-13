@@ -2,8 +2,10 @@ import { getDBConnection } from "@connections/db";
 import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { REACTION_TABLE_NAME } from "./constants";
+import { IReaction } from "@/definitions/types";
+type ReactionAttributes = Omit<IReaction, "createdAt" | "updatedAt" | "deletedAt">;
 
-export class Reaction extends Model {}
+export class Reaction extends Model<ReactionAttributes, ReactionAttributes> {}
 
 Reaction.init(
   {

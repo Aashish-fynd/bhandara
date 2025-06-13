@@ -1,10 +1,14 @@
 import { IPaginationParams, ITag } from "@/definitions/types";
-import Base, { BaseQueryArgs } from "../Base";
+import {
+  createRecord,
+  deleteRecord,
+  findAllWithPagination,
+  findById,
+  updateRecord,
+} from "@utils/dbUtils";
 import { validateTagCreate, validateTagUpdate } from "./validation";
-import { TAG_TABLE_NAME } from "./constants";
 import { Tag } from "./model";
 import { Event } from "../events/model";
-import { EQueryOperator } from "@definitions/enums";
 import { MethodCacheSync } from "@decorators";
 import {
   getTagCache,
@@ -18,24 +22,23 @@ import {
   deleteSubTagsCache,
 } from "./helpers";
 
-class TagService extends Base<ITag> {
+class TagService {
   private readonly getCache = getTagCache;
   private readonly setCache = setTagCache;
   private readonly deleteCache = deleteTagCache;
 
-  constructor() {
-    super(Tag);
-  }
+  constructor() {}
 
   async getAll(
-    args?: BaseQueryArgs<ITag>,
-    pagination?: Partial<IPaginationParams>
+    where: Record<string, any> = {},
+    pagination?: Partial<IPaginationParams>,
+    select?: string
   ) {
-    return super.getAll(args, pagination);
+    return findAllWithPagination(Tag, where, pagination, select);
   }
 
   async _getByIdNoCache(id: string) {
-    return super.getById(id);
+    return findById(Tag, id);
   }
 
   async getRootTags() {
@@ -54,20 +57,15 @@ class TagService extends Base<ITag> {
     cacheDeleter: deleteEventTagsCache,
   })
   async getAllEventTags(eventId: string) {
-    const { data: event } = await this._dbService.query(Event, {
-      query: [
-        { column: "id", operator: EQueryOperator.Eq, value: eventId },
-      ],
-    });
+    const { data: event } = await findById(Event, eventId);
 
     const tagIds = (event[0]?.tags || []) as string[];
 
     if (!tagIds.length) return { data: [], error: null };
 
-    const { data } = await super.getAll(
-      {
-        query: [{ column: "id", operator: EQueryOperator.In, value: tagIds }],
-      },
+    const { data } = await findAllWithPagination(
+      Tag,
+      { id: tagIds },
       { limit: tagIds.length }
     );
 
@@ -77,41 +75,37 @@ class TagService extends Base<ITag> {
   @MethodCacheSync<ITag>()
   async create<U extends Partial<Omit<ITag, "id" | "updatedAt">>>(data: U) {
     return validateTagCreate(data, (validatedData: U) =>
-      super.create(validatedData)
+      createRecord(Tag, validatedData)
     );
   }
 
   @MethodCacheSync<ITag>()
   async update<U extends Partial<ITag>>(id: string, data: U) {
     return validateTagUpdate(data, (validatedData: U) =>
-      super.update(id, validatedData)
+      updateRecord(Tag, id, validatedData)
     );
   }
 
   @MethodCacheSync<ITag>()
   delete(id: string) {
-    return super.delete(id);
+    return deleteRecord(Tag, id);
   }
 
   @MethodCacheSync<ITag>({})
   async associateTagToEvent(eventId: string, tagId: string) {
-    const { data: event } = await this._dbService.query(Event, {
-      query: [{ column: "id", operator: EQueryOperator.Eq, value: eventId }],
-    });
+    const { data: event } = await findById(Event, eventId);
     if (!event[0]) return { data: null, error: null };
     const tags = new Set((event[0].tags || []) as string[]);
     tags.add(tagId);
-    return this._dbService.updateById(Event, eventId, { tags: Array.from(tags) });
+    return updateRecord(Event, eventId, { tags: Array.from(tags) });
   }
 
   async dissociateTagFromEvent(eventId: string, tagId: string) {
     await deleteEventTagsCache(eventId);
-    const { data: event } = await this._dbService.query(Event, {
-      query: [{ column: "id", operator: EQueryOperator.Eq, value: eventId }],
-    });
+    const { data: event } = await findById(Event, eventId);
     if (!event[0]) return { data: null, error: null };
     const tags = (event[0].tags || []) as string[];
-    return this._dbService.updateById(Event, eventId, {
+    return updateRecord(Event, eventId, {
       tags: tags.filter((t) => t !== tagId),
     });
   }
@@ -122,13 +116,11 @@ class TagService extends Base<ITag> {
     cacheDeleter: deleteSubTagsCache,
   })
   getSubTags(tagId: string, limit?: number) {
-    return this._dbService.query(Tag, {
-      query: [{ column: "parentId", operator: EQueryOperator.Eq, value: tagId }],
-      modifyOptions: (opts) => {
-        if (limit) opts.limit = limit;
-        return opts;
-      },
-    });
+    return findAllWithPagination(
+      Tag,
+      { parentId: tagId },
+      limit ? { limit } : {}
+    );
   }
 }
 

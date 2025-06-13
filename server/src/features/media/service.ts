@@ -1,12 +1,16 @@
+import { IMedia, IPaginationParams } from "@/definitions/types";
+import { EMediaProvider } from "@/definitions/enums";
 import {
-  IMedia,
-  IMediaEventJunction,
-  IPaginationParams,
-} from "@/definitions/types";
-import Base from "../Base";
-import { EMediaProvider, EQueryOperator } from "@/definitions/enums";
+  createRecord,
+  deleteRecord,
+  findAllWithPagination,
+  findById,
+  runTransaction,
+  updateRecord,
+} from "@utils/dbUtils";
+import SupabaseService from "@supabase";
 import { validateMediaCreate, validateMediaUpdate } from "./validation";
-import { MEDIA_TABLE_NAME, MEDIA_BUCKET_CONFIG } from "./constants";
+import { MEDIA_BUCKET_CONFIG } from "./constants";
 import { Media } from "./model";
 import { Event } from "../events/model";
 import { isEmpty, omit } from "@utils";
@@ -28,29 +32,27 @@ import { BadRequestError } from "@exceptions";
 import CustomError from "@exceptions/CustomError";
 import { CACHE_NAMESPACE_CONFIG } from "@constants";
 
-class MediaService extends Base<IMedia> {
+class MediaService {
   private readonly getCache = getMediaCache;
   private readonly setCache = setMediaCache;
   private readonly deleteCache = deleteMediaCache;
+  private readonly _supabaseService = new SupabaseService();
 
-  constructor() {
-    super(Media);
-  }
+  constructor() {}
 
   async _getByIdNoCache(id: string) {
-    return super.getById(id);
+    return findById(Media, id);
   }
 
   @MethodCacheSync<IMedia>()
   async getEventMedia(eventId: string, limit: number | null = null) {
-    const { data: events } = await this._dbService.query(Event, {
-      query: [{ column: "id", operator: EQueryOperator.Eq, value: eventId }],
-    });
+    const { data: events } = await findById(Event, eventId);
     const mediaIds = (events[0]?.media || []) as string[];
     if (!mediaIds.length) return { data: [], error: null };
 
-    const { data } = await super.getAll(
-      { query: [{ column: "id", operator: EQueryOperator.In, value: mediaIds }] },
+    const { data } = await findAllWithPagination(
+      Media,
+      { id: mediaIds },
       { limit: limit ?? mediaIds.length }
     );
 
@@ -137,7 +139,7 @@ class MediaService extends Base<IMedia> {
   })
   async update<U extends Partial<IMedia>>(id: string, data: U) {
     return validateMediaUpdate(data, (validatedData) =>
-      super.update(id, validatedData)
+      updateRecord(Media, id, validatedData)
     );
   }
 
@@ -148,7 +150,7 @@ class MediaService extends Base<IMedia> {
     mimeType: string;
   }) {
     return validateMediaCreate(insertData, (validatedData) =>
-      this.withTransaction(async (tx) => {
+      runTransaction(async (tx) => {
         const { name: fileName, ...restOptions } = validatedData.options || {};
 
         const bucket = validatedData.bucket;
@@ -217,7 +219,7 @@ class MediaService extends Base<IMedia> {
   async create<U extends Partial<Omit<IMedia, "id" | "updatedAt">>>(data: U) {
     return validateMediaCreate(data, (validatedData) => {
       const { path, ...rest } = validatedData;
-      return super.create({
+      return createRecord(Media, {
         ...rest,
         path: appendUUIDToFilename(path),
       });
@@ -228,7 +230,7 @@ class MediaService extends Base<IMedia> {
   async getById(
     id: string
   ): Promise<{ data: IMedia; error: any }> {
-    const res = await super.getById(id);
+    const res = await findById(Media, id);
     if (res.data) {
       const publicUrl = await this.getPublicUrl(
         res.data.url,
@@ -295,7 +297,7 @@ class MediaService extends Base<IMedia> {
 
   @MethodCacheSync<IMedia>({})
   async delete(id: string) {
-    return this.withTransaction(async (tx) => {
+    return runTransaction(async (tx) => {
       const media = await Media.findByPk(id, { transaction: tx });
       if (!media) return { data: null, error: null };
       await media.destroy({ transaction: tx });
@@ -309,9 +311,12 @@ class MediaService extends Base<IMedia> {
     data: Record<string, IMedia>;
     error: CustomError | null;
   }> {
-    const mediaData = await this._dbService.query<IMedia>(Media, {
-      query: [{ column: "id", operator: EQueryOperator.In, value: ids }],
-    });
+    const { data: res } = await findAllWithPagination(
+      Media,
+      { id: ids },
+      { limit: ids.length }
+    );
+    const mediaData = { data: res.items } as { data: IMedia[] };
     if (!isEmpty(mediaData.data)) {
       // split according to buckets
       const bucketPathsMapping = (mediaData.data as IMedia[]).reduce(
@@ -376,36 +381,28 @@ class MediaService extends Base<IMedia> {
 
       return { data: mediaWithUrls, error: null };
     }
-    return { data: {}, error: mediaData.error };
+    return { data: {}, error: null };
   }
 
   async getEventMediaJunctionRow(eventId: string, mediaId: string) {
-    const { data: event } = await this._dbService.query(Event, {
-      query: [
-        { column: "id", operator: EQueryOperator.Eq, value: eventId },
-      ],
-    });
+    const { data: event } = await findById(Event, eventId);
     const exists = (event[0]?.media || []).includes(mediaId);
     return { data: exists ? { eventId, mediaId } : null, error: null };
   }
 
   async createEventMediaJunctionRow(eventId: string, mediaId: string) {
-    const { data: event } = await this._dbService.query(Event, {
-      query: [{ column: "id", operator: EQueryOperator.Eq, value: eventId }],
-    });
+    const { data: event } = await findById(Event, eventId);
     const mediaSet = new Set((event[0]?.media || []) as string[]);
     mediaSet.add(mediaId);
-    return this._dbService.updateById(Event, eventId, {
+    return updateRecord(Event, eventId, {
       media: Array.from(mediaSet),
     });
   }
 
   async deleteEventMediaJunctionRow(eventId: string, mediaId: string) {
-    const { data: event } = await this._dbService.query(Event, {
-      query: [{ column: "id", operator: EQueryOperator.Eq, value: eventId }],
-    });
+    const { data: event } = await findById(Event, eventId);
     const media = (event[0]?.media || []) as string[];
-    return this._dbService.updateById(Event, eventId, {
+    return updateRecord(Event, eventId, {
       media: media.filter((m) => m !== mediaId),
     });
   }
