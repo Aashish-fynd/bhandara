@@ -12,15 +12,18 @@ import MediaService from "@features/media/service";
 import { isEmpty } from "@utils";
 import UserService from "@features/users/service";
 import { BadRequestError } from "@exceptions";
+import ReactionService from "@features/reactions/service";
 
 class MessageService extends Base<IMessage> {
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
+  private readonly reactionService: ReactionService;
 
   constructor() {
     super(Message);
     this.mediaService = new MediaService();
     this.userService = new UserService();
+    this.reactionService = new ReactionService();
   }
 
   async getAll(
@@ -55,7 +58,12 @@ class MessageService extends Base<IMessage> {
           });
         }
 
-        return this.getChildren(m.threadId, m.id, { limit: 1 });
+        const [children, reactions] = await Promise.all([
+          this.getChildren(m.threadId, m.id, { limit: 1 }),
+          this.reactionService.getReactions(`messages/${m.id}`),
+        ]);
+        m.reactions = reactions.data;
+        return children;
       }
     );
 
@@ -127,6 +135,13 @@ class MessageService extends Base<IMessage> {
           "userId",
           "user"
         );
+
+      for (const msg of userPopulatedMessages) {
+        const { data: reactions } = await this.reactionService.getReactions(
+          `messages/${msg.id}`
+        );
+        msg.reactions = reactions;
+      }
 
       return {
         data: { items: userPopulatedMessages, pagination: data.pagination },

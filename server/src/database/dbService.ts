@@ -51,56 +51,70 @@ export default class DBService {
     return where;
   }
 
-  async query<T extends Model>(model: ModelCtor<T>, {
-    query = [],
-    select,
-    modifyOptions,
-    count,
-  }: {
-    query?: SimpleFilter[];
-    select?: string;
-    modifyOptions?: (opts: any) => any;
-    count?: boolean;
-  }) {
+  async query<T extends Model>(
+    model: ModelCtor<T>,
+    {
+      query = [],
+      select,
+      modifyOptions,
+      count,
+    }: {
+      query?: SimpleFilter[];
+      select?: string;
+      modifyOptions?: (opts: any) => any;
+      count?: boolean;
+    }
+  ): Promise<{ data: T[]; count: number | null; error: any }> {
     let options: any = { where: this.buildWhere(query) };
     if (select) options.attributes = select.split(",").map((s) => s.trim());
     if (modifyOptions) options = modifyOptions(options) || options;
 
     if (count) {
       const res = await model.findAndCountAll(options);
-      return { data: res.rows as any, count: res.count, error: null };
+      return { data: res.rows as T[], count: res.count, error: null };
     }
     const data = await model.findAll(options);
-    return { data: data as any, count: null, error: null };
+    return { data: data as T[], count: null, error: null };
   }
 
-  async insert<T extends Model>(model: ModelCtor<T>, data: any) {
+  async insert<T extends Model>(model: ModelCtor<T>, data: any): Promise<{ data: T; error: any }> {
     const res = await model.create(data as any);
-    return { data: [res.toJSON()] as any, error: null };
+    return { data: res.toJSON() as T, error: null };
   }
 
-  async updateById<T extends Model>(model: ModelCtor<T>, id: string, data: any) {
+  async updateById<T extends Model>(
+    model: ModelCtor<T>,
+    id: string,
+    data: any
+  ): Promise<{ data: T | null; error: any }> {
     const [count, rows] = await model.update(data, {
       where: { id },
       returning: true,
     });
-    return { data: rows[0] as any, error: null };
+    return { data: (rows[0] as T) || null, error: null };
   }
 
-  async deleteById<T extends Model>(model: ModelCtor<T>, id: string) {
+  async deleteById<T extends Model>(
+    model: ModelCtor<T>,
+    id: string
+  ): Promise<{ data: T | null; error: any }> {
     const row = await model.findByPk(id);
     if (!row) return { data: null, error: null };
     await (row as any).destroy();
-    return { data: row.toJSON() as any, error: null };
+    return { data: row.toJSON() as T, error: null };
   }
 
-  async deleteByQuery<T extends Model>(model: ModelCtor<T>, filters: SimpleFilter[], single = false) {
+  async deleteByQuery<T extends Model>(
+    model: ModelCtor<T>,
+    filters: SimpleFilter[],
+    single = false
+  ): Promise<{ data: T | null; error: any }> {
     const where = this.buildWhere(filters);
     if (single) {
       const row = await model.findOne({ where });
       if (!row) return { data: null, error: null };
       await (row as any).destroy();
-      return { data: row.toJSON() as any, error: null };
+      return { data: row.toJSON() as T, error: null };
     }
     await model.destroy({ where });
     return { data: null, error: null };
