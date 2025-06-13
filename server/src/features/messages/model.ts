@@ -3,9 +3,24 @@ import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { MESSAGE_TABLE_NAME } from "./constants";
 import { IMessage } from "@/definitions/types";
-type MessageAttributes = Omit<IMessage, "createdAt" | "updatedAt" | "deletedAt" | "user" | "reactions">;
+type MessageAttributes = Omit<
+  IMessage,
+  "createdAt" | "updatedAt" | "deletedAt" | "user" | "reactions"
+>;
 
-export class Message extends Model<MessageAttributes, MessageAttributes> {}
+export class Message extends Model<MessageAttributes, MessageAttributes> {
+  declare id: string;
+  declare userId: string;
+  declare parentId: string | null;
+  declare content: IMessage["content"];
+  declare isEdited: boolean;
+  declare threadId: string;
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare deletedAt?: Date;
+  declare user?: any;
+  declare reactions?: any[];
+}
 
 Message.init(
   {

@@ -3,9 +3,20 @@ import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { REACTION_TABLE_NAME } from "./constants";
 import { IReaction } from "@/definitions/types";
-type ReactionAttributes = Omit<IReaction, "createdAt" | "updatedAt" | "deletedAt">;
+type ReactionAttributes = Omit<
+  IReaction,
+  "createdAt" | "updatedAt" | "deletedAt"
+>;
 
-export class Reaction extends Model<ReactionAttributes, ReactionAttributes> {}
+export class Reaction extends Model<ReactionAttributes, ReactionAttributes> {
+  declare id: string;
+  declare contentId: string;
+  declare emoji: string;
+  declare userId: string;
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare deletedAt?: Date;
+}
 
 Reaction.init(
   {
