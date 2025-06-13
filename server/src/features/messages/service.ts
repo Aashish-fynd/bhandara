@@ -3,10 +3,13 @@ import {
   IMessageContent,
   IPaginationParams,
 } from "@/definitions/types";
-import Base, { BaseQueryArgs } from "../Base";
-import { EQueryOperator } from "@/definitions/enums";
+import {
+  createRecord,
+  findAllWithPagination,
+  findById,
+  updateRecord,
+} from "@utils/dbUtils";
 import { validateMessageCreate, validateMessageUpdate } from "./validation";
-import { MESSAGE_TABLE_NAME } from "./constants";
 import { Message } from "./model";
 import MediaService from "@features/media/service";
 import { isEmpty } from "@utils";
@@ -14,32 +17,24 @@ import UserService from "@features/users/service";
 import { BadRequestError } from "@exceptions";
 import ReactionService from "@features/reactions/service";
 
-class MessageService extends Base<IMessage> {
+class MessageService {
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
   private readonly reactionService: ReactionService;
 
   constructor() {
-    super(Message);
     this.mediaService = new MediaService();
     this.userService = new UserService();
     this.reactionService = new ReactionService();
   }
 
   async getAll(
-    args: BaseQueryArgs<IMessage> = {},
+    where: Record<string, any> = {},
     pagination: Partial<IPaginationParams> = {}
   ) {
-    args.query?.push({
-      value: null,
-      operator: EQueryOperator.Is,
-      column: "parentId",
-    });
-    // Step 1: Fetch parent threads with pagination
-    const { data: parentLevelMessages, error } = await super.getAll(
-      {
-        ...args,
-      },
+    const { data: parentLevelMessages, error } = await findAllWithPagination(
+      Message,
+      { ...where, parentId: null },
       pagination
     );
 
@@ -98,13 +93,9 @@ class MessageService extends Base<IMessage> {
     parentId: string,
     pagination: Partial<IPaginationParams>
   ) {
-    const { data } = await super.getAll(
-      {
-        query: [
-          { value: threadId, operator: EQueryOperator.Eq, column: "threadId" },
-          { value: parentId, operator: EQueryOperator.Eq, column: "parentId" },
-        ],
-      },
+    const { data } = await findAllWithPagination(
+      Message,
+      { threadId, parentId },
       pagination
     );
     if (!isEmpty(data.items)) {
@@ -160,7 +151,7 @@ class MessageService extends Base<IMessage> {
         if (parent.data.parentId)
           throw new BadRequestError("Nested messages beyond one level are not allowed");
       }
-      return super.create(validData);
+      return createRecord(Message, validData);
     });
   }
 
@@ -172,12 +163,12 @@ class MessageService extends Base<IMessage> {
         if (parent.data.parentId)
           throw new BadRequestError("Nested messages beyond one level are not allowed");
       }
-      return super.update(id, validData);
+      return updateRecord(Message, id, validData);
     });
   }
 
   getById(id: string) {
-    return super.getById(id);
+    return findById(Message, id);
   }
 }
 

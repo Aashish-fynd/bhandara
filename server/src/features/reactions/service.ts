@@ -1,11 +1,15 @@
 import { IReaction, IPaginationParams } from "@/definitions/types";
-import Base, { BaseQueryArgs } from "../Base";
+import {
+  createRecord,
+  deleteRecord,
+  findAllWithPagination,
+  updateRecord,
+} from "@utils/dbUtils";
 import { Reaction } from "./model";
 import {
   validateReactionCreate,
   validateReactionUpdate,
 } from "./validation";
-import { EQueryOperator } from "@/definitions/enums";
 import { MethodCacheSync } from "@decorators";
 import {
   deleteReactionCache,
@@ -13,37 +17,40 @@ import {
   setReactionCache,
 } from "./helpers";
 
-class ReactionService extends Base<IReaction> {
+class ReactionService {
   private readonly getCache = getReactionCache;
   private readonly setCache = setReactionCache;
   private readonly deleteCache = deleteReactionCache;
 
   constructor() {
-    super(Reaction);
+    // no-op
   }
 
   async getAll(
-    args?: BaseQueryArgs<IReaction>,
-    pagination?: Partial<IPaginationParams>
+    where: Record<string, any> = {},
+    pagination?: Partial<IPaginationParams>,
+    select?: string
   ) {
-    return super.getAll(args, pagination);
+    return findAllWithPagination(Reaction, where, pagination, select);
   }
 
   @MethodCacheSync<IReaction>()
   async create<U extends Partial<Omit<IReaction, "id" | "updatedAt">>>(data: U) {
-    return validateReactionCreate(data, (validData) => super.create(validData));
+    return validateReactionCreate(data, (validData) =>
+      createRecord(Reaction, validData)
+    );
   }
 
   @MethodCacheSync<IReaction>()
   async update<U extends Partial<IReaction>>(id: string, data: U) {
     return validateReactionUpdate(data, (validData) =>
-      super.update(id, validData)
+      updateRecord(Reaction, id, validData)
     );
   }
 
   @MethodCacheSync<IReaction>()
   delete(id: string) {
-    return super.delete(id);
+    return deleteRecord(Reaction, id);
   }
 
   @MethodCacheSync<IReaction[]>({
@@ -52,12 +59,9 @@ class ReactionService extends Base<IReaction> {
     cacheDeleter: deleteReactionCache,
   })
   async getReactions(contentId: string) {
-    const { data } = await super.getAll(
-      {
-        query: [
-          { column: "contentId", operator: EQueryOperator.Eq, value: contentId },
-        ],
-      },
+    const { data } = await findAllWithPagination(
+      Reaction,
+      { contentId },
       { limit: 1000 }
     );
     return { data: data.items || [], error: null };

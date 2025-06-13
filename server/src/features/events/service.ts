@@ -1,11 +1,17 @@
 import { IBaseUser, IEvent, IPaginationParams } from "@/definitions/types";
 import ThreadsService from "../threads/service";
 import MessageService from "../messages/service";
-import Base, { BaseQueryArgs } from "../Base";
+import {
+  createRecord,
+  deleteRecord,
+  findAllWithPagination,
+  findById,
+  runTransaction,
+  updateRecord,
+} from "@utils/dbUtils";
 import {
   EEventParticipantStatus,
   EEventStatus,
-  EQueryOperator,
   EThreadType,
 } from "@/definitions/enums";
 import TagService from "../tags/service";
@@ -24,7 +30,7 @@ import { deleteEventCache } from "./helpers";
 import { isEmpty } from "@utils";
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { getDistanceInMeters } from "@helpers";
-import { Event, EVENT_TABLE_NAME } from "./model";
+import { Event } from "./model";
 import { Thread } from "../threads/model";
 
 class EventService {
@@ -72,13 +78,7 @@ class EventService {
     // TODO: if thread takes too much time move into separate call
     // Fetch thread data
     const threadData = await this.threadService.getAll({
-      query: [
-        {
-          value: eventData.id || "",
-          operator: EQueryOperator.Eq,
-          column: "eventId",
-        },
-      ],
+      eventId: eventData.id || "",
     });
 
     if (threadData.error) throw new Error(threadData.error as any);
@@ -157,7 +157,7 @@ class EventService {
     mediaIds: string[];
   }) {
     return validateEventCreate(body, (data) =>
-      this.withTransaction(async (tx) => {
+      runTransaction(Event, async (tx) => {
         const event = await Event.create(
           { ...(data as any), tags: tagIds, media: mediaIds },
           { transaction: tx }
@@ -191,14 +191,14 @@ class EventService {
 
   @MethodCacheSync<IEvent>({})
   async update<U extends Partial<IEvent>>(id: string, data: U) {
-    return validateEventUpdate(data, (data) => super.update(id, data));
+    return validateEventUpdate(data, (data) => updateRecord(Event, id, data));
   }
 
   async getAll(
-    args?: BaseQueryArgs<IEvent>,
+    where: Record<string, any> = {},
     pagination?: Partial<IPaginationParams>
   ) {
-    const { data } = await super.getAll(args, pagination);
+    const { data } = await findAllWithPagination(Event, where, pagination);
     if (data.items) {
       await Promise.all(
         data.items.map(async (event) => {
@@ -243,7 +243,7 @@ class EventService {
 
   @MethodCacheSync<IEvent>({})
   delete(id: string) {
-    return this.getById(id);
+    return deleteRecord(Event, id);
   }
 
   @MethodCacheSync<Record<string, IBaseUser>>({
@@ -257,17 +257,9 @@ class EventService {
     userIds: string[]
   ) {
     const { data } = await this.userService.getAll(
-      {
-        query: [
-          {
-            value: userIds,
-            operator: EQueryOperator.In,
-            column: "id",
-          },
-        ],
-        select: "id,name,email,deletedAt",
-      },
-      { limit: 1000 }
+      { id: userIds },
+      { limit: 1000 },
+      "id,name,email,deletedAt"
     );
     const userMap = data.items?.reduce((acc, user) => {
       acc[user.id] = user;

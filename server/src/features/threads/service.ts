@@ -1,26 +1,32 @@
-import Base from "../Base";
 import MessageService from "../messages/service";
 import { validateThreadCreate, validateThreadUpdate } from "./validation";
-import { THREAD_TABLE_NAME } from "./constants";
 import { Thread } from "./model";
 import MediaService from "@features/media/service";
-import { EQueryOperator, EThreadType } from "@definitions/enums";
+import { EThreadType } from "@definitions/enums";
+import { IPaginationParams } from "@/definitions/types";
+import {
+  createRecord,
+  deleteRecord,
+  findAllWithPagination,
+  findById,
+  updateRecord,
+} from "@utils/dbUtils";
 import { MethodCacheSync } from "@decorators";
 import { getThreadCache, setThreadCache, deleteThreadCache } from "./helpers";
 import { IBaseThread } from "@definitions/types";
 import { BadRequestError } from "@exceptions";
 
-class ThreadsService extends Base<IBaseThread> {
+class ThreadsService {
   private readonly getCache = getThreadCache;
   private readonly setCache = setThreadCache;
   private readonly deleteCache = deleteThreadCache;
 
   constructor() {
-    super(Thread);
+    // no-op
   }
 
   async _getByIdNoCache(id: string) {
-    return super.getById(id);
+    return findById(Thread, id);
   }
 
   @MethodCacheSync<IBaseThread>({})
@@ -34,7 +40,7 @@ class ThreadsService extends Base<IBaseThread> {
         if (parent.data.parentId)
           throw new BadRequestError("Nested threads beyond one level are not allowed");
       }
-      return super.create(validData);
+      return createRecord(Thread, validData);
     });
   }
 
@@ -43,7 +49,7 @@ class ThreadsService extends Base<IBaseThread> {
     data: IBaseThread;
     error: any;
   }> {
-    return super.getById(id);
+    return findById(Thread, id);
   }
 
   @MethodCacheSync<IBaseThread>({})
@@ -55,8 +61,20 @@ class ThreadsService extends Base<IBaseThread> {
         if (parent.data.parentId)
           throw new BadRequestError("Nested threads beyond one level are not allowed");
       }
-      return super.update(id, validData);
+      return updateRecord(Thread, id, validData);
     });
+  }
+
+  async getAll(
+    where: Record<string, any> = {},
+    pagination?: Partial<IPaginationParams>,
+    select?: string
+  ) {
+    return findAllWithPagination(Thread, where, pagination, select);
+  }
+
+  delete(id: string) {
+    return deleteRecord(Thread, id);
   }
 }
 
