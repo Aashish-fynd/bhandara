@@ -6,7 +6,7 @@ import { getAddressFromCoordinates } from "@/common/api/mapbox";
 import { useToastController } from "@tamagui/toast";
 import { Control, FieldErrors, UseFormSetValue } from "react-hook-form";
 import { SquareArrowOutUpRight } from "@tamagui/lucide-icons";
-import Loader from "./ui/Loader";
+import { SpinningLoader } from "./ui/Loaders";
 import * as Location from "expo-location";
 import { getUUIDv4 } from "@/helpers";
 import { setNavState } from "@/lib/navigationStore";
@@ -108,7 +108,7 @@ const LocationInput = ({ existingLocation, setValue, control, errors, isViewOnly
       }}
       iconAfter={
         isLocationLoading ? (
-          <Loader />
+          <SpinningLoader />
         ) : existingLocation?._location && !isViewOnly ? (
           <CustomTooltip
             trigger={

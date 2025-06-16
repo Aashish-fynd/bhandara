@@ -16,7 +16,7 @@ import { useToastController } from "@tamagui/toast";
 import { getSignedUrlForUpload } from "@/common/api/media.action";
 import { AVATAR_BUCKET } from "@/constants/global";
 import { updateUser } from "@/common/api/user.action";
-import Loader from "@/components/ui/Loader";
+import { SpinningLoader } from "@/components/ui/Loaders";
 import { formatDateToLongString } from "@/utils/date.utils";
 
 const Profile = () => {
@@ -134,7 +134,7 @@ const Profile = () => {
               pointerEvents={isUploading ? "none" : "auto"}
             >
               {isUploading ? (
-                <Loader color={"$color1"} />
+                <SpinningLoader color={"$color1"} />
               ) : (
                 <Camera
                   size={16}

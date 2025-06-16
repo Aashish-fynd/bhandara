@@ -21,7 +21,6 @@ import {
   setMediaPublicUrlCache,
   updateMediaCache,
   getMediaPublicUrlCache,
-  deleteMediaPublicUrlCache,
   setMediaBulkCache,
 } from "./helpers";
 import { getMediaCache } from "./helpers";
@@ -37,8 +36,6 @@ class MediaService {
   private readonly setCache = setMediaCache;
   private readonly deleteCache = deleteMediaCache;
   private readonly _supabaseService = new SupabaseService();
-
-  constructor() {}
 
   async _getByIdNoCache(id: string) {
     return findById(Media, id);
@@ -56,16 +53,16 @@ class MediaService {
       { limit: limit ?? mediaIds.length }
     );
 
-    // const publicUrlPromises = (data?.items || []).map(async (item) => {
-    //   const publicUrl = await this.getPublicUrl(item.url, item.storage.bucket);
-    //   return {
-    //     ...item,
-    //     publicUrl: publicUrl.data.signedUrl,
-    //     publicUrlExpiresAt: publicUrl.data.expiresAt,
-    //   };
-    // });
+    const publicUrlPromises = (data?.items || []).map(async (item) => {
+      const publicUrl = await this.getPublicUrl(item.url, item.storage.bucket);
+      return {
+        ...item,
+        publicUrl: publicUrl.data.signedUrl,
+        publicUrlExpiresAt: publicUrl.data.expiresAt,
+      };
+    });
 
-    const publicUrls = await Promise.all([]);
+    const publicUrls = await Promise.all(publicUrlPromises);
 
     return {
       data: publicUrls,
@@ -182,6 +179,7 @@ class MediaService {
 
         const creationData = await Media.create(createData as any, {
           transaction: tx,
+          raw: true,
         });
 
         const signedUrl = await this._supabaseService.getSignedUrlForUpload({
@@ -227,9 +225,7 @@ class MediaService {
   }
 
   @MethodCacheSync<IMedia>()
-  async getById(
-    id: string
-  ): Promise<{ data: IMedia; error: any }> {
+  async getById(id: string): Promise<{ data: IMedia; error: any }> {
     const res = await findById(Media, id);
     if (res.data) {
       const publicUrl = await this.getPublicUrl(
@@ -301,7 +297,10 @@ class MediaService {
       const media = await Media.findByPk(id, { transaction: tx });
       if (!media) return { data: null, error: null };
       await media.destroy({ transaction: tx });
-      const deletionResult = await this.deleteFile(media.storage.bucket, media.url);
+      const deletionResult = await this.deleteFile(
+        media.storage.bucket,
+        media.url
+      );
       logger.debug(`Deleted media ${id}`, { deletionResult });
       return { data: media, error: null };
     }) as any;
@@ -311,10 +310,14 @@ class MediaService {
     data: Record<string, IMedia>;
     error: CustomError | null;
   }> {
+    const filteredIds = new Set(ids.filter((id) => !!id));
+
+    if (filteredIds.size === 0) return { data: {}, error: null };
+
     const { data: res } = await findAllWithPagination(
       Media,
-      { id: ids },
-      { limit: ids.length }
+      { id: Array.from(filteredIds) },
+      { limit: filteredIds.size }
     );
     const mediaData = { data: res.items } as { data: IMedia[] };
     if (!isEmpty(mediaData.data)) {
@@ -392,10 +395,10 @@ class MediaService {
 
   async createEventMediaJunctionRow(eventId: string, mediaId: string) {
     const { data: event } = await findById(Event, eventId);
-    const mediaSet = new Set((event[0]?.media || []) as string[]);
+    const mediaSet = new Set((event?.media || []) as unknown as string[]);
     mediaSet.add(mediaId);
     return updateRecord(Event, eventId, {
-      media: Array.from(mediaSet),
+      media: Array.from(mediaSet) as any,
     });
   }
 
@@ -403,7 +406,7 @@ class MediaService {
     const { data: event } = await findById(Event, eventId);
     const media = (event[0]?.media || []) as string[];
     return updateRecord(Event, eventId, {
-      media: media.filter((m) => m !== mediaId),
+      media: media.filter((m) => m !== mediaId) as any,
     });
   }
 }

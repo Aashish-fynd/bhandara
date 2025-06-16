@@ -3,6 +3,7 @@ import axiosClient from "./base";
 import { base64ToBlob, uriToBlob, compressFile } from "@/utils";
 import { MEDIA_BUCKET_CONFIG } from "@/constants/media";
 import axios from "axios";
+import { IBaseResponse, IMedia, IPaginatedDataResponse } from "@/definitions/types";
 
 export interface IPickerAsset {
   uri: string;
@@ -27,9 +28,9 @@ export const uploadPickerAsset = async (
 
   const parsedName = (customName || name).replace(`.${type}`, "");
 
-  onProgress?.(0.1);
+  onProgress?.(10);
   const compressed = await compressFile(uri, { mimeType: mimeType || undefined, percentage: compressionPercentage });
-  onProgress?.(0.3);
+  onProgress?.(30);
   const newSize = compressed.size ?? fileSize;
 
   if (newSize > config.maxSize) {
@@ -79,5 +80,14 @@ export const uploadPickerAsset = async (
 
 export const deleteMedia = async (mediaId: string) => {
   const response = await axiosClient.delete(`/media/${mediaId}`);
+  return response.data;
+};
+
+export const getMediaPublicURLs = async (mediaIds: string[]): Promise<IBaseResponse<Record<string, IMedia>>> => {
+  const queryParams = new URLSearchParams({
+    ids: mediaIds.join(",")
+  });
+
+  const response = await axiosClient.get(`/media/public-urls?${queryParams.toString()}`);
   return response.data;
 };

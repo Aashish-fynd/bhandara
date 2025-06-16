@@ -9,7 +9,7 @@ import { MapPin } from "@tamagui/lucide-icons";
 import { getAddressFromCoordinates } from "@/common/api/mapbox";
 import { useToastController } from "@tamagui/toast";
 import { ActivityIndicator } from "react-native";
-import Loader from "../ui/Loader";
+import { SpinningLoader } from "../ui/Loaders";
 import { setNavState } from "@/lib/navigationStore";
 import { router } from "expo-router";
 
@@ -141,7 +141,7 @@ const AddressForm = ({ existingData, onSaveCallback, mapViewRef, pushDataKeyRef 
         justify="center"
         items="center"
       >
-        <Loader />
+        <SpinningLoader />
       </View>
     );
   }

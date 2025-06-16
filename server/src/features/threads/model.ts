@@ -3,7 +3,7 @@ import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { THREAD_TABLE_NAME } from "./constants";
 import { EThreadType, EAccessLevel } from "@definitions/enums";
-import { IBaseThread } from "@/definitions/types";
+import { IBaseThread, ILockHistory } from "@/definitions/types";
 
 type ThreadAttributes = Omit<
   IBaseThread,
@@ -17,7 +17,7 @@ export class Thread extends Model<ThreadAttributes, ThreadAttributes> {
   declare visibility: EAccessLevel;
   declare parentId?: string | null;
   declare eventId: string;
-  declare lockHistory: Record<string, any>[];
+  declare lockHistory: ILockHistory[];
   declare createdAt: Date;
   declare updatedAt: Date;
   declare deletedAt?: Date;

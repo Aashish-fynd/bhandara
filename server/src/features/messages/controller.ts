@@ -2,7 +2,7 @@ import { Response } from "express";
 import MessageService from "./service";
 import { ICustomRequest, IRequestPagination } from "@definitions/types";
 import { EQueryOperator } from "@definitions/enums";
-import { isEmpty, pick } from "@utils";
+import { cleanQueryObject, isEmpty, pick } from "@utils";
 import { NotFoundError } from "@exceptions";
 
 const messagesService = new MessageService();
@@ -14,21 +14,12 @@ export const getMessages = async (
   const { threadId } = req.params;
   const { userId, parentId } = req.query;
 
-  const query = [];
   const _queryObject = { userId, parentId, threadId };
 
-  for (const key in _queryObject) {
-    const element = _queryObject[key];
-    if (element) {
-      query.push({
-        column: key,
-        operator: EQueryOperator.Eq,
-        value: element,
-      });
-    }
-  }
-
-  const messages = await messagesService.getAll({ query }, req.pagination);
+  const messages = await messagesService.getAll(
+    cleanQueryObject(_queryObject),
+    req.pagination
+  );
   return res.status(200).json(messages);
 };
 

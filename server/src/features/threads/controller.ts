@@ -4,7 +4,6 @@ import ThreadsService from "./service";
 import { NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
 import MessageService from "@features/messages/service";
-import { EQueryOperator, EThreadType } from "@definitions/enums";
 
 const threadsService = new ThreadsService();
 const messageService = new MessageService();
@@ -43,9 +42,7 @@ export const getThread = async (req: ICustomRequest, res: Response) => {
   if (parsedIncludeMessages) {
     const messages = await messageService.getAll(
       {
-        query: [
-          { column: "threadId", operator: EQueryOperator.Eq, value: threadId },
-        ],
+        threadId: threadId,
       },
       { limit: parsedIncludeMessages }
     );

@@ -11,9 +11,8 @@ import { signInWithIdToken } from "@/common/api/auth.action";
 import { H3, Text } from "tamagui";
 import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
 import GoogleIcon from "@/assets/svg/GoogleIcon";
-import Loader from "@/components/ui/Loader";
+import { SpinningLoader } from "@/components/ui/Loaders";
 import { Mail } from "@tamagui/lucide-icons";
-import { EOnboardingStages } from "@/definitions/enums";
 import { EApplicableStage } from "../OnBoarding/enum";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -111,7 +110,7 @@ const AuthOptions = ({
           setIsSocialAuthenticationInProgress(true);
           promptAsync();
         }}
-        iconAfter={isSocialAuthenticationInProgress ? <Loader /> : undefined}
+        iconAfter={isSocialAuthenticationInProgress ? <SpinningLoader /> : undefined}
       >
         <Text
           fontSize={"$2"}

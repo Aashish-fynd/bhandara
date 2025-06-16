@@ -1,9 +1,8 @@
 import { XStack } from "tamagui";
 import React, { useState } from "react";
 import { Dialog } from "tamagui";
-import { DialogContent } from "./ui/common-styles";
 import { FilledButton, OutlineButton } from "./ui/Buttons";
-import Loader from "./ui/Loader";
+import { SpinningLoader } from "./ui/Loaders";
 
 const ConfirmationDialog = ({
   title,
@@ -54,7 +53,7 @@ const ConfirmationDialog = ({
           onPress={handleConfirm}
           width={"auto"}
           size={"medium"}
-          iconAfter={isLoading ? <Loader /> : undefined}
+          iconAfter={isLoading ? <SpinningLoader /> : undefined}
         >
           Confirm
         </FilledButton>

@@ -59,7 +59,7 @@ class TagService {
   async getAllEventTags(eventId: string) {
     const { data: event } = await findById(Event, eventId);
 
-    const tagIds = (event[0]?.tags || []) as string[];
+    const tagIds = event?.tags || ([] as string[]);
 
     if (!tagIds.length) return { data: [], error: null };
 

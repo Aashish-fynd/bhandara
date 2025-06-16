@@ -45,9 +45,11 @@ export const getSignedUploadUrl = async (
     },
   };
 
-  const { data } = await mediaService.getSignedUrlForUpload(insertData);
+  const responseSignedURL = await mediaService.getSignedUrlForUpload(
+    insertData
+  );
 
-  return res.status(200).json({ data });
+  return res.status(200).json({ data: responseSignedURL });
 };
 
 export const createMediaData = async (req: ICustomRequest, res: Response) => {
@@ -111,4 +113,18 @@ export const updateMedia = async (req: ICustomRequest, res: Response) => {
   const { data } = await mediaService.update(mediaId, updateData);
 
   return res.status(200).json({ data });
+};
+
+export const getMediaPublicUrls = async (
+  req: ICustomRequest,
+  res: Response
+) => {
+  const { ids } = req.query;
+  const signedUrls = await mediaService.getMediaByIds(
+    (ids as string).split(",")
+  );
+  if (isEmpty(signedUrls.data))
+    throw new NotFoundError("Media(s) not found at path");
+
+  return res.status(200).json(signedUrls);
 };

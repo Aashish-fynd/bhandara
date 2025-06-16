@@ -1,15 +1,13 @@
 import { IBaseUser, IEvent, IPaginationParams } from "@/definitions/types";
 import ThreadsService from "../threads/service";
-import MessageService from "../messages/service";
 import {
-  createRecord,
   deleteRecord,
   findAllWithPagination,
-  findById,
   runTransaction,
   updateRecord,
 } from "@utils/dbUtils";
 import {
+  EAccessLevel,
   EEventParticipantStatus,
   EEventStatus,
   EThreadType,
@@ -35,7 +33,6 @@ import { Thread } from "../threads/model";
 
 class EventService {
   private readonly threadService: ThreadsService;
-  private readonly messageService: MessageService;
   private readonly tagService: TagService;
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
@@ -46,7 +43,6 @@ class EventService {
 
   constructor() {
     this.threadService = new ThreadsService();
-    this.messageService = new MessageService();
     this.tagService = new TagService();
     this.mediaService = new MediaService();
     this.userService = new UserService();
@@ -167,17 +163,17 @@ class EventService {
           [
             {
               type: EThreadType.QnA,
-              status: "public",
-              visibility: "public",
+              status: EAccessLevel.Public,
+              visibility: EAccessLevel.Public,
               eventId: event.id,
-              lockHistory: {},
+              lockHistory: [],
             },
             {
               type: EThreadType.Discussion,
-              status: "public",
-              visibility: "public",
+              status: EAccessLevel.Public,
+              visibility: EAccessLevel.Public,
               eventId: event.id,
-              lockHistory: {},
+              lockHistory: [],
             },
           ],
           { transaction: tx }

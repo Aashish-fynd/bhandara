@@ -1,8 +1,6 @@
-import MessageService from "../messages/service";
 import { validateThreadCreate, validateThreadUpdate } from "./validation";
 import { Thread } from "./model";
-import MediaService from "@features/media/service";
-import { EThreadType } from "@definitions/enums";
+
 import { IPaginationParams } from "@/definitions/types";
 import {
   createRecord,
@@ -21,10 +19,6 @@ class ThreadsService {
   private readonly setCache = setThreadCache;
   private readonly deleteCache = deleteThreadCache;
 
-  constructor() {
-    // no-op
-  }
-
   async _getByIdNoCache(id: string) {
     return findById(Thread, id);
   }
@@ -38,7 +32,9 @@ class ThreadsService {
         const parent = await this.getById(validData.parentId);
         if (!parent.data) throw new BadRequestError("Parent thread not found");
         if (parent.data.parentId)
-          throw new BadRequestError("Nested threads beyond one level are not allowed");
+          throw new BadRequestError(
+            "Nested threads beyond one level are not allowed"
+          );
       }
       return createRecord(Thread, validData);
     });
@@ -59,7 +55,9 @@ class ThreadsService {
         const parent = await this.getById(validData.parentId);
         if (!parent.data) throw new BadRequestError("Parent thread not found");
         if (parent.data.parentId)
-          throw new BadRequestError("Nested threads beyond one level are not allowed");
+          throw new BadRequestError(
+            "Nested threads beyond one level are not allowed"
+          );
       }
       return updateRecord(Thread, id, validData);
     });

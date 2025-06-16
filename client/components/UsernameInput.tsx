@@ -3,7 +3,7 @@ import { InputGroup } from "./Form";
 import { debounce, View } from "tamagui";
 import { Control, FieldErrors, UseFormSetError } from "react-hook-form";
 import { getUserByUsername } from "@/common/api/user.action";
-import Loader from "./ui/Loader";
+import { SpinningLoader } from "./ui/Loaders";
 import { CircleCheck } from "@tamagui/lucide-icons";
 
 interface IProps {
@@ -56,7 +56,7 @@ const UsernameInput = ({ control, currentValue, error, setError, isViewOnly }: I
             enterStyle={{ opacity: 0, scale: 0.5 }}
             exitStyle={{ opacity: 0, scale: 0.5 }}
           >
-            {usernameLoading && <Loader />}
+            {usernameLoading && <SpinningLoader />}
 
             {!usernameLoading && isUsernameAvailable && (
               <CircleCheck

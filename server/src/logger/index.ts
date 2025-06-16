@@ -22,7 +22,7 @@ const customFormat = format.printf(
 const allLogsTransport = new transports.DailyRotateFile({
   filename: config.log.allLogsPath.replace(".log", "-%DATE%.log"),
   datePattern: "YYYY-MM-DD",
-  maxFiles: "3d", // Keep logs for 3 days
+  maxFiles: "1d", // Keep logs for 3 days
   maxSize: "20m", // Rotate if file size exceeds 20MB
   zippedArchive: true, // Compress rotated files
 });
@@ -31,7 +31,7 @@ const allLogsTransport = new transports.DailyRotateFile({
 const errorLogsTransport = new transports.DailyRotateFile({
   filename: config.log.errorLogsPath.replace(".log", "-%DATE%.log"),
   datePattern: "YYYY-MM-DD",
-  maxFiles: "10d", // Keep logs for 10 days
+  maxFiles: "1d", // Keep logs for 10 days
   maxSize: "20m", // Rotate if file size exceeds 20MB
   zippedArchive: true, // Compress rotated files
   level: "error", // Only log errors

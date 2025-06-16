@@ -1,4 +1,4 @@
-import { FindOptions, Model, ModelCtor, Op, Transaction } from "sequelize";
+import { FindOptions, Model, ModelStatic, Op, Transaction } from "sequelize";
 import { IPaginationParams } from "@/definitions/types";
 import { getDBConnection } from "@connections/db";
 
@@ -8,7 +8,7 @@ export interface PaginatedResult<T> {
 }
 
 export async function findAllWithPagination<T extends Model>(
-  model: ModelCtor<T>,
+  model: ModelStatic<T>,
   where: Record<string, any> = {},
   pagination: Partial<IPaginationParams> = {},
   select?: string,
@@ -22,47 +22,57 @@ export async function findAllWithPagination<T extends Model>(
     sortOrder = "desc",
   } = pagination;
 
+  const _pagination = {
+    limit: limit ?? 10,
+    page: page ?? 1,
+    next: next ?? undefined,
+    sortBy: sortBy ?? "createdAt",
+    sortOrder: sortOrder ?? "desc",
+  };
+
   const options: FindOptions = {
     raw: true,
     where: { ...where },
-    order: [[sortBy, sortOrder.toUpperCase() as any]],
+    order: [[_pagination.sortBy, _pagination.sortOrder.toUpperCase() as any]],
   };
 
   if (select) options.attributes = select.split(",").map((s) => s.trim());
 
   if (next) {
-    (options.where as any)[sortBy] = {
-      [sortOrder === "asc" ? Op.gt : Op.lt]: next,
+    (options.where as any)[_pagination.sortBy] = {
+      [_pagination.sortOrder === "asc" ? Op.gt : Op.lt]: next,
     };
-    options.limit = limit + 1;
+    options.limit = _pagination.limit + 1;
   } else {
-    options.limit = limit;
-    options.offset = (page - 1) * limit;
+    options.limit = _pagination.limit;
+    options.offset = (_pagination.page - 1) * _pagination.limit;
   }
 
   if (modifyOptions) modifyOptions(options);
 
   const { rows, count } = await model.findAndCountAll(options);
-  const resultItems = rows.slice(0, limit) as T[];
+  const resultItems = rows.slice(0, _pagination.limit) as T[];
   const paginationObj: IPaginationParams = {
-    limit,
-    page,
-    next: null,
+    limit: _pagination.limit,
+    page: _pagination.page,
+    next: _pagination.next,
     total: count,
-    sortBy,
-    sortOrder,
+    sortBy: _pagination.sortBy,
+    sortOrder: _pagination.sortOrder,
   } as IPaginationParams;
 
   paginationObj.hasNext = rows.length > limit;
 
   if (next) {
     paginationObj.next =
-      rows.length > limit ? (rows as any)[limit][sortBy] : null;
+      rows.length > _pagination.limit
+        ? (rows as any)[_pagination.limit][_pagination.sortBy]
+        : null;
     delete paginationObj.page;
     delete paginationObj.hasNext;
   } else {
     paginationObj.next = paginationObj.hasNext
-      ? (rows as any)[limit - 1][sortBy]
+      ? (rows as any)[_pagination.limit - 1][_pagination.sortBy]
       : null;
   }
 
@@ -73,7 +83,7 @@ export async function findAllWithPagination<T extends Model>(
 }
 
 export async function findById<T extends Model>(
-  model: ModelCtor<T>,
+  model: ModelStatic<T>,
   id: string
 ): Promise<{ data: T | null; error: any }> {
   const res = await model.findByPk(id, { raw: true });
@@ -81,30 +91,34 @@ export async function findById<T extends Model>(
 }
 
 export async function createRecord<T extends Model>(
-  model: ModelCtor<T>,
+  model: ModelStatic<T>,
   data: Partial<T>
 ): Promise<{ data: T | null; error: any }> {
   const row = await model.create(data as any);
-  return { data: row.toJSON() as any, error: null };
+  return { data: row.toJSON() as T, error: null };
 }
 
 export async function updateRecord<T extends Model>(
-  model: ModelCtor<T>,
+  model: ModelStatic<T>,
   id: string,
   data: Partial<T>
-): Promise<{ data: T | null; error: any }> {
-  await model.update(data as any, { where: { id: id as any } });
-  const updated = await model.findByPk(id, { raw: true });
-  return { data: updated as T, error: null };
+): Promise<{ data: T | T[] | null; error: any }> {
+  const [, updatedResult] = await model.update(data as any, {
+    where: { id: id as any },
+    returning: true,
+  });
+
+  return { data: updatedResult, error: null };
 }
 
 export async function deleteRecord<T extends Model>(
-  model: ModelCtor<T>,
+  model: ModelStatic<T>,
   id: string
 ): Promise<{ data: T | null; error: any }> {
   const row = await model.findByPk(id);
   if (!row) return { data: null, error: null };
   await (row as any).destroy();
+
   return { data: row.toJSON() as any, error: null };
 }
 

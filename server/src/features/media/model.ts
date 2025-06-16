@@ -7,7 +7,12 @@ import { IMedia } from "@/definitions/types";
 
 type MediaAttributes = Omit<
   IMedia,
-  "createdAt" | "updatedAt" | "deletedAt" | "path" | "publicUrl" | "publicUrlExpiresAt"
+  | "createdAt"
+  | "updatedAt"
+  | "deletedAt"
+  | "path"
+  | "publicUrl"
+  | "publicUrlExpiresAt"
 >;
 
 export class Media extends Model<MediaAttributes, MediaAttributes> {
@@ -21,11 +26,7 @@ export class Media extends Model<MediaAttributes, MediaAttributes> {
   declare mimeType?: string | null;
   declare duration?: number | null;
   declare uploader: string;
-  declare storage: {
-    provider: string;
-    bucket: string;
-    metadata: Record<string, any>;
-  };
+  declare storage: IMedia["storage"];
   declare access: EAccessLevel;
   declare metadata: Record<string, any>;
   declare publicUrl?: string;

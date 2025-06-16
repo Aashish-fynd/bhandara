@@ -1,32 +1,40 @@
 import React, { useState, useRef, useEffect } from "react";
-import { CardWrapper } from "../ui/common-styles";
-import { XStack, YStack, Text, useIsomorphicLayoutEffect } from "tamagui";
-import { Plus, SendHorizontal, X } from "@tamagui/lucide-icons";
+import { Badge, CardWrapper } from "../ui/common-styles";
+import { XStack, ScrollView, View, YStack, Text } from "tamagui";
+import { HelpCircle, Plus, RotateCw, SendHorizontal, X } from "@tamagui/lucide-icons";
 import { FilledButton, OutlineButton } from "../ui/Buttons";
-import { InputField, TextareaField } from "../Form";
-import { NativeSyntheticEvent, TextInputChangeEventData, Platform } from "react-native";
+import { TextareaField } from "../Form";
+import { Platform } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { PopoverWrapper } from "../PopoverWrapper";
 import AddPopoverContents from "./AddPopoverContents";
 import { deleteMedia, IPickerAsset } from "@/common/api/media.action";
 import AssetPreview from "./AssetPreview";
 import { IMedia } from "@/definitions/types";
+import { CircularProgressLoader, SpinningLoader } from "../ui/Loaders";
+import CustomTooltip from "../CustomTooltip";
 
 interface IProps {
   context: Record<string, any>;
+  sendButtonCb: (data: Record<string, any>) => void;
 }
 
-export interface IAttachedFile extends IPickerAsset {
+export interface IAttachedFile extends Omit<IPickerAsset, "uri"> {
   error?: string;
-  uploadPercentage?: number;
+  uploadedRatio?: number;
   retryCallback?: () => void;
   uploadResult?: IMedia;
+  isDeleting?: boolean;
+  publicURL?: IMedia["publicUrl"];
+  uri?: string;
 }
 
-const MessageInputBar = ({ context }: IProps) => {
+const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
   const [message, setMessage] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<IAttachedFile[]>([]);
   const textAreaRef = useRef<any>(null);
+
+  const maxAttachmentLimit = context?.maxAttachments;
 
   const actions = [
     {
@@ -134,11 +142,41 @@ const MessageInputBar = ({ context }: IProps) => {
   }, []);
 
   const removeAttachedFile = async (index: number) => {
-    await deleteMedia(attachedFiles[index].name);
-    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+    try {
+      const uploadResult = attachedFiles[index].uploadResult;
+      if (uploadResult) {
+        attachedFiles[index].isDeleting = true;
+        setAttachedFiles(attachedFiles);
+        await deleteMedia(uploadResult?.id);
+      }
+      setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+    } catch (error) {
+      console.error("Error deleting file", error);
+      attachedFiles[index].isDeleting = false;
+      setAttachedFiles(attachedFiles);
+    }
   };
 
-  console.log("attachedFiles", attachedFiles);
+  const handleSendMessageClick = () => {
+    // create format to send to the parent callback
+    const format = {
+      message,
+      attachments: attachedFiles.map((file) => {
+        return {
+          type: file.type,
+          uri: file.uri,
+          name: file.name,
+          size: file.size,
+          publicURL: file.publicURL
+        };
+      }),
+      mediaIds: attachedFiles.map((file) => file?.uploadResult?.id).filter(Boolean)
+    };
+    sendButtonCb(format);
+  };
+
+  const hasValidFiles = attachedFiles.some((file) => !file.error);
+  const isAddButtonDisabled = !!maxAttachmentLimit ? maxAttachmentLimit <= attachedFiles.length : false;
 
   return (
     <CardWrapper
@@ -146,41 +184,113 @@ const MessageInputBar = ({ context }: IProps) => {
       rounded={"$3"}
     >
       {attachedFiles.length > 0 && (
-        <XStack
-          gap={"$2"}
-          flexWrap="wrap"
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
         >
-          {attachedFiles.map((file, index) => (
-            <XStack
-              key={`${file.name}-${index}`}
-              position="relative"
-              group
-              cursor="pointer"
-              height={50}
-              width={50}
-            >
-              <AssetPreview
-                type={file.type as "image" | "video"}
-                file={file.uri}
-              />
-              <OutlineButton
-                position="absolute"
-                t={2}
-                r={2}
-                icon={<X size={12} />}
-                height={18}
-                p={"$1"}
-                width={18}
-                display="none"
-                onPress={() => removeAttachedFile(index)}
-                $group-hover={{
-                  display: "flex"
-                }}
-              />
-            </XStack>
-          ))}
-        </XStack>
+          <XStack gap={"$2"}>
+            {attachedFiles.map((file, index) => {
+              const isUploading = file.uploadedRatio && file.uploadedRatio !== 100;
+              const hasError = file.error;
+              const showPreview = !isUploading && !hasError && (file.uri || file.publicURL);
+
+              return (
+                <YStack gap={"$2"}>
+                  <XStack
+                    key={`${file.name}-${index}`}
+                    position="relative"
+                    group
+                    cursor="pointer"
+                    height={50}
+                    width={50}
+                  >
+                    {(isUploading || hasError) && (
+                      <View
+                        t={0}
+                        l={0}
+                        position="absolute"
+                        height={50}
+                        width={50}
+                        items={"center"}
+                        justify={"center"}
+                        rounded={"$3"}
+                        bg={file.error ? "$red1" : "rgba(0, 0, 0, 0.3)"}
+                        borderColor={file.error ? "$red10" : "transparent"}
+                        borderWidth={file.error ? "$0.25" : 0}
+                        overflow="hidden"
+                      >
+                        {file.error ? (
+                          <RotateCw
+                            size={20}
+                            cursor="pointer"
+                            onPress={file.retryCallback}
+                          />
+                        ) : (
+                          <CircularProgressLoader
+                            size={24}
+                            progress={file.uploadedRatio || 0}
+                          />
+                        )}
+                      </View>
+                    )}
+                    {showPreview && (
+                      <AssetPreview
+                        type={file.type as "image" | "video"}
+                        file={file.uri}
+                        publicLink={file.publicURL}
+                      />
+                    )}
+
+                    <OutlineButton
+                      icon={file.isDeleting ? <SpinningLoader /> : <X size={12} />}
+                      height={18}
+                      p={"$1"}
+                      width={18}
+                      t={2}
+                      r={2}
+                      position="absolute"
+                      disabled={file.isDeleting}
+                      display={file.isDeleting ? "flex" : "none"}
+                      onPress={() => removeAttachedFile(index)}
+                      $group-hover={{
+                        display: "flex"
+                      }}
+                    />
+
+                    {/* {hasError && (
+                      <Badge
+                        outline-danger
+                        rounded={1000}
+                        group
+                        width={20}
+                      >
+                        <XStack
+                          gap={"$1.5"}
+                          items={"center"}
+                        >
+                          <HelpCircle
+                            color={"$red9"}
+                            size={14}
+                          />
+                          <Text
+                            fontSize={"$2"}
+                            color={"$red9"}
+                            display="none"
+                            $group-hover={{ display: "flex" }}
+                          >
+                            {file.error}
+                          </Text>
+                        </XStack>
+                      </Badge>
+                    )} */}
+                  </XStack>
+                </YStack>
+              );
+            })}
+          </XStack>
+        </ScrollView>
       )}
+
       <TextareaField
         onChangeText={handleMessageChange}
         value={message}
@@ -198,20 +308,45 @@ const MessageInputBar = ({ context }: IProps) => {
       >
         <PopoverWrapper
           trigger={
-            <FilledButton
-              icon={<Plus size={16} />}
-              size={"$2"}
-              height={30}
-              width={30}
-              onPress={() => {}}
-              disabled={false}
-            />
+            isAddButtonDisabled ? (
+              <CustomTooltip
+                trigger={
+                  <FilledButton
+                    icon={<Plus size={16} />}
+                    size={"$2"}
+                    height={30}
+                    width={30}
+                    onPress={() => {}}
+                    disabled={isAddButtonDisabled}
+                  />
+                }
+              >
+                <Badge>
+                  <Text
+                    fontSize={"$2"}
+                    color={"$color1"}
+                  >
+                    Max 3 files supported
+                  </Text>
+                </Badge>
+              </CustomTooltip>
+            ) : (
+              <FilledButton
+                icon={<Plus size={16} />}
+                size={"$2"}
+                height={30}
+                width={30}
+                onPress={() => {}}
+                disabled={isAddButtonDisabled}
+              />
+            )
           }
         >
           <AddPopoverContents
             eventId={context?.eventId || ""}
             setAttachedFiles={setAttachedFiles}
             attachedFiles={attachedFiles}
+            maxAttachmentLimit={maxAttachmentLimit}
           />
         </PopoverWrapper>
         <FilledButton
@@ -219,7 +354,8 @@ const MessageInputBar = ({ context }: IProps) => {
           size={"$2"}
           height={30}
           width={30}
-          disabled={!message}
+          disabled={!message && !hasValidFiles}
+          onPress={handleSendMessageClick}
         />
       </XStack>
     </CardWrapper>

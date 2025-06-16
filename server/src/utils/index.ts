@@ -53,3 +53,13 @@ export const merge = (...objects: any[]) => {
 
   return result;
 };
+
+export const cleanQueryObject = (query: Record<string, any>) => {
+  const cleanedQuery: any = {};
+  Object.keys(query).forEach((key) => {
+    if (query[key] !== undefined && query[key] !== "") {
+      cleanedQuery[key] = query[key];
+    }
+  });
+  return cleanedQuery;
+};

@@ -55,7 +55,7 @@ export interface IMessage extends ITimeStamp {
 
 export interface IPaginatedDataResponse<T> {
   items: T[] | undefined;
-  pagination: IPaginatedResponse;
+  pagination: IPaginationResponse;
 }
 
 // Thread Lock History
@@ -147,7 +147,7 @@ export interface IMediaEventJunction extends ITimeStamp {
   mediaId: string;
 }
 
-export interface IPaginatedResponse {
+export interface IPaginationResponse {
   limit: number;
   page: number;
   next: string | null;
@@ -155,7 +155,7 @@ export interface IPaginatedResponse {
   total?: number;
 }
 
-export interface IPaginationParams extends IPaginatedResponse {
+export interface IPaginationParams extends IPaginationResponse {
   sortBy: "createdAt" | "updatedAt";
   sortOrder: "asc" | "desc";
   startDate?: Date;
@@ -174,4 +174,9 @@ export interface IAddress {
   latitude: number;
   longitude: number;
   landmark?: string;
+}
+
+export interface IBaseResponse<T> {
+  data?: T;
+  error?: any;
 }

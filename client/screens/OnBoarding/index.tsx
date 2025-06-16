@@ -16,7 +16,7 @@ import { useRouter } from "expo-router";
 import { useLocalSearchParams } from "expo-router";
 import { isEmpty } from "@/utils";
 import { getNavState } from "@/lib/navigationStore";
-import Loader from "@/components/ui/Loader";
+import { SpinningLoader } from "@/components/ui/Loaders";
 import { loginWithEmailAndPassword, signupWithEmailAndPassword } from "@/common/api/auth.action";
 
 import { EGender, EOnboardingStages } from "@/definitions/enums";
@@ -399,7 +399,7 @@ const GetStartedContents = ({
             cursor={isContinueButtonDisabled ? "not-allowed" : "pointer"}
             pointerEvents={isContinueButtonDisabled ? "none" : "auto"}
             items={"center"}
-            iconAfter={isLoading ? <Loader /> : undefined}
+            iconAfter={isLoading ? <SpinningLoader /> : undefined}
             width={!showMiniProgressBars ? "100%" : "auto"}
           >
             {authStage !== EOnboardingStages.InterestSelection ? "Continue" : "Finish"}

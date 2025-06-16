@@ -3,7 +3,7 @@ import CustomTooltip from "@/components/CustomTooltip";
 import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
 import { CircularFillIndicator, IdentityCard, TagPreviewTooltip, UserCluster } from "@/components/ui/common-components";
 import { Badge } from "@/components/ui/common-styles";
-import Loader from "@/components/ui/Loader";
+import { SpinningLoader } from "@/components/ui/Loaders";
 import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import images from "@/constants/images";
 import { EEventType, EMediaType } from "@/definitions/enums";
@@ -250,7 +250,7 @@ const HomeScreen = () => {
   const { data: paginatedEvents, loading, error } = useDataLoader({ promiseFunction: fetchEvents });
 
   return (
-    <ScrollView mx={"auto"}>
+    <ScrollView>
       <YStack
         bg="$background"
         width="100%"
@@ -259,8 +259,9 @@ const HomeScreen = () => {
         gap={"$4"}
         maxW={600}
         scrollbarWidth="none"
+        mx={"auto"}
       >
-        {loading && <Loader />}
+        {loading && <SpinningLoader />}
         {!loading &&
           paginatedEvents?.data?.items?.map((event) => (
             <EventCard

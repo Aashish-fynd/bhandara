@@ -6,7 +6,7 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import { Input, Spinner, Text, useDebounce, View, XStack, YStack } from "tamagui";
 import { FilledButton } from "../ui/Buttons";
 import PulsatingDot from "../PulsatingDot";
-import Loader from "../ui/Loader";
+import { SpinningLoader } from "../ui/Loaders";
 
 interface SearchResult {
   name: string;
@@ -199,7 +199,7 @@ const Search = forwardRef(
                 items="center"
                 width={"100%"}
               >
-                <Loader />
+                <SpinningLoader />
               </View>
             ) : results?.length ? (
               results.map((suggestion) => (

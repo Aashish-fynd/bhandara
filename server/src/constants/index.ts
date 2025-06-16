@@ -42,3 +42,33 @@ export enum DB_CONNECTION_NAMES {
   Write = "write",
   Default = "default",
 }
+
+export const PLATFORM_SOCKET_EVENTS = {
+  CONNECT: "connect",
+  DISCONNECT: "disconnect",
+  JOIN_ROOM: "join:room",
+  LEAVE_ROOM: "leave:room",
+
+  // EVENTs
+  EVENT_CREATED: "event:created",
+  EVENT_UPDATED: "event:updated",
+  EVENT_DELETED: "event:deleted",
+
+  // THREADs
+  THREAD_CREATED: "thread:created",
+  THREAD_UPDATED: "thread:updated",
+  THREAD_DELETED: "thread:deleted",
+
+  // MESSAGEs
+  MESSAGE_CREATED: "message:created",
+  MESSAGE_UPDATED: "message:updated",
+  MESSAGE_DELETED: "message:deleted",
+
+  // REACTIONs
+  REACTION_CREATED: "reaction:created",
+  REACTION_UPDATED: "reaction:updated",
+  REACTION_DELETED: "reaction:deleted",
+
+  // USERs
+  USER_UPDATED: "user:updated",
+};

@@ -3,13 +3,11 @@ import {
   createRecord,
   deleteRecord,
   findAllWithPagination,
+  findById,
   updateRecord,
 } from "@utils/dbUtils";
 import { Reaction } from "./model";
-import {
-  validateReactionCreate,
-  validateReactionUpdate,
-} from "./validation";
+import { validateReactionCreate, validateReactionUpdate } from "./validation";
 import { MethodCacheSync } from "@decorators";
 import {
   deleteReactionCache,
@@ -22,8 +20,9 @@ class ReactionService {
   private readonly setCache = setReactionCache;
   private readonly deleteCache = deleteReactionCache;
 
-  constructor() {
-    // no-op
+  @MethodCacheSync<IReaction>()
+  async getById(id: string) {
+    return findById(Reaction, id);
   }
 
   async getAll(
@@ -35,7 +34,9 @@ class ReactionService {
   }
 
   @MethodCacheSync<IReaction>()
-  async create<U extends Partial<Omit<IReaction, "id" | "updatedAt">>>(data: U) {
+  async create<U extends Partial<Omit<IReaction, "id" | "updatedAt">>>(
+    data: U
+  ) {
     return validateReactionCreate(data, (validData) =>
       createRecord(Reaction, validData)
     );
@@ -53,11 +54,7 @@ class ReactionService {
     return deleteRecord(Reaction, id);
   }
 
-  @MethodCacheSync<IReaction[]>({
-    cacheGetter: getReactionCache,
-    cacheSetter: setReactionCache,
-    cacheDeleter: deleteReactionCache,
-  })
+  @MethodCacheSync<IReaction[]>({})
   async getReactions(contentId: string) {
     const { data } = await findAllWithPagination(
       Reaction,

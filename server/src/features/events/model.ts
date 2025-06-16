@@ -9,6 +9,8 @@ import {
   IMedia,
   IParticipant,
   IVerifier,
+  IBaseUser,
+  IReaction,
 } from "@definitions/types";
 
 // Create a type that makes timestamp fields optional for model attributes
@@ -25,11 +27,14 @@ export class Event extends Model<EventAttributes, EventAttributes> {
   declare createdBy: string;
   declare status: EEventStatus;
   declare capacity: number;
-  declare tags: ITag[];
+  declare tags: IEvent["tags"];
   declare media: IMedia[];
   declare createdAt: Date;
   declare updatedAt: Date;
   declare deletedAt?: Date;
+
+  declare creator?: IBaseUser;
+  declare reactions?: IReaction[];
 }
 
 export const EVENT_TABLE_NAME = "Events";

@@ -58,8 +58,13 @@ const messageSchema = {
       type: "boolean",
       errorMessage: "isEdited must be a boolean value",
     },
+    threadId: {
+      type: "string",
+      format: "uuid",
+      errorMessage: "threadId must be a valid UUID",
+    },
   },
-  required: ["userId", "content", "isEdited"],
+  required: ["userId", "content", "isEdited", "threadId"],
   additionalProperties: false,
   errorMessage: {
     type: "Message data must be an object",

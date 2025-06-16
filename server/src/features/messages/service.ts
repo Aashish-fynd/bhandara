@@ -5,6 +5,7 @@ import {
 } from "@/definitions/types";
 import {
   createRecord,
+  deleteRecord,
   findAllWithPagination,
   findById,
   updateRecord,
@@ -149,7 +150,9 @@ class MessageService {
         const parent = await this.getById(validData.parentId);
         if (!parent.data) throw new BadRequestError("Parent message not found");
         if (parent.data.parentId)
-          throw new BadRequestError("Nested messages beyond one level are not allowed");
+          throw new BadRequestError(
+            "Nested messages beyond one level are not allowed"
+          );
       }
       return createRecord(Message, validData);
     });
@@ -161,7 +164,9 @@ class MessageService {
         const parent = await this.getById(validData.parentId);
         if (!parent.data) throw new BadRequestError("Parent message not found");
         if (parent.data.parentId)
-          throw new BadRequestError("Nested messages beyond one level are not allowed");
+          throw new BadRequestError(
+            "Nested messages beyond one level are not allowed"
+          );
       }
       return updateRecord(Message, id, validData);
     });
@@ -169,6 +174,10 @@ class MessageService {
 
   getById(id: string) {
     return findById(Message, id);
+  }
+
+  async delete(id: string) {
+    return deleteRecord(Message, id);
   }
 }
 

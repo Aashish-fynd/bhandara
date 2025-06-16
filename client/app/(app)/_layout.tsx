@@ -1,8 +1,9 @@
 import { BackButtonHeader } from "@/components/ui/common-components";
-import Loader from "@/components/ui/Loader";
+import { SpinningLoader } from "@/components/ui/Loaders";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SocketProvider } from "@/contexts/Socket";
 import { isEmpty } from "@/utils";
-import { Redirect, Stack, useRouter } from "expo-router";
+import { Redirect, Stack } from "expo-router";
 import { View } from "tamagui";
 
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
@@ -10,7 +11,7 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
 };
 
 function _Layout() {
-  const { isLoading, user } = useAuth();
+  const { isLoading, user, session } = useAuth();
 
   if (isLoading) {
     return (
@@ -21,7 +22,7 @@ function _Layout() {
         justify="center"
         items="center"
       >
-        <Loader />
+        <SpinningLoader />
       </View>
     );
   }
@@ -31,24 +32,26 @@ function _Layout() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen
-        name="(tabs)"
-        options={{ headerShown: false, animation: "fade" }}
-      />
-      <Stack.Screen
-        name="new-event"
-        options={{
-          headerShown: false
-        }}
-      />
-      <Stack.Screen
-        name="event/[id]"
-        options={{
-          headerShown: false
-        }}
-      />
-    </Stack>
+    <SocketProvider session={`bh_session=${session?.id}`}>
+      <Stack>
+        <Stack.Screen
+          name="(tabs)"
+          options={{ headerShown: false, animation: "fade" }}
+        />
+        <Stack.Screen
+          name="new-event"
+          options={{
+            headerShown: false
+          }}
+        />
+        <Stack.Screen
+          name="event/[id]"
+          options={{
+            headerShown: false
+          }}
+        />
+      </Stack>
+    </SocketProvider>
   );
 }
 

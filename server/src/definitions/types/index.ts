@@ -47,12 +47,12 @@ export interface IMessage extends ITimeStamp {
   content: IMessageContent;
   isEdited: boolean;
   threadId: string;
-  user: IBaseUser;
+  user?: IBaseUser;
   reactions?: IReaction[];
 }
 
 // Thread Lock History
-interface ILockHistory {
+export interface ILockHistory {
   lockedBy: string; // ID of the user who locked the thread
   lockedAt: Date; // Timestamp of when the thread was locked
 }
@@ -95,7 +95,7 @@ export interface IEvent extends ITimeStamp {
   creator?: IBaseUser;
   status: EEventStatus;
   capacity: number;
-  tags: ITag[]; // Array of tag IDs
+  tags: ITag[] | string[]; // Array of tag IDs
   media: IMedia[]; // Array of media IDs
   reactions?: IReaction[];
 }
@@ -138,10 +138,11 @@ export interface IMedia extends ITimeStamp {
   duration?: number | null;
   uploader: string; // References "User" table
   storage: IMediaStorage; // JSONB field
-  accessLevel: EAccessLevel;
+  access: EAccessLevel;
   metadata: Record<string, any>;
 
   path?: string;
+  name: string;
 }
 
 export interface IMediaEventJunction extends ITimeStamp {

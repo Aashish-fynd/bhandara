@@ -5,7 +5,7 @@ import LocationInput from "@/components/LocationInput";
 import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
 import { TagListing, TagPreviewTooltip } from "@/components/ui/common-components";
 import { Badge, CardWrapper } from "@/components/ui/common-styles";
-import Loader from "@/components/ui/Loader";
+import { SpinningLoader } from "@/components/ui/Loaders";
 import UsernameInput from "@/components/UsernameInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { IAddress, ITag } from "@/definitions/types";
@@ -105,7 +105,7 @@ const InterestsDialog = ({
           width={"auto"}
           onPress={handleUpdateInterests}
           disabled={isSaving}
-          iconAfter={isSaving ? <Loader /> : undefined}
+          iconAfter={isSaving ? <SpinningLoader /> : undefined}
         >
           Update
         </FilledButton>
@@ -148,7 +148,7 @@ const Interests = () => {
             />
           )}
         </XStack>
-        {loading ? <Loader /> : <TagListing tags={data} />}
+        {loading ? <SpinningLoader /> : <TagListing tags={data} />}
       </CardWrapper>
 
       <RenderContent>

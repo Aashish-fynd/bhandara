@@ -1,4 +1,9 @@
-import { IBaseUser, IMedia, ITag } from "@/definitions/types";
+import {
+  IBaseUser,
+  IMedia,
+  IPaginationParams,
+  ITag,
+} from "@/definitions/types";
 import {
   createRecord,
   deleteRecord,
@@ -59,8 +64,10 @@ class UserService {
   @MethodCacheSync<IBaseUser>()
   async create(
     data: Partial<IBaseUser>
-  ): Promise<{ data: IBaseUser[] | null; error: any }> {
-    return validateUserCreate(data, (data) => createRecord(User, data));
+  ): Promise<{ data: IBaseUser | null; error: any }> {
+    return validateUserCreate(data, (data) =>
+      createRecord(User, { ...data, mediaId: data.mediaId as string })
+    );
   }
 
   async update(
@@ -121,6 +128,7 @@ class UserService {
           ...rest,
           meta: newMeta,
           username,
+          mediaId: rest.mediaId as string,
         }),
       ];
 
@@ -164,11 +172,7 @@ class UserService {
     cacheSetter: setUserCacheByEmail,
   })
   async getUserByEmail(email: string) {
-    const { data } = await findAllWithPagination(
-      User,
-      { email },
-      { limit: 1 }
-    );
+    const { data } = await findAllWithPagination(User, { email }, { limit: 1 });
     if (data.items.length === 0) return { data: null, error: null };
     return { data: data.items[0], error: null };
   }
@@ -178,11 +182,7 @@ class UserService {
     cacheSetter: setUserCacheByUsername,
   })
   getUserByUsername(username: string) {
-    return findAllWithPagination(
-      User,
-      { username },
-      { limit: 1 }
-    );
+    return findAllWithPagination(User, { username }, { limit: 1 });
   }
 
   @MethodCacheSync<IBaseUser>({

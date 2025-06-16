@@ -69,8 +69,14 @@ export const Badge = styled(YStack, {
         bg: "$green7",
         borderColor: "$green11"
       }
+    },
+    "outline-danger": {
+      true: {
+        bg: "$red3",
+        borderColor: "$red8"
+      }
     }
-  }
+  } as const
 });
 
 export const CardWrapper = styled(Card, {

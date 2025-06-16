@@ -49,10 +49,53 @@ export const validateSchema = (schemaName: string, schema: object) => {
     callback: (validData: T) => R
   ): R | { data: null; error: any } => {
     const isValid = validate(data);
+
     if (!isValid) {
-      const errors = ajv.errorsText(validate.errors, { separator: ", " });
+      const errors = (validate.errors || [])
+        .map((err) => {
+          const path = err.instancePath || "/";
+          const keyword = err.keyword;
+          const msg = err.message || "Validation error";
+
+          switch (keyword) {
+            case "required":
+              return `Missing required property "${
+                (err.params as any).missingProperty
+              }" at ${path}`;
+            case "additionalProperties":
+              return `Unexpected property "${
+                (err.params as any).additionalProperty
+              }" at ${path}`;
+            case "type":
+              return `Invalid type at ${path}, expected ${
+                (err.params as any).type
+              }`;
+            case "enum":
+              return `Invalid value at ${path}, expected one of ${(
+                err.params as any
+              ).allowedValues.join(", ")}`;
+            case "minLength":
+              return `String at ${path} is too short (minLength: ${
+                (err.params as any).limit
+              })`;
+            case "maxLength":
+              return `String at ${path} is too long (maxLength: ${
+                (err.params as any).limit
+              })`;
+            case "minimum":
+            case "maximum":
+              return `Value at ${path} must be ${keyword} ${
+                (err.params as any).limit
+              }`;
+            default:
+              return `${path} ${msg}`;
+          }
+        })
+        .join(", ");
+
       throw new BadRequestError(errors);
     }
+
     return callback(data);
   };
 };

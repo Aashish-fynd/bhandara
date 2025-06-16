@@ -1,11 +1,11 @@
-import React, { memo, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 import { getEventById } from "@/common/api/events.action";
 import { getStaticMapImageUrl } from "@/common/api/mapbox";
 import { FilledButton } from "@/components/ui/Buttons";
 import { BackButtonHeader, IdentityCard, TagListing, UserCluster } from "@/components/ui/common-components";
 import { Badge, CardWrapper, CircleBgWrapper } from "@/components/ui/common-styles";
-import Loader from "@/components/ui/Loader";
+import { SpinningLoader } from "@/components/ui/Loaders";
 import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import { EEventType, EThreadType } from "@/definitions/enums";
 import { IAddress, IBaseThread, IBaseUser, IEvent, IMessage } from "@/definitions/types";
@@ -35,6 +35,9 @@ import { format } from "date-fns";
 import CustomAvatar from "@/components/CustomAvatar";
 import { getChildMessagesForThread, getMessageById, getMessagesForThread } from "@/common/api/messages.action";
 import MessageInputBar from "@/components/MessageInputBar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSocket } from "@/contexts/Socket";
+import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
 
 interface ThreadCardProps {
   thread: { id: string };
@@ -43,8 +46,10 @@ interface ThreadCardProps {
 }
 
 export function MessageCard({ thread, message, handleClick }: ThreadCardProps) {
+  const { user: currentUserProfile } = useAuth();
+
   const userProfileUrl = message?.user?.profilePic?.url || "";
-  const userName = message?.user?.name || "";
+  const userName = currentUserProfile?.id === message.user?.id ? "You" : message?.user?.name || "";
   const childMessages = message?.children?.items;
   const totalChildMessages = message?.children?.pagination?.total || 0;
 
@@ -383,15 +388,54 @@ interface IProps extends BaseCommonProps {
   onBack: () => void;
   style: YStackProps["style"];
   handleClick: (data: BaseCommonProps) => void;
+  parentRef?: React.MutableRefObject<{ addMessage: (msg: AddMessageProp) => void } | null>;
 }
 
-const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, style }: IProps) => {
+const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, style, parentRef }: IProps) => {
+  const { user: currentAuthenticatedUser } = useAuth();
+  const socket = useSocket();
+
   const headers = {
     [ViewTypes.Thread]: "Thread",
     [ViewTypes.Message]: "Message",
     [ViewTypes.ChildMessages]: "Messages",
     [ViewTypes.None]: ""
   };
+
+  useEffect(() => {
+    const _func = async () => {
+      socket.on(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, ({ data, error }: { data: AddMessageProp; error: any }) => {
+        if (error) return;
+        if (data.threadId === threadId) {
+          setData((prev: { data: { items: IMessage[] }; error?: null }) => {
+            if (prev.error) return prev;
+            prev.data.items = [data as IMessage, ...prev.data.items];
+            return prev;
+          });
+        }
+      });
+    };
+    _func();
+  }, [socket]);
+
+  // useImperativeHandle(parentRef, () => ({
+  //   addMessage: (msg) => {
+  //     const newMessage = {
+  //       ...msg,
+  //       user: currentAuthenticatedUser,
+  //       userId: currentAuthenticatedUser?.id,
+  //       parentId,
+  //       threadId,
+  //       isEdited: false
+  //     };
+
+  //     setData((prev: { data: { items: IMessage[] }; error?: null }) => {
+  //       if (prev.error) return prev;
+  //       prev.data.items = [newMessage as IMessage, ...prev.data.items];
+  //       return prev;
+  //     });
+  //   }
+  // }));
 
   const methodExecutors = {
     [ViewTypes.Thread]: () => getMessagesForThread({ threadId: threadId || "" }),
@@ -419,7 +463,7 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
     if (currentView === ViewTypes.Thread) return data?.items || [];
   };
 
-  const { data, loading } = useDataLoader({ promiseFunction: () => methodExecutor(currentView) });
+  const { data, loading, setData } = useDataLoader({ promiseFunction: () => methodExecutor(currentView) });
 
   const _fetchedData = getFormattedData(data?.data);
 
@@ -441,7 +485,7 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
           height={"100%"}
           width={"100%"}
         >
-          <Loader />
+          <SpinningLoader />
         </View>
       ) : (
         _fetchedData && (
@@ -466,9 +510,15 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
   );
 });
 
+interface AddMessageProp extends IMessage {
+  thread: IBaseThread;
+  user: IBaseUser;
+}
+
 const EventDetails: React.FC = () => {
   const { id } = useLocalSearchParams();
   const toastController = useToastController();
+  const { user: currentAuthenticatedUser } = useAuth();
 
   const { data: _event, loading } = useDataLoader({ promiseFunction: fetchEventData });
   const { data: _threads, loading: threadsLoading } = useDataLoader({
@@ -526,14 +576,18 @@ const EventDetails: React.FC = () => {
     }
   };
 
-  const handleSheetBack = () => {
-    if (sheetStack.length > 1) {
-      setSheetStack((prev) => prev.slice(0, -1));
-    } else {
-      setSheetStack([]);
-      setIsSheetOpen(false);
-    }
-  };
+  const handleSheetBack = useCallback(() => {
+    setSheetStack((prev) => {
+      if (prev.length > 1) return prev.slice(0, -1);
+      else {
+        setIsSheetOpen(false);
+        return [];
+      }
+    });
+  }, []);
+
+  const messageViewRef = useRef<{ addMessage: (data: AddMessageProp) => void }>(null);
+  const socket = useSocket();
 
   return (
     <>
@@ -570,7 +624,7 @@ const EventDetails: React.FC = () => {
           $gtMd={{ items: "center" }}
         >
           {loading ? (
-            <Loader />
+            <SpinningLoader />
           ) : (
             _event && (
               <YStack
@@ -643,7 +697,7 @@ const EventDetails: React.FC = () => {
                           />
                         </XStack>
                         {threadsLoading ? (
-                          <Loader />
+                          <SpinningLoader />
                         ) : (
                           thread &&
                           !!thread.messages?.length && (
@@ -702,6 +756,7 @@ const EventDetails: React.FC = () => {
                 {...sheetData}
                 onBack={handleSheetBack}
                 handleClick={handleClick}
+                parentRef={messageViewRef}
                 style={{
                   position: "absolute",
                   inset: 0,
@@ -712,7 +767,34 @@ const EventDetails: React.FC = () => {
             ))}
           </View>
 
-          <MessageInputBar context={{ eventId: id }} />
+          <MessageInputBar
+            context={{ eventId: id, maxAttachments: 3 }}
+            sendButtonCb={(data) => {
+              // take the top most sheet data and based on that add message
+              const topMostSheetData = sheetStack[sheetStack.length - 1];
+              const { parentId, threadId } = topMostSheetData;
+              const messageContent = {
+                content: { text: data?.message, media: data?.mediaIds || [] }
+              };
+              const newMessage = {
+                ...messageContent,
+                userId: currentAuthenticatedUser?.id,
+                parentId,
+                threadId,
+                isEdited: false
+              };
+
+              socket.emit(
+                PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED,
+                newMessage,
+                ({ data, error }: { data: AddMessageProp; error: any }) => {
+                  if (error) {
+                    toastController.show(error?.message ?? "Something went wrong");
+                  } else messageViewRef?.current?.addMessage(data);
+                }
+              );
+            }}
+          />
         </Sheet.Frame>
       </Sheet>
     </>

@@ -4,7 +4,7 @@ import { useDataLoader } from "@/hooks";
 import React, { Fragment, useEffect, useRef, useState } from "react";
 import { Text, View, XStack, XStackProps } from "tamagui";
 import { ChevronRight } from "@tamagui/lucide-icons";
-import Loader from "@/components/ui/Loader";
+import { SpinningLoader } from "@/components/ui/Loaders";
 import { useToastController } from "@tamagui/toast";
 
 const TagButton = ({
@@ -49,7 +49,7 @@ const TagButton = ({
         {tag.name}
       </Text>
       {isLoading ? (
-        <Loader />
+        <SpinningLoader />
       ) : hasChildren && (!isExpanded || !tag.subTags) ? (
         <ChevronRight
           size={16}
@@ -140,7 +140,7 @@ const InterestSelection = ({
         justify="center"
         items="center"
       >
-        <Loader />
+        <SpinningLoader />
       </View>
     );
   }

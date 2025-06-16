@@ -11,6 +11,7 @@ const config: ExpoConfig = {
         RNMapboxMapsDownloadToken: ""
       }
     ],
+    "react-native-video",
     "expo-router",
     "expo-secure-store",
     "expo-font",
@@ -37,7 +38,7 @@ const config: ExpoConfig = {
         isAndroidBackgroundLocationEnabled: true
       }
     ],
-    "react-native-compressor",
+    "react-native-compressor"
   ],
   android: {
     adaptiveIcon: {
