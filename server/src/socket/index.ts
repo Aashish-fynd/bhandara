@@ -10,6 +10,7 @@ import http from "http";
 import { MessageService, ThreadService } from "@features";
 import { NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
+import { setPlatformNamespace, emitSocketEvent } from "./emitter";
 
 interface CustomSocket
   extends Socket<
@@ -43,6 +44,7 @@ export function initializeSocket(server: http.Server) {
   const io = new Server(server, { cors: { ...config.corsOptions } });
 
   platformNamespace = io.of("/platform");
+  setPlatformNamespace(platformNamespace);
   platformNamespace.use((socket, next) =>
     requestContextMiddleware(socket.request as any, null, next as any)
   );
@@ -68,7 +70,7 @@ export function initializeSocket(server: http.Server) {
             (message.data as any).thread = threadResponse.data;
             (message.data as any).user = socket.request.user;
           }
-          socket.emit(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, message);
+          emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, message);
         } catch (error) {
           logger.error(`Error sending new message`, error);
           cb?.({ error: error || { message: "Something went wrong" } });
@@ -99,11 +101,3 @@ export function initializeSocket(server: http.Server) {
 }
 
 export const getPlatformNamespace = () => platformNamespace;
-
-export const emitSocketEvent = (
-  event: string,
-  payload: { data?: any; error?: any }
-) => {
-  if (!platformNamespace) return;
-  platformNamespace.emit(event, payload);
-};

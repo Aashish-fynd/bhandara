@@ -4,9 +4,13 @@ import ThreadsService from "./service";
 import { NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
 import MessageService from "@features/messages/service";
+import { emitSocketEvent } from "@socket/emitter";
+import { PLATFORM_SOCKET_EVENTS } from "@constants";
+import EventService from "@features/events/service";
 
 const threadsService = new ThreadsService();
 const messageService = new MessageService();
+const eventService = new EventService();
 
 export const getThreads = async (
   req: ICustomRequest & IRequestPagination,
@@ -17,14 +21,19 @@ export const getThreads = async (
 };
 
 export const createThread = async (req: ICustomRequest, res: Response) => {
-  const thread = await threadsService.create(req.body);
+  const thread = await threadsService.create(req.body, true);
+  if (thread.data) {
+    const event = await eventService.getById(thread.data.eventId);
+    (thread.data as any).event = event.data;
+  }
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, thread);
   return res.status(201).json(thread);
 };
 
 export const getThread = async (req: ICustomRequest, res: Response) => {
   const { threadId } = req.params;
   const { includeMessages } = req.query;
-  const threadData = await threadsService.getById(threadId);
+  const threadData = await threadsService.getById(threadId, true);
 
   const thread = threadData.data;
   if (isEmpty(thread)) {
@@ -55,12 +64,20 @@ export const getThread = async (req: ICustomRequest, res: Response) => {
 
 export const updateThread = async (req: ICustomRequest, res: Response) => {
   const { threadId } = req.params;
-  const thread = await threadsService.update(threadId, req.body);
+  const thread = await threadsService.update(threadId, req.body, true);
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.THREAD_UPDATED, {
+    data: { id: threadId, ...req.body },
+    error: null
+  });
   return res.status(200).json(thread);
 };
 
 export const deleteThread = async (req: ICustomRequest, res: Response) => {
   const { threadId } = req.params;
   const thread = await threadsService.delete(threadId);
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.THREAD_DELETED, {
+    data: { id: threadId },
+    error: null
+  });
   return res.status(200).json(thread);
 };
