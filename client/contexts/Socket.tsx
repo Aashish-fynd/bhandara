@@ -1,30 +1,24 @@
 // context/SocketContext.tsx
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect } from "react";
 import SocketManager from "../common/socket";
 
-const SocketContext = createContext<typeof SocketManager | null>(null);
+const socketInstance = SocketManager.getInstance();
+const SocketContext = createContext<typeof SocketManager>(socketInstance);
 
 export const SocketProvider = ({ session, children }: { session: string; children: React.ReactNode }) => {
-  const [socket, setSocket] = useState<typeof SocketManager | null>(null);
-
   useEffect(() => {
     if (!session) return;
 
-    SocketManager.connect(session);
-    setSocket(SocketManager);
+    socketInstance.connect(session);
 
     return () => {
-      SocketManager.disconnect();
-      setSocket(null);
+      socketInstance.disconnect();
     };
   }, [session]);
 
-  return <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>;
+  return <SocketContext.Provider value={socketInstance}>{children}</SocketContext.Provider>;
 };
 
 export const useSocket = () => {
-  const socket = useContext(SocketContext);
-
-  if (!socket) throw new Error("useSocket must be used within SocketProvider");
-  return socket;
+  return useContext(SocketContext);
 };

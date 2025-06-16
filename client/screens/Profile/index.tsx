@@ -18,6 +18,8 @@ import { AVATAR_BUCKET } from "@/constants/global";
 import { updateUser } from "@/common/api/user.action";
 import { SpinningLoader } from "@/components/ui/Loaders";
 import { formatDateToLongString } from "@/utils/date.utils";
+import useSocketListener from "@/hooks/useSocketListener";
+import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
 
 const Profile = () => {
   const { user, updateUser: updateUserContext } = useAuth();
@@ -32,6 +34,11 @@ const Profile = () => {
   const defaultTab = tab || "info";
 
   const [isUploading, setIsUploading] = useState(false);
+
+  useSocketListener(PLATFORM_SOCKET_EVENTS.USER_UPDATED, ({ data }) => {
+    if (!data || data.id !== user.id) return;
+    updateUserContext(data);
+  });
 
   const tabs = [
     {

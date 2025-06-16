@@ -17,16 +17,70 @@ import { isEmpty } from "@utils";
 import UserService from "@features/users/service";
 import { BadRequestError } from "@exceptions";
 import ReactionService from "@features/reactions/service";
+import ThreadsService from "@features/threads/service";
 
 class MessageService {
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
   private readonly reactionService: ReactionService;
+  private readonly threadsService: ThreadsService;
+
+  private readonly populateFields = ["user", "thread", "reactions", "media"];
 
   constructor() {
     this.mediaService = new MediaService();
     this.userService = new UserService();
     this.reactionService = new ReactionService();
+    this.threadsService = new ThreadsService();
+  }
+
+  private async populateMessage(message: IMessage, fields: string[]) {
+    const promises: Record<string, Promise<any>> = {};
+
+    fields.forEach((field) => {
+      switch (field) {
+        case "user":
+          promises.user = this.userService.getById(message.userId);
+          break;
+        case "thread":
+          promises.thread = this.threadsService.getById(message.threadId);
+          break;
+        case "reactions":
+          promises.reactions = this.reactionService.getReactions(
+            `messages/${message.id}`
+          );
+          break;
+        case "media":
+          if ("media" in message.content) {
+            const ids = (message.content.media as string[]) || [];
+            promises.media = this.mediaService
+              .getMediaByIds(ids)
+              .then((res) => res.data);
+          }
+          break;
+      }
+    });
+
+    const results = await Promise.allSettled(Object.values(promises));
+    const resolved: Record<string, any> = {};
+    Object.keys(promises).forEach((key, idx) => {
+      const r = results[idx];
+      resolved[key] = r.status === "fulfilled" ? r.value : null;
+    });
+
+    if (fields.includes("user")) message.user = resolved.user?.data || null;
+    if (fields.includes("thread")) (message as any).thread = resolved.thread?.data || null;
+    if (fields.includes("reactions")) message.reactions = resolved.reactions?.data || [];
+    if (fields.includes("media") && resolved.media) {
+      message.content = {
+        ...message.content,
+        media: (message.content.media as string[]).map(
+          (id) => resolved.media[id]
+        ),
+      } as IMessageContent;
+    }
+
+    return message;
   }
 
   async getAll(
@@ -144,8 +198,8 @@ class MessageService {
     return { data };
   }
 
-  async create<U extends Partial<Omit<IMessage, "id" | "updatedAt">>>(data: U) {
-    return validateMessageCreate(data, async (validData) => {
+  async create<U extends Partial<Omit<IMessage, "id" | "updatedAt">>>(data: U, populate?: boolean | string[]) {
+    const result = await validateMessageCreate(data, async (validData) => {
       if (validData.parentId) {
         const parent = await this.getById(validData.parentId);
         if (!parent.data) throw new BadRequestError("Parent message not found");
@@ -156,10 +210,15 @@ class MessageService {
       }
       return createRecord(Message, validData);
     });
+    if (populate && result.data) {
+      const { data: populated } = await this.getById(result.data.id, populate);
+      return { data: populated, error: result.error };
+    }
+    return result;
   }
 
-  async update<U extends Partial<IMessage>>(id: string, data: U) {
-    return validateMessageUpdate(data, async (validData) => {
+  async update<U extends Partial<IMessage>>(id: string, data: U, populate?: boolean | string[]) {
+    const result = await validateMessageUpdate(data, async (validData) => {
       if (validData.parentId) {
         const parent = await this.getById(validData.parentId);
         if (!parent.data) throw new BadRequestError("Parent message not found");
@@ -170,10 +229,25 @@ class MessageService {
       }
       return updateRecord(Message, id, validData);
     });
+    if (populate && !result.error) {
+      const { data: populated } = await this.getById(id, populate);
+      return { data: populated, error: result.error };
+    }
+    return result;
   }
 
-  getById(id: string) {
-    return findById(Message, id);
+  async getById(id: string, populate?: boolean | string[]) {
+    const result = await findById(Message, id);
+    const data = result.data;
+    if (populate && data) {
+      const fields =
+        populate === true
+          ? this.populateFields
+          : this.populateFields.filter((f) => (populate as string[]).includes(f));
+      const populated = await this.populateMessage(data as IMessage, fields);
+      return { data: populated, error: result.error };
+    }
+    return result;
   }
 
   async delete(id: string) {
