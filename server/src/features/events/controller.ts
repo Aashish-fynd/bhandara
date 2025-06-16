@@ -4,6 +4,8 @@ import EventService from "./service";
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
 import TagService from "@features/tags/service";
+import { emitSocketEvent } from "@socket/emitter";
+import { PLATFORM_SOCKET_EVENTS } from "@constants";
 
 const eventService = new EventService();
 const tagService = new TagService();
@@ -19,7 +21,7 @@ export const getEvents = async (
 export const getEventById = async (req: ICustomRequest, res: Response) => {
   const { eventId } = req.params;
 
-  const event = await eventService.getEventData(eventId);
+  const event = await eventService.getById(eventId, true);
 
   if (isEmpty(event)) throw new NotFoundError("Event not found");
 
@@ -27,12 +29,24 @@ export const getEventById = async (req: ICustomRequest, res: Response) => {
 };
 
 export const createEvent = async (req: ICustomRequest, res: Response) => {
-  const event = await eventService.create(req.body);
+  const event = await eventService.createEvent(
+    {
+      body: req.body,
+      tagIds: req.body.tagIds || req.body.tags || [],
+      mediaIds: req.body.mediaIds || req.body.media || []
+    },
+    true
+  );
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.EVENT_CREATED, event);
   return res.status(201).json(event);
 };
 
 export const updateEvent = async (req: ICustomRequest, res: Response) => {
-  const event = await eventService.update(req.params.id, req.body);
+  const event = await eventService.update(req.params.id, req.body, true);
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.EVENT_UPDATED, {
+    data: { id: req.params.id, ...req.body },
+    error: null
+  });
   return res.status(200).json(event);
 };
 
@@ -40,6 +54,11 @@ export const deleteEvent = async (req: ICustomRequest, res: Response) => {
   const event = await eventService.delete(req.params.id);
 
   if (isEmpty(event)) throw new NotFoundError("Event not found");
+
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.EVENT_DELETED, {
+    data: { id: req.params.id },
+    error: null
+  });
 
   return res.status(200).json(event);
 };

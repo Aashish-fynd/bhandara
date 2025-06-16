@@ -37,6 +37,7 @@ import { getChildMessagesForThread, getMessageById, getMessagesForThread } from 
 import MessageInputBar from "@/components/MessageInputBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSocket } from "@/contexts/Socket";
+import useSocketListener from "@/hooks/useSocketListener";
 import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
 
 interface ThreadCardProps {
@@ -402,21 +403,21 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
     [ViewTypes.None]: ""
   };
 
-  useEffect(() => {
-    const _func = async () => {
-      socket.on(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, ({ data, error }: { data: AddMessageProp; error: any }) => {
-        if (error) return;
-        if (data.threadId === threadId) {
-          setData((prev: { data: { items: IMessage[] }; error?: null }) => {
-            if (prev.error) return prev;
-            prev.data.items = [data as IMessage, ...prev.data.items];
-            return prev;
-          });
-        }
+  useSocketListener(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, ({ data, error }: { data: AddMessageProp; error: any }) => {
+    if (error) return;
+    if (data.threadId === threadId) {
+      setData((prev: { data: { items: IMessage[] }; error?: null }) => {
+        if (prev.error) return prev;
+        return {
+          ...prev,
+          data: {
+            ...prev.data,
+            items: [data as IMessage, ...prev.data.items]
+          }
+        };
       });
-    };
-    _func();
-  }, [socket]);
+    }
+  });
 
   // useImperativeHandle(parentRef, () => ({
   //   addMessage: (msg) => {
@@ -520,8 +521,8 @@ const EventDetails: React.FC = () => {
   const toastController = useToastController();
   const { user: currentAuthenticatedUser } = useAuth();
 
-  const { data: _event, loading } = useDataLoader({ promiseFunction: fetchEventData });
-  const { data: _threads, loading: threadsLoading } = useDataLoader({
+  const { data: _event, loading, setData: setEvent } = useDataLoader({ promiseFunction: fetchEventData });
+  const { data: _threads, loading: threadsLoading, setData: setThreads } = useDataLoader({
     promiseFunction: getThreadsData,
     enabled: !!_event
   });
@@ -588,6 +589,50 @@ const EventDetails: React.FC = () => {
 
   const messageViewRef = useRef<{ addMessage: (data: AddMessageProp) => void }>(null);
   const socket = useSocket();
+
+  useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, ({ data }) => {
+    if (!data || data.eventId !== id) return;
+    setThreads((prev) => ({ ...(prev || {}), [data.type]: data }));
+  });
+
+  useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_UPDATED, ({ data }) => {
+    if (!data) return;
+    setThreads((prev) => {
+      if (!prev) return prev;
+      const existing = Object.values(prev).find((t) => t.id === data.id);
+      if (!existing) return prev;
+      return {
+        ...prev,
+        [existing.type]: { ...existing, ...data }
+      } as Record<EThreadType, IBaseThread>;
+    });
+  });
+
+  useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_DELETED, ({ data }) => {
+    if (!data) return;
+    setThreads((prev) => {
+      if (!prev) return prev;
+      const entries = Object.entries(prev).filter(([, t]) => t.id !== data.id);
+      return Object.fromEntries(entries) as Record<EThreadType, IBaseThread>;
+    });
+  });
+
+  useSocketListener(PLATFORM_SOCKET_EVENTS.USER_UPDATED, ({ data }) => {
+    if (!data) return;
+    setEvent((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev } as any;
+      if (updated.creator?.id === data.id) {
+        updated.creator = { ...updated.creator, ...data };
+      }
+      if (updated.participants) {
+        updated.participants = updated.participants.map((p) =>
+          p.user?.id === data.id ? { ...p, user: { ...p.user, ...data } } : p
+        );
+      }
+      return updated;
+    });
+  });
 
   return (
     <>

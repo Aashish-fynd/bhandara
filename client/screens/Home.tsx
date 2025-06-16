@@ -9,6 +9,8 @@ import images from "@/constants/images";
 import { EEventType, EMediaType } from "@/definitions/enums";
 import { IBaseUser, IEvent } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
+import useSocketListener from "@/hooks/useSocketListener";
+import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
 import { Calendar, Check, Clock, MapPin } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
 import { useRouter } from "expo-router";
@@ -247,7 +249,49 @@ const HomeScreen = () => {
     }
   };
 
-  const { data: paginatedEvents, loading, error } = useDataLoader({ promiseFunction: fetchEvents });
+  const { data: paginatedEvents, loading, error, setData } = useDataLoader({ promiseFunction: fetchEvents });
+
+  useSocketListener(PLATFORM_SOCKET_EVENTS.EVENT_CREATED, ({ data }) => {
+    if (!data) return;
+    setData((prev) => {
+      if (!prev?.data) return prev;
+      return {
+        ...prev,
+        data: {
+          ...prev.data,
+          items: [data, ...(prev.data.items || [])]
+        }
+      };
+    });
+  });
+
+  useSocketListener(PLATFORM_SOCKET_EVENTS.EVENT_UPDATED, ({ data }) => {
+    if (!data) return;
+    setData((prev) => {
+      if (!prev?.data) return prev;
+      return {
+        ...prev,
+        data: {
+          ...prev.data,
+          items: prev.data.items.map((e) => (e.id === data.id ? data : e))
+        }
+      };
+    });
+  });
+
+  useSocketListener(PLATFORM_SOCKET_EVENTS.EVENT_DELETED, ({ data }) => {
+    if (!data) return;
+    setData((prev) => {
+      if (!prev?.data) return prev;
+      return {
+        ...prev,
+        data: {
+          ...prev.data,
+          items: prev.data.items.filter((e) => e.id !== data.id)
+        }
+      };
+    });
+  });
 
   return (
     <ScrollView>
