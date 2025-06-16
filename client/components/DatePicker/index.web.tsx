@@ -2,10 +2,11 @@ import "react-day-picker/src/style.css";
 
 import { useState } from "react";
 import { Platform } from "react-native";
-import { YStack, XStack, Button, Text, styled, ScrollView } from "tamagui";
+import { YStack, XStack, Button, Text, styled, useMedia } from "tamagui";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Day, DayButton, DayPicker, Month, Weekday, Weekdays } from "react-day-picker";
+import { Day, DayButton, DayPicker, Weekday, Weekdays } from "react-day-picker";
 import { OutlineButton } from "../ui/Buttons";
+import { QUICK_RANGES } from "./quickRanges";
 
 const SidebarButton = styled(Button, {
   justify: "flex-start",
@@ -88,36 +89,63 @@ const StyledDay = styled(Day, {
 });
 
 export default function DateRangePicker() {
+  const media = useMedia();
   const [selectedRange, setSelectedRange] = useState<{ from?: Date; to?: Date }>({});
   const [showStart, setShowStart] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
-  const quickRanges = [
-    "Today",
-    "Yesterday",
-    "This week",
-    "Last week",
-    "This month",
-    "Last month",
-    "This year",
-    "Last year",
-    "All time"
-  ];
+  const [startTime, setStartTime] = useState<string>("00:00");
+  const [endTime, setEndTime] = useState<string>("00:00");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const showSidebar = media.md || sidebarOpen;
+
+  const handleTimeChange = (key: "from" | "to", value: string) => {
+    const [h, m] = value.split(":");
+    setSelectedRange((prev) => {
+      const date = prev[key] || new Date();
+      const newDate = new Date(date);
+      newDate.setHours(parseInt(h, 10));
+      newDate.setMinutes(parseInt(m, 10));
+      return { ...prev, [key]: newDate } as any;
+    });
+    key === "from" ? setStartTime(value) : setEndTime(value);
+  };
 
   return (
     <CalendarContainer>
-      <YStack
-        width={150}
-        gap="$2"
-      >
-        {quickRanges.map((label, i) => (
-          <SidebarButton
-            key={label}
-            bg={label === "Last week" ? "$black4" : "transparent"}
-          >
-            {label}
-          </SidebarButton>
-        ))}
-      </YStack>
+      {!showSidebar && (
+        <Button
+          onPress={() => setSidebarOpen(true)}
+          size={"$2"}
+          mb="$2"
+        >
+          Show options
+        </Button>
+      )}
+      {showSidebar && (
+        <YStack
+          width={150}
+          gap="$2"
+        >
+          {!media.md && (
+            <Button
+              size={"$2"}
+              mb="$2"
+              onPress={() => setSidebarOpen(false)}
+            >
+              Hide options
+            </Button>
+          )}
+          {QUICK_RANGES.map(({ label, range }) => (
+            <SidebarButton
+              key={label}
+              onPress={() => setSelectedRange(range)}
+            >
+              {label}
+            </SidebarButton>
+          ))}
+        </YStack>
+      )}
 
       <YStack
         gap="$4"
@@ -160,8 +188,6 @@ export default function DateRangePicker() {
                 },
                 DayButton: ({ children, ...props }) => {
                   const { modifiers } = props;
-
-                  console.log("modifiers", modifiers);
 
                   const isSelected = modifiers.selected || modifiers.range_start || modifiers.range_end;
                   const isInRange = modifiers.range_middle;
@@ -220,6 +246,22 @@ export default function DateRangePicker() {
             )}
           </YStack>
         )}
+
+        <XStack
+          gap="$2"
+          mb="$2"
+        >
+          <input
+            type="time"
+            value={startTime}
+            onChange={(e) => handleTimeChange("from", e.target.value)}
+          />
+          <input
+            type="time"
+            value={endTime}
+            onChange={(e) => handleTimeChange("to", e.target.value)}
+          />
+        </XStack>
 
         <YStack
           justify="space-between"
