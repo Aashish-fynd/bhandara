@@ -4,6 +4,8 @@ import { ICustomRequest, IRequestPagination } from "@definitions/types";
 import { EQueryOperator } from "@definitions/enums";
 import { cleanQueryObject, isEmpty, pick } from "@utils";
 import { NotFoundError } from "@exceptions";
+import { emitSocketEvent } from "@socket/emitter";
+import { PLATFORM_SOCKET_EVENTS } from "@constants";
 
 const messagesService = new MessageService();
 
@@ -32,8 +34,10 @@ export const createMessage = async (req: ICustomRequest, res: Response) => {
       "parentId",
       "threadId",
       "isEdited",
-    ])
+    ]),
+    true
   );
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, message);
   return res.status(200).json(message);
 };
 
@@ -41,20 +45,29 @@ export const updateMessage = async (req: ICustomRequest, res: Response) => {
   const { messageId } = req.params;
   const message = await messagesService.update(
     messageId,
-    pick({ ...req.body, isEdited: true }, ["content", "isEdited"])
+    pick({ ...req.body, isEdited: true }, ["content", "isEdited"]),
+    true
   );
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_UPDATED, {
+    data: { id: messageId, ...req.body },
+    error: null
+  });
   return res.status(200).json(message);
 };
 
 export const deleteMessage = async (req: ICustomRequest, res: Response) => {
   const { messageId } = req.params;
   const message = await messagesService.delete(messageId);
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_DELETED, {
+    data: { id: messageId },
+    error: null
+  });
   return res.status(200).json(message);
 };
 
 export const getMessageById = async (req: ICustomRequest, res: Response) => {
   const { messageId } = req.params;
-  const message = await messagesService.getById(messageId);
+  const message = await messagesService.getById(messageId, true);
   if (isEmpty(message.data)) throw new NotFoundError("Message not found");
 
   return res.status(200).json(message);

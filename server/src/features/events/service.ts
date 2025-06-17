@@ -49,110 +49,112 @@ class EventService {
     this.reactionService = new ReactionService();
   }
 
-  @MethodCacheSync<IEvent>({})
-  async getById(id: string) {
-    const data = await Event.findByPk(id, { raw: true });
-    return { data, error: null };
-  }
+  private readonly populateFields = [
+    "threads",
+    "tags",
+    "media",
+    "creator",
+    "participants",
+    "verifiers",
+    "reactions"
+  ];
 
-  async getEventData(id: string): Promise<{
-    data?:
-      | (IEvent & {
-          threads: {
-            qna: string;
-            discussion: string;
-          };
-        })
-      | null;
-    error: any;
-  }> {
-    // Fetch the event data
-    const { data: eventData } = await this.getById(id);
-
-    if (isEmpty(eventData)) throw new NotFoundError("Event not found");
-
-    // TODO: if thread takes too much time move into separate call
-    // Fetch thread data
-    const threadData = await this.threadService.getAll({
-      eventId: eventData.id || "",
-    });
-
-    if (threadData.error) throw new Error(threadData.error as any);
-
-    if (isEmpty(threadData.data))
-      throw new NotFoundError("No thread found for this event");
-
-    // Separate QnA and Discussion threads
-    const qnaThread = threadData.data.items?.filter(
-      (thread) => thread.type === EThreadType.QnA
-    )?.[0];
-
-    const discussionThread = threadData.data.items?.filter(
-      (thread) => thread.type === EThreadType.Discussion
-    )?.[0];
-
-    // Create promises for fetching related data
+  private async populateEvent(
+    event: IEvent,
+    fields: string[]
+  ): Promise<IEvent & { threads?: { qna?: string; discussion?: string } }> {
     const promises: Record<string, Promise<any>> = {};
 
-    promises.tags = this.tagService.getAllEventTags(id);
-    promises.media = this.mediaService.getEventMedia(id);
-    promises.creator = this.userService.getById(eventData.createdBy);
-
-    promises.participants = this.userService.getAndPopulateUserProfiles(
-      eventData.participants,
-      "user"
-    );
-
-    promises.verifiers = this.userService.getAndPopulateUserProfiles(
-      eventData.verifiers,
-      "user"
-    );
-    promises.reactions = this.reactionService.getReactions(`events/${id}`);
-
-    // Wait for all promises to settle
-    const settledResults = await Promise.allSettled(Object.values(promises));
-
-    // Map results back to their keys
-    const resolvedData: Record<string, any> = {};
-    Object.keys(promises).forEach((key, index) => {
-      const result = settledResults[index];
-      resolvedData[key] = result.status === "fulfilled" ? result.value : null;
-      if (result.status === "rejected") {
-        throw result.reason;
+    fields.forEach((field) => {
+      switch (field) {
+        case "threads":
+          promises.threads = this.threadService.getAll({ eventId: event.id });
+          break;
+        case "tags":
+          promises.tags = this.tagService.getAllEventTags(event.id);
+          break;
+        case "media":
+          promises.media = this.mediaService.getEventMedia(event.id);
+          break;
+        case "creator":
+          promises.creator = this.userService.getById(event.createdBy);
+          break;
+        case "participants":
+          promises.participants = this.userService.getAndPopulateUserProfiles(
+            event.participants,
+            "user"
+          );
+          break;
+        case "verifiers":
+          promises.verifiers = this.userService.getAndPopulateUserProfiles(
+            event.verifiers,
+            "user"
+          );
+          break;
+        case "reactions":
+          promises.reactions = this.reactionService.getReactions(
+            `events/${event.id}`
+          );
+          break;
       }
     });
 
-    eventData.tags = resolvedData.tags?.data || [];
-    eventData.media = resolvedData.media?.data || [];
-    eventData.creator = resolvedData.creator?.data || null;
-    eventData.participants = resolvedData.participants || [];
-    eventData.verifiers = resolvedData.verifiers || [];
-    eventData.reactions = resolvedData.reactions?.data || [];
+    const results = await Promise.allSettled(Object.values(promises));
+    const resolved: Record<string, any> = {};
+    Object.keys(promises).forEach((key, index) => {
+      const res = results[index];
+      resolved[key] = res.status === "fulfilled" ? res.value : null;
+    });
 
-    // Construct the final response
-    return {
-      data: {
-        ...eventData,
-        threads: {
-          qna: qnaThread?.id,
-          discussion: discussionThread?.id,
-        },
-      },
-      error: null,
-    };
+    if (fields.includes("threads")) {
+      const items = resolved.threads?.data?.items || [];
+      const qnaThread = items.find((t: any) => t.type === EThreadType.QnA);
+      const discussionThread = items.find((t: any) => t.type === EThreadType.Discussion);
+      (event as any).threads = { qna: qnaThread?.id, discussion: discussionThread?.id };
+    }
+    if (fields.includes("tags")) event.tags = resolved.tags?.data || [];
+    if (fields.includes("media")) event.media = resolved.media?.data || [];
+    if (fields.includes("creator")) event.creator = resolved.creator?.data || null;
+    if (fields.includes("participants")) event.participants = resolved.participants || [];
+    if (fields.includes("verifiers")) event.verifiers = resolved.verifiers || [];
+    if (fields.includes("reactions")) event.reactions = resolved.reactions?.data || [];
+
+    return event as any;
   }
 
   @MethodCacheSync<IEvent>({})
-  async createEvent({
-    body,
-    tagIds,
-    mediaIds,
-  }: {
-    body: Partial<IEvent>;
-    tagIds: string[];
-    mediaIds: string[];
-  }) {
-    return validateEventCreate(body, (data) =>
+  async getById(id: string, populate?: boolean | string[]) {
+    const data = await Event.findByPk(id, { raw: true });
+    if (!data) return { data: null, error: null };
+
+    if (populate) {
+      const fields =
+        populate === true ? this.populateFields : this.populateFields.filter((f) => (populate as string[]).includes(f));
+      const populated = await this.populateEvent(data as IEvent, fields);
+      return { data: populated, error: null };
+    }
+
+    return { data, error: null };
+  }
+
+  async getEventData(id: string) {
+    return this.getById(id, true);
+  }
+
+  @MethodCacheSync<IEvent>({})
+  async createEvent(
+    {
+      body,
+      tagIds,
+      mediaIds
+    }: {
+      body: Partial<IEvent>;
+      tagIds: string[];
+      mediaIds: string[];
+    },
+    populate?: boolean | string[]
+  ) {
+    const result = await validateEventCreate(body, (data) =>
       runTransaction(async (tx) => {
         const event = await Event.create(
           { ...(data as any), tags: tagIds, media: mediaIds },
@@ -183,11 +185,26 @@ class EventService {
         return { data: event, error: null };
       })
     );
+    if (populate && result.data) {
+      const { data: populated } = await this.getById(
+        result.data.id,
+        populate
+      );
+      return { data: populated, error: result.error };
+    }
+    return result;
   }
 
   @MethodCacheSync<IEvent>({})
-  async update<U extends Partial<IEvent>>(id: string, data: U) {
-    return validateEventUpdate(data, (data) => updateRecord(Event, id, data));
+  async update<U extends Partial<IEvent>>(id: string, data: U, populate?: boolean | string[]) {
+    const result = await validateEventUpdate(data, (data) =>
+      updateRecord(Event, id, data)
+    );
+    if (populate && !result.error) {
+      const { data: populated } = await this.getById(id, populate);
+      return { data: populated, error: result.error };
+    }
+    return result;
   }
 
   async getAll(
