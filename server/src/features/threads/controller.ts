@@ -3,7 +3,7 @@ import { Response } from "express";
 import ThreadsService from "./service";
 import { NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
-import MessageService from "@features/messages/service";
+
 import { emitSocketEvent } from "@socket/emitter";
 import { PLATFORM_SOCKET_EVENTS } from "@constants";
 import EventService from "@features/events/service";
@@ -49,6 +49,8 @@ export const getThread = async (req: ICustomRequest, res: Response) => {
       : parseInt(includeMessages as string, 10) || 1;
 
   if (parsedIncludeMessages) {
+    const { default: MessageService } = await import("@features/messages/service");
+    const messageService = new MessageService();
     const messages = await messageService.getAll(
       {
         threadId: threadId,
