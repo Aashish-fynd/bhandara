@@ -18,6 +18,10 @@ import UserService from "@features/users/service";
 import { BadRequestError } from "@exceptions";
 import ReactionService from "@features/reactions/service";
 
+// Note: Thread data is intentionally not populated here to avoid
+// circular dependencies between services. Controllers should fetch
+// thread details separately when needed.
+
 class MessageService {
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
