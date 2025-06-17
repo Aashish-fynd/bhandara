@@ -3,11 +3,13 @@ import { Response } from "express";
 import ThreadsService from "./service";
 import { NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
+
 import { emitSocketEvent } from "@socket/emitter";
 import { PLATFORM_SOCKET_EVENTS } from "@constants";
 import EventService from "@features/events/service";
 
 const threadsService = new ThreadsService();
+const messageService = new MessageService();
 const eventService = new EventService();
 
 export const getThreads = async (
