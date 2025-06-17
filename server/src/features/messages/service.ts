@@ -17,14 +17,13 @@ import { isEmpty } from "@utils";
 import UserService from "@features/users/service";
 import { BadRequestError } from "@exceptions";
 import ReactionService from "@features/reactions/service";
-import { Thread } from "@features/threads/model";
 
 class MessageService {
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
   private readonly reactionService: ReactionService;
 
-  private readonly populateFields = ["user", "thread", "reactions", "media"];
+  private readonly populateFields = ["user", "reactions", "media"];
 
   constructor() {
     this.mediaService = new MediaService();
@@ -39,9 +38,6 @@ class MessageService {
       switch (field) {
         case "user":
           promises.user = this.userService.getById(message.userId);
-          break;
-        case "thread":
-          promises.thread = Thread.findByPk(message.threadId, { raw: true });
           break;
         case "reactions":
           promises.reactions = this.reactionService.getReactions(
@@ -67,7 +63,6 @@ class MessageService {
     });
 
     if (fields.includes("user")) message.user = resolved.user?.data || null;
-    if (fields.includes("thread")) (message as any).thread = resolved.thread?.data || null;
     if (fields.includes("reactions")) message.reactions = resolved.reactions?.data || [];
     if (fields.includes("media") && resolved.media) {
       message.content = {
