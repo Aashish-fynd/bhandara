@@ -8,19 +8,18 @@ import {
 } from "@utils/dbUtils";
 import { Reaction } from "./model";
 import { validateReactionCreate, validateReactionUpdate } from "./validation";
-import { MethodCacheSync } from "@decorators";
-import {
-  deleteReactionCache,
-  getReactionCache,
-  setReactionCache,
-} from "./helpers";
+
+import UserService from "@features/users/service";
+import { isEmpty } from "@utils";
+import logger from "@logger";
 
 class ReactionService {
-  private readonly getCache = getReactionCache;
-  private readonly setCache = setReactionCache;
-  private readonly deleteCache = deleteReactionCache;
+  private readonly userService: UserService;
 
-  @MethodCacheSync<IReaction>()
+  constructor() {
+    this.userService = new UserService();
+  }
+
   async getById(id: string) {
     return findById(Reaction, id);
   }
@@ -33,7 +32,6 @@ class ReactionService {
     return findAllWithPagination(Reaction, where, pagination, select);
   }
 
-  @MethodCacheSync<IReaction>()
   async create<U extends Partial<Omit<IReaction, "id" | "updatedAt">>>(
     data: U
   ) {
@@ -42,26 +40,39 @@ class ReactionService {
     );
   }
 
-  @MethodCacheSync<IReaction>()
   async update<U extends Partial<IReaction>>(id: string, data: U) {
     return validateReactionUpdate(data, (validData) =>
       updateRecord(Reaction, id, validData)
     );
   }
 
-  @MethodCacheSync<IReaction>()
-  delete(id: string) {
-    return deleteRecord(Reaction, id);
+  delete(id: string, skipGet = false) {
+    return deleteRecord(Reaction, id, skipGet);
   }
 
-  @MethodCacheSync<IReaction[]>({})
-  async getReactions(contentId: string) {
-    const { data } = await findAllWithPagination(
-      Reaction,
-      { contentId },
-      { limit: 1000 }
-    );
-    return { data: data.items || [], error: null };
+  async getReactions(contentId: string, userId?: string) {
+    const where: any = { contentId };
+    if (userId) where.userId = userId;
+    const { data, error } = await findAllWithPagination(Reaction, where, {
+      limit: 1000,
+    });
+    if (!isEmpty(data.items)) {
+      const populatedData = await this.userService.getAndPopulateUserProfiles({
+        data: data.items,
+        searchKey: "userId",
+        populateKey: "user",
+      });
+
+      return { data: populatedData, error: null };
+    }
+    return { data: data.items || [], error };
+  }
+
+  async deleteByQuery(where: Partial<IReaction>) {
+    const matchingRows = await Reaction.findAll({ where });
+    const deletedRow = await Reaction.destroy({ where });
+    logger.debug(`Deleted reaction rows: ${deletedRow}`);
+    return { data: matchingRows, error: null };
   }
 }
 

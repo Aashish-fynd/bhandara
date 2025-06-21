@@ -29,6 +29,11 @@ class TagService {
 
   constructor() {}
 
+  @MethodCacheSync({})
+  async getById(id: string) {
+    return findById(Tag, id);
+  }
+
   async getAll(
     where: Record<string, any> = {},
     pagination?: Partial<IPaginationParams>,

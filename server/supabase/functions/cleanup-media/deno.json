@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.49.4",
+    "@upstash/redis": "esm.sh/@upstash/redis@1.35.0"
+  }
+}

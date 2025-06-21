@@ -19,7 +19,15 @@ export const TagPreviewTooltip = ({ tag }: { tag: ITag }) => {
   );
 };
 
-export const UserCluster = ({ users, maxLimit = 3 }: { users: IBaseUser[]; maxLimit?: number }) => {
+export const UserCluster = ({
+  users,
+  maxLimit = 3,
+  avatarSize = 30
+}: {
+  users: IBaseUser[];
+  maxLimit?: number;
+  avatarSize?: number;
+}) => {
   const _users = users.slice(0, maxLimit);
   const remainingUsers = users.length - maxLimit;
 
@@ -35,7 +43,7 @@ export const UserCluster = ({ users, maxLimit = 3 }: { users: IBaseUser[]; maxLi
   return (
     <XStack
       position={"relative"}
-      height={30}
+      height={avatarSize}
     >
       {_users.map((user, index) => {
         const _Wrapper = remainingUsers < 0 ? ProfileAvatarPreview : Fragment;
@@ -52,7 +60,7 @@ export const UserCluster = ({ users, maxLimit = 3 }: { users: IBaseUser[]; maxLi
           >
             <_Wrapper user={user}>
               <CustomAvatar
-                size={30}
+                size={avatarSize}
                 src={user.profilePic?.publicUrl}
                 alt={user.name}
                 fallbackGenerator={(alt) => {

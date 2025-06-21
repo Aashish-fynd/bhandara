@@ -1,6 +1,6 @@
 import { CACHE_NAMESPACE_CONFIG } from "@constants";
+import { IBaseThread } from "@definitions/types";
 import { RedisCache } from "@features/cache";
-import { IDiscussionThread, IQnAThread } from "@definitions/types";
 
 const threadsCache = new RedisCache({
   namespace: CACHE_NAMESPACE_CONFIG.Threads.namespace,
@@ -8,13 +8,10 @@ const threadsCache = new RedisCache({
 });
 
 export const getThreadCache = async (id: string) => {
-  return await threadsCache.getItem<IDiscussionThread | IQnAThread>(id);
+  return await threadsCache.getItem<IBaseThread>(id);
 };
 
-export const setThreadCache = async (
-  id: string,
-  data: IDiscussionThread | IQnAThread
-) => {
+export const setThreadCache = async (id: string, data: IBaseThread) => {
   return await threadsCache.setItem(id, data);
 };
 

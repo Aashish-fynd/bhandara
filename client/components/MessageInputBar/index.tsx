@@ -16,7 +16,7 @@ import CustomTooltip from "../CustomTooltip";
 
 interface IProps {
   context: Record<string, any>;
-  sendButtonCb: (data: Record<string, any>) => void;
+  sendButtonCb: (data: Record<string, any>, onSuccess?: () => void) => void;
 }
 
 export interface IAttachedFile extends Omit<IPickerAsset, "uri"> {
@@ -172,7 +172,10 @@ const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
       }),
       mediaIds: attachedFiles.map((file) => file?.uploadResult?.id).filter(Boolean)
     };
-    sendButtonCb(format);
+    sendButtonCb(format, () => {
+      setMessage("");
+      setAttachedFiles([]);
+    });
   };
 
   const hasValidFiles = attachedFiles.some((file) => !file.error);
@@ -235,7 +238,7 @@ const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
                     )}
                     {showPreview && (
                       <AssetPreview
-                        type={file.type as "image" | "video"}
+                        type={file.type}
                         file={file.uri}
                         publicLink={file.publicURL}
                       />
@@ -295,7 +298,8 @@ const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
         onChangeText={handleMessageChange}
         value={message}
         onKeyPress={(e) => {
-          console.log("e", e.nativeEvent);
+          const { key } = e.nativeEvent;
+          if (key === "Enter") handleSendMessageClick();
         }}
         ref={textAreaRef}
         // For native platforms, check clipboard when focus is gained

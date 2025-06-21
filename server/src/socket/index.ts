@@ -4,13 +4,24 @@ import logger from "@logger";
 import { requestContextMiddleware, socketUserParser } from "@middlewares";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { IncomingMessage } from "http";
-import { IBaseUser } from "@definitions/types";
+import { IBaseUser, IReaction } from "@definitions/types";
 import { PLATFORM_SOCKET_EVENTS } from "@constants";
 import http from "http";
-import { MessageService, ThreadService } from "@features";
-import { NotFoundError } from "@exceptions";
+import {
+  EventService,
+  getSafeUser,
+  MediaService,
+  MessageService,
+  ReactionService,
+  ThreadService,
+} from "@features";
+import { BadRequestError, NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
 import { setPlatformNamespace, emitSocketEvent } from "./emitter";
+import {
+  EAllowedReactionTables,
+  COMMON_EMOJIS,
+} from "@features/reactions/constants";
 
 interface CustomSocket
   extends Socket<
@@ -30,6 +41,9 @@ let platformNamespace: Namespace;
 
 const messageService = new MessageService();
 const threadService = new ThreadService();
+const mediaService = new MediaService();
+const reactionService = new ReactionService();
+const eventService = new EventService();
 
 const createJoinRoom = (socket: CustomSocket, room: string) => {
   socket.join(room);
@@ -66,14 +80,26 @@ export function initializeSocket(server: http.Server) {
             throw new NotFoundError("Thread not found");
 
           const message = await messageService.create(messageData);
+          const media = (message.data.content?.media || []) as string[];
+
+          if (!isEmpty(media)) {
+            const mediaData = await mediaService.getMediaByIds(media);
+            const populatedMedia = media.map((i) => mediaData.data[i]);
+            message.data.content.media = populatedMedia;
+          }
+
           if (message.data) {
             (message.data as any).thread = threadResponse.data;
             (message.data as any).user = socket.request.user;
           }
           emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, message);
+          cb({ data: true });
         } catch (error) {
           logger.error(`Error sending new message`, error);
-          cb?.({ error: error || { message: "Something went wrong" } });
+          cb?.({
+            error: error?.message || "Something went wrong",
+            stack: error,
+          });
         }
       });
 
@@ -92,6 +118,213 @@ export function initializeSocket(server: http.Server) {
         if (!conversationId)
           return cb?.({ error: "Conversation id is required" });
       });
+
+      socket.on(
+        PLATFORM_SOCKET_EVENTS.REACTION_CREATED,
+        async (request, cb) => {
+          try {
+            const { contentId, contentPath, reaction, parentId } = request;
+
+            if (!Object.values(EAllowedReactionTables).includes(contentPath)) {
+              throw new BadRequestError(
+                `Invalid content path provided. Provided:${contentPath}`
+              );
+            }
+
+            const serviceMap = {
+              [EAllowedReactionTables.Message]: messageService,
+              [EAllowedReactionTables.Event]: eventService,
+              [EAllowedReactionTables.Thread]: threadService,
+            };
+
+            const reactionContentId = `${contentPath}/${contentId}`;
+
+            // delete previous reaction from current user on that content
+            const responses = await Promise.all([
+              serviceMap[contentPath].getById(contentId),
+              reactionService.deleteByQuery({
+                contentId: reactionContentId,
+                userId: socketUserId,
+              }),
+            ]);
+
+            if (isEmpty(responses[0].data))
+              throw new NotFoundError(`Reaction or Thread not found`);
+
+            responses.forEach((f) => {
+              if (f.error) throw f.error;
+            });
+
+            const creationData = {
+              contentId: reactionContentId,
+              emoji: reaction,
+              userId: socketUserId,
+            };
+
+            const { data: newReaction, error: newReactionError } =
+              await reactionService.create(creationData);
+
+            if (newReactionError) throw newReactionError;
+
+            newReaction.user = getSafeUser(socket.request.user);
+
+            emitSocketEvent(PLATFORM_SOCKET_EVENTS.REACTION_CREATED, {
+              data: {
+                id: contentId,
+                contentPath,
+                reaction: newReaction,
+                parentId,
+              },
+            });
+
+            cb?.({ data: true });
+          } catch (error) {
+            logger.error(`Error sending new message`, error);
+            cb?.({
+              error: error?.message || "Something went wrong",
+              stack: error,
+            });
+          }
+        }
+      );
+      socket.on(
+        PLATFORM_SOCKET_EVENTS.REACTION_UPDATED,
+        async (request, cb) => {
+          try {
+            const { contentId, contentPath, reaction, parentId } = request;
+
+            if (typeof reaction !== "string")
+              throw new BadRequestError(`Reaction should be string`);
+
+            if (!Object.values(EAllowedReactionTables).includes(contentPath)) {
+              throw new BadRequestError(
+                `Invalid content path provided. Provided:${contentPath}`
+              );
+            }
+
+            const serviceMap = {
+              [EAllowedReactionTables.Message]: messageService,
+              [EAllowedReactionTables.Event]: eventService,
+              [EAllowedReactionTables.Thread]: threadService,
+            };
+
+            const reactionContentId = `${contentPath}/${contentId}`;
+
+            // delete previous reaction from current user on that content
+            const responses = await Promise.all([
+              serviceMap[contentPath].getById(contentId),
+              reactionService.getReactions(reactionContentId),
+            ]);
+
+            const content = responses[0]?.data;
+
+            if (!content)
+              throw new NotFoundError(
+                `Content not found with provided id:${contentId}`
+              );
+
+            const previousReaction = responses[1]?.data?.[0];
+
+            if (!previousReaction)
+              throw new NotFoundError(
+                `Reaction not found ${reaction} for user`
+              );
+
+            const { data: updatedReaction, error: newReactionError } =
+              await reactionService.update(previousReaction.id, {
+                emoji: reaction,
+              });
+
+            if (newReactionError) throw newReactionError;
+
+            updatedReaction.user = getSafeUser(socket.request.user);
+
+            emitSocketEvent(PLATFORM_SOCKET_EVENTS.REACTION_UPDATED, {
+              data: {
+                id: contentId,
+                contentPath,
+                reaction: updatedReaction,
+                parentId,
+              },
+            });
+
+            cb?.({ data: true });
+          } catch (error) {
+            logger.error(`Error sending new message`, error);
+            cb?.({
+              error: error?.message || "Something went wrong",
+              stack: error,
+            });
+          }
+        }
+      );
+      socket.on(
+        PLATFORM_SOCKET_EVENTS.REACTION_DELETED,
+        async (request, cb) => {
+          try {
+            const { contentId, contentPath, id, reaction, parentId } = request;
+
+            if (typeof reaction !== "string")
+              throw new BadRequestError(`Reaction should be string`);
+
+            if (!Object.values(EAllowedReactionTables).includes(contentPath)) {
+              throw new BadRequestError(
+                `Invalid content path provided. Provided:${contentPath}`
+              );
+            }
+
+            const serviceMap = {
+              [EAllowedReactionTables.Message]: messageService,
+              [EAllowedReactionTables.Event]: eventService,
+              [EAllowedReactionTables.Thread]: threadService,
+            };
+
+            const reactionContentId = `${contentPath}/${contentId}`;
+
+            // delete previous reaction from current user on that content
+            const responses = await Promise.all([
+              serviceMap[contentPath].getById(contentId),
+              reactionService.getReactions(reactionContentId),
+            ]);
+
+            const content = responses[0]?.data;
+
+            if (!content)
+              throw new NotFoundError(
+                `Content not found with provided id:${contentId}`
+              );
+
+            const previousReaction = responses[1]?.data?.[0];
+
+            if (!previousReaction)
+              throw new NotFoundError(
+                `Reaction not found ${reaction} for user`
+              );
+
+            const { data: deletedReaction, error: newReactionError } =
+              await reactionService.delete(previousReaction.id, true);
+
+            if (newReactionError) throw newReactionError;
+
+            emitSocketEvent(PLATFORM_SOCKET_EVENTS.REACTION_DELETED, {
+              data: {
+                id: contentId,
+                contentPath,
+                reaction: previousReaction,
+                parentId,
+              },
+            });
+
+            cb?.({ data: true });
+          } catch (error) {
+            logger.error(`Error sending new message`, error);
+            cb?.({
+              error: error?.message || "Something went wrong",
+              stack: error,
+            });
+          }
+        }
+      );
 
       socket.on(PLATFORM_SOCKET_EVENTS.DISCONNECT, async () => {});
     }

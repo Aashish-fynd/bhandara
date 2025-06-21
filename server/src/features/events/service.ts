@@ -30,6 +30,7 @@ import { BadRequestError, NotFoundError } from "@exceptions";
 import { getDistanceInMeters } from "@helpers";
 import { Event } from "./model";
 import { Thread } from "../threads/model";
+import MessageService from "@features/messages/service";
 
 class EventService {
   private readonly threadService: ThreadsService;
@@ -37,6 +38,7 @@ class EventService {
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
   private readonly reactionService: ReactionService;
+  private readonly messageService: MessageService;
   private readonly getCache = getEventCache;
   private readonly setCache = setEventCache;
   private readonly deleteCache = deleteEventCache;
@@ -47,6 +49,7 @@ class EventService {
     this.mediaService = new MediaService();
     this.userService = new UserService();
     this.reactionService = new ReactionService();
+    this.messageService = new MessageService();
   }
 
   private readonly populateFields = [
@@ -56,20 +59,17 @@ class EventService {
     "creator",
     "participants",
     "verifiers",
-    "reactions"
+    "reactions",
   ];
 
   private async populateEvent(
     event: IEvent,
     fields: string[]
-  ): Promise<IEvent & { threads?: { qna?: string; discussion?: string } }> {
+  ): Promise<IEvent> {
     const promises: Record<string, Promise<any>> = {};
 
     fields.forEach((field) => {
       switch (field) {
-        case "threads":
-          promises.threads = this.threadService.getAll({ eventId: event.id });
-          break;
         case "tags":
           promises.tags = this.tagService.getAllEventTags(event.id);
           break;
@@ -80,16 +80,16 @@ class EventService {
           promises.creator = this.userService.getById(event.createdBy);
           break;
         case "participants":
-          promises.participants = this.userService.getAndPopulateUserProfiles(
-            event.participants,
-            "user"
-          );
+          promises.participants = this.userService.getAndPopulateUserProfiles({
+            data: event.participants,
+            searchKey: "user",
+          });
           break;
         case "verifiers":
-          promises.verifiers = this.userService.getAndPopulateUserProfiles(
-            event.verifiers,
-            "user"
-          );
+          promises.verifiers = this.userService.getAndPopulateUserProfiles({
+            data: event.verifiers,
+            searchKey: "user",
+          });
           break;
         case "reactions":
           promises.reactions = this.reactionService.getReactions(
@@ -106,18 +106,16 @@ class EventService {
       resolved[key] = res.status === "fulfilled" ? res.value : null;
     });
 
-    if (fields.includes("threads")) {
-      const items = resolved.threads?.data?.items || [];
-      const qnaThread = items.find((t: any) => t.type === EThreadType.QnA);
-      const discussionThread = items.find((t: any) => t.type === EThreadType.Discussion);
-      (event as any).threads = { qna: qnaThread?.id, discussion: discussionThread?.id };
-    }
     if (fields.includes("tags")) event.tags = resolved.tags?.data || [];
     if (fields.includes("media")) event.media = resolved.media?.data || [];
-    if (fields.includes("creator")) event.creator = resolved.creator?.data || null;
-    if (fields.includes("participants")) event.participants = resolved.participants || [];
-    if (fields.includes("verifiers")) event.verifiers = resolved.verifiers || [];
-    if (fields.includes("reactions")) event.reactions = resolved.reactions?.data || [];
+    if (fields.includes("creator"))
+      event.creator = resolved.creator?.data || null;
+    if (fields.includes("participants"))
+      event.participants = resolved.participants || [];
+    if (fields.includes("verifiers"))
+      event.verifiers = resolved.verifiers || [];
+    if (fields.includes("reactions"))
+      event.reactions = resolved.reactions?.data || [];
 
     return event as any;
   }
@@ -129,7 +127,11 @@ class EventService {
 
     if (populate) {
       const fields =
-        populate === true ? this.populateFields : this.populateFields.filter((f) => (populate as string[]).includes(f));
+        populate === true
+          ? this.populateFields
+          : this.populateFields.filter((f) =>
+              (populate as string[]).includes(f)
+            );
       const populated = await this.populateEvent(data as IEvent, fields);
       return { data: populated, error: null };
     }
@@ -146,7 +148,7 @@ class EventService {
     {
       body,
       tagIds,
-      mediaIds
+      mediaIds,
     }: {
       body: Partial<IEvent>;
       tagIds: string[];
@@ -186,17 +188,18 @@ class EventService {
       })
     );
     if (populate && result.data) {
-      const { data: populated } = await this.getById(
-        result.data.id,
-        populate
-      );
+      const { data: populated } = await this.getById(result.data.id, populate);
       return { data: populated, error: result.error };
     }
     return result;
   }
 
   @MethodCacheSync<IEvent>({})
-  async update<U extends Partial<IEvent>>(id: string, data: U, populate?: boolean | string[]) {
+  async update<U extends Partial<IEvent>>(
+    id: string,
+    data: U,
+    populate?: boolean | string[]
+  ) {
     const result = await validateEventUpdate(data, (data) =>
       updateRecord(Event, id, data)
     );
@@ -218,14 +221,14 @@ class EventService {
           const mediaPromise = this.mediaService.getEventMedia(event.id, 3);
           const tagsPromise = this.tagService.getAllEventTags(event.id);
           const participantsPromise =
-            this.userService.getAndPopulateUserProfiles(
-              event.participants,
-              "user"
-            );
-          const verifiersPromise = this.userService.getAndPopulateUserProfiles(
-            event.verifiers,
-            "user"
-          );
+            this.userService.getAndPopulateUserProfiles({
+              data: event.participants,
+              searchKey: "user",
+            });
+          const verifiersPromise = this.userService.getAndPopulateUserProfiles({
+            data: event.verifiers,
+            searchKey: "user",
+          });
           const reactionsPromise = this.reactionService.getReactions(
             `events/${event.id}`
           );
@@ -245,11 +248,11 @@ class EventService {
         })
       );
 
-      data.items = await this.userService.getAndPopulateUserProfiles(
-        data.items,
-        "createdBy",
-        "creator"
-      );
+      data.items = await this.userService.getAndPopulateUserProfiles({
+        data: data.items,
+        searchKey: "createdBy",
+        populateKey: "creator",
+      });
     }
     return { data, error: null };
   }
@@ -396,6 +399,29 @@ class EventService {
 
   async deleteEventMedia(eventId: string, mediaId: string) {
     return this.mediaService.deleteEventMediaJunctionRow(eventId, mediaId);
+  }
+
+  async getThreads(eventId: string, pagination: IPaginationParams) {
+    const { data, error } = await this.threadService.getAll(
+      { eventId },
+      pagination
+    );
+    let threads = data.items;
+    if (!isEmpty(threads)) {
+      await Promise.all(
+        threads.map(async (t) => {
+          const messages = await this.messageService.getAll(
+            { threadId: t.id },
+            { limit: 1 }
+          );
+          t.messages = messages.data.items;
+        })
+      );
+    }
+    return {
+      data: { items: threads, pagination: data.pagination },
+      error,
+    };
   }
 }
 

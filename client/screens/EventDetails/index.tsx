@@ -1,324 +1,26 @@
 import React, { memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 
-import { getEventById } from "@/common/api/events.action";
-import { getStaticMapImageUrl } from "@/common/api/mapbox";
-import { FilledButton } from "@/components/ui/Buttons";
+import { getEventById, getEventThreads } from "@/common/api/events.action";
 import { BackButtonHeader, IdentityCard, TagListing, UserCluster } from "@/components/ui/common-components";
 import { Badge, CardWrapper, CircleBgWrapper } from "@/components/ui/common-styles";
 import { SpinningLoader } from "@/components/ui/Loaders";
 import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import { EEventType, EThreadType } from "@/definitions/enums";
-import { IAddress, IBaseThread, IBaseUser, IEvent, IMessage } from "@/definitions/types";
-import { formatDistance } from "@/helpers";
+import { IAddress, IBaseThread, IBaseUser, IEvent, IMessage, IReaction } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
-import { askForLocation, haversineDistanceInM } from "@/utils/location";
-import {
-  Building,
-  ChevronRight,
-  Compass,
-  Crosshair,
-  Landmark,
-  MapPin,
-  Navigation,
-  Share2
-} from "@tamagui/lucide-icons";
+import { ChevronRight, Share2 } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
-import * as Location from "expo-location";
 import { useLocalSearchParams } from "expo-router";
-import { Linking } from "react-native";
-import { H4, H6, Image, ScrollView, Sheet, TamaguiElement, Text, View, XStack, YStack, YStackProps } from "tamagui";
+import { H4, H6, ScrollView, Sheet, Text, View, XStack, YStack } from "tamagui";
 import { formatDateWithTimeString } from "@/utils/date.utils";
-import { getThreadById } from "@/common/api/threads.action";
-import { omit, startCase } from "@/utils";
+import { omit } from "@/utils";
 
-import { format } from "date-fns";
-import CustomAvatar from "@/components/CustomAvatar";
-import { getChildMessagesForThread, getMessageById, getMessagesForThread } from "@/common/api/messages.action";
-import MessageInputBar from "@/components/MessageInputBar";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSocket } from "@/contexts/Socket";
 import useSocketListener from "@/hooks/useSocketListener";
 import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
-
-interface ThreadCardProps {
-  thread: { id: string };
-  message: IMessage;
-  handleClick: (data: Record<string, any>) => void;
-}
-
-export function MessageCard({ thread, message, handleClick }: ThreadCardProps) {
-  const { user: currentUserProfile } = useAuth();
-
-  const userProfileUrl = message?.user?.profilePic?.url || "";
-  const userName = currentUserProfile?.id === message.user?.id ? "You" : message?.user?.name || "";
-  const childMessages = message?.children?.items;
-  const totalChildMessages = message?.children?.pagination?.total || 0;
-
-  const childMessagesUser = (childMessages || []).map((ch) => ch.user).filter((i) => !!i);
-
-  const maxRepliesUserToShow = 3;
-  const userForCluster = childMessagesUser.slice(0, maxRepliesUserToShow);
-
-  const lineRef = useRef<TamaguiElement>(null);
-
-  const remainingUserReplies = totalChildMessages - userForCluster.length;
-
-  return (
-    <XStack
-      gap="$3"
-      items="flex-start"
-      position="relative"
-      onLayout={(e) => {
-        const { nativeEvent } = e;
-        if (lineRef.current) {
-          // @ts-ignore
-          lineRef.current.style.height = `${nativeEvent.layout.height - (56 + 5)}px`;
-        }
-      }}
-    >
-      <CustomAvatar
-        src={userProfileUrl}
-        alt={userName}
-      />
-      <YStack
-        gap="$1"
-        flex={1}
-        position="unset"
-      >
-        <XStack
-          gap="$2"
-          items="center"
-          justify={"flex-start"}
-        >
-          <Text fontSize={"$4"}>{userName}</Text>
-          <Text
-            color="$color10"
-            fontWeight={"100"}
-            fontSize="$1"
-          >
-            {format(new Date(message?.createdAt), "hh:mm a")}
-          </Text>
-        </XStack>
-        <Text
-          fontSize={"$3"}
-          color="$color11"
-        >
-          {message.content.text}
-        </Text>
-
-        {!!childMessages?.length && (
-          <>
-            <CardWrapper
-              gap={"$3.5"}
-              mt={"$2"}
-              flexDirection="row"
-              width={"auto"}
-              p={0}
-              self={"flex-start"}
-              items={"center"}
-              rounded={0}
-              borderColor={"transparent"}
-              cursor="pointer"
-              onPress={() => handleClick({ parentId: message.id, threadId: thread.id })}
-            >
-              <UserCluster users={userForCluster as IBaseUser[]} />
-              <Text
-                fontWeight="600"
-                color="$blue10"
-              >
-                {childMessages?.length}
-              </Text>
-              <Text
-                fontSize={"$3"}
-                borderBottomWidth={"$0.5"}
-                borderColor={"transparent"}
-                hoverStyle={{ borderColor: "$color12" }}
-                transition="border .2s ease-in"
-              >
-                {remainingUserReplies > 0 ? `+${remainingUserReplies} Replies` : "View Thread"}
-              </Text>
-            </CardWrapper>
-
-            <View
-              position="absolute"
-              borderColor={"$color8"}
-              borderLeftWidth={"$1"}
-              borderBottomWidth={"$1"}
-              width={28}
-              b={15}
-              l={20}
-              z={1}
-              borderBottomLeftRadius={"$4"}
-              ref={lineRef}
-            />
-          </>
-        )}
-      </YStack>
-    </XStack>
-  );
-}
-
-export const MapPreviewCard = (location: IAddress) => {
-  const [currentLocation, setCurrentLocation] = useState<Location.LocationObjectCoords | null>(null);
-  const toastController = useToastController();
-
-  useEffect(() => {
-    const _func = async () => {
-      await askForLocation(
-        ({ coords }) => {
-          setCurrentLocation(coords);
-        },
-        () => toastController.show("Permission denied for location")
-      );
-    };
-
-    _func();
-  }, []);
-  const _getMapUrl = () => {
-    if (location.latitude && location.longitude) {
-      const staticMapUrl = getStaticMapImageUrl({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        markerConfig: {
-          color: "fa0505",
-          size: "l"
-        },
-        zoom: 15
-      });
-      return staticMapUrl;
-    }
-  };
-
-  const staticMapURL = _getMapUrl();
-  const distanceAway = currentLocation
-    ? haversineDistanceInM(
-        { latitude: currentLocation.latitude, longitude: currentLocation.longitude },
-        { latitude: location.latitude, longitude: location.longitude }
-      )
-    : "-";
-
-  return (
-    <CardWrapper
-      display="flex"
-      flexDirection="column"
-      gap={"$4"}
-      items="center"
-      width={"100%"}
-    >
-      <XStack
-        gap={"$2"}
-        items="center"
-        justify="flex-start"
-        width={"100%"}
-      >
-        <CircleBgWrapper size={"$2"}>
-          <MapPin
-            size={16}
-            color={"$color10"}
-          />
-        </CircleBgWrapper>
-        <Text
-          fontSize={"$5"}
-          numberOfLines={1}
-          textOverflow="ellipsis"
-        >{`${location.street}, ${location.city}, ${location.state} ${location.postcode}`}</Text>
-      </XStack>
-
-      <XStack
-        gap={"$4"}
-        flex={1}
-        justify="flex-start"
-        width={"100%"}
-      >
-        <Image
-          source={{ uri: staticMapURL }}
-          width={130}
-          height={130}
-          rounded={"$4"}
-          hoverStyle={{
-            scale: 1.05
-          }}
-        />
-        <YStack
-          flex={1}
-          gap={"$2"}
-          justify={"flex-start"}
-          height={"100%"}
-        >
-          {location.building && (
-            <XStack
-              gap={"$2"}
-              items="center"
-            >
-              <Building
-                size={16}
-                color={"$color10"}
-              />
-              <Text>{location.building}</Text>
-            </XStack>
-          )}
-          {location.landmark && (
-            <XStack
-              gap={"$2"}
-              items="center"
-            >
-              <Landmark
-                size={16}
-                color={"$color10"}
-              />
-              <Text fontSize={"$3"}>{location.landmark}</Text>
-            </XStack>
-          )}
-          <XStack
-            gap={"$2"}
-            items="center"
-          >
-            <Crosshair
-              size={16}
-              color={"$color10"}
-            />
-            <Text
-              color={"$color10"}
-              fontSize={"$2"}
-            >
-              {location.latitude}, {location.longitude}
-            </Text>
-          </XStack>
-
-          <XStack
-            gap={"$2"}
-            items="center"
-          >
-            <Navigation
-              size={16}
-              color={"$color10"}
-            />
-
-            <Text
-              color={"$color10"}
-              fontSize={"$2"}
-            >
-              {distanceAway !== "-" ? formatDistance(distanceAway) : distanceAway} away
-            </Text>
-          </XStack>
-          <FilledButton
-            rounded={"$4"}
-            width={"min-content"}
-            onPress={() => {
-              Linking.openURL(
-                `https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}`
-              );
-            }}
-            size={"small"}
-            icon={<Compass size={16} />}
-          >
-            Get Directions
-          </FilledButton>
-        </YStack>
-      </XStack>
-    </CardWrapper>
-  );
-};
+import MapPreviewCard from "@/components/MapPreviewCard";
+import MessageCard from "./MessageView/MessageCard";
+import { IMessageViewAddMessageProp, IMessageViewBaseProps } from "./MessageView";
+import MessageViewSheetContent from "./MessageViewSheetContent";
 
 export const VerifiersListing = ({ verifiers }: { verifiers: IEvent["verifiers"] }) => {
   // sort the latest ones first
@@ -372,157 +74,16 @@ export const VerifiersListing = ({ verifiers }: { verifiers: IEvent["verifiers"]
   );
 };
 
-enum ViewTypes {
-  Thread = "thread",
-  ChildMessages = "child",
-  Message = "message",
-  None = 0
-}
-
-type BaseCommonProps = {
-  threadId?: string;
-  parentId?: string;
-  messageId?: string;
-};
-
-interface IProps extends BaseCommonProps {
-  onBack: () => void;
-  style: YStackProps["style"];
-  handleClick: (data: BaseCommonProps) => void;
-  parentRef?: React.MutableRefObject<{ addMessage: (msg: AddMessageProp) => void } | null>;
-}
-
-const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, style, parentRef }: IProps) => {
-  const { user: currentAuthenticatedUser } = useAuth();
-  const socket = useSocket();
-
-  const headers = {
-    [ViewTypes.Thread]: "Thread",
-    [ViewTypes.Message]: "Message",
-    [ViewTypes.ChildMessages]: "Messages",
-    [ViewTypes.None]: ""
-  };
-
-  useSocketListener(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, ({ data, error }: { data: AddMessageProp; error: any }) => {
-    if (error) return;
-    if (data.threadId === threadId) {
-      setData((prev: { data: { items: IMessage[] }; error?: null }) => {
-        if (prev.error) return prev;
-        return {
-          ...prev,
-          data: {
-            ...prev.data,
-            items: [data as IMessage, ...prev.data.items]
-          }
-        };
-      });
-    }
-  });
-
-  // useImperativeHandle(parentRef, () => ({
-  //   addMessage: (msg) => {
-  //     const newMessage = {
-  //       ...msg,
-  //       user: currentAuthenticatedUser,
-  //       userId: currentAuthenticatedUser?.id,
-  //       parentId,
-  //       threadId,
-  //       isEdited: false
-  //     };
-
-  //     setData((prev: { data: { items: IMessage[] }; error?: null }) => {
-  //       if (prev.error) return prev;
-  //       prev.data.items = [newMessage as IMessage, ...prev.data.items];
-  //       return prev;
-  //     });
-  //   }
-  // }));
-
-  const methodExecutors = {
-    [ViewTypes.Thread]: () => getMessagesForThread({ threadId: threadId || "" }),
-    [ViewTypes.Message]: () => getMessageById({ messageId: messageId || "", threadId: threadId || "" }),
-    [ViewTypes.ChildMessages]: () => getChildMessagesForThread({ threadId: threadId || "", parentId: parentId || "" }),
-    [ViewTypes.None]: () => {}
-  };
-
-  const determineViewType = ({ threadId, parentId, messageId }: BaseCommonProps) => {
-    if (parentId && threadId) return ViewTypes.ChildMessages;
-    if (threadId && messageId) return ViewTypes.Message;
-    if (threadId) return ViewTypes.Thread;
-    return ViewTypes.None;
-  };
-
-  const currentView = determineViewType({ threadId, parentId, messageId });
-
-  async function methodExecutor(currentView: ViewTypes) {
-    return await methodExecutors[currentView]();
-  }
-
-  const getFormattedData = (data: any) => {
-    if (currentView === ViewTypes.ChildMessages) return data?.items || [];
-    if (currentView == ViewTypes.Message) return data;
-    if (currentView === ViewTypes.Thread) return data?.items || [];
-  };
-
-  const { data, loading, setData } = useDataLoader({ promiseFunction: () => methodExecutor(currentView) });
-
-  const _fetchedData = getFormattedData(data?.data);
-
-  return (
-    <YStack
-      gap={"$4"}
-      width={"100%"}
-      flex={1}
-      style={style}
-    >
-      <BackButtonHeader
-        title={headers[currentView]}
-        arrowCb={onBack}
-      />
-      {loading ? (
-        <View
-          items={"center"}
-          justify={"center"}
-          height={"100%"}
-          width={"100%"}
-        >
-          <SpinningLoader />
-        </View>
-      ) : (
-        _fetchedData && (
-          <ScrollView width={"100%"}>
-            <YStack
-              flex={1}
-              gap={"$4"}
-            >
-              {_fetchedData?.map((i: IMessage) => (
-                <MessageCard
-                  thread={{ id: threadId || "" }}
-                  message={i}
-                  handleClick={handleClick}
-                  key={i.id}
-                />
-              ))}
-            </YStack>
-          </ScrollView>
-        )
-      )}
-    </YStack>
-  );
-});
-
-interface AddMessageProp extends IMessage {
-  thread: IBaseThread;
-  user: IBaseUser;
-}
-
 const EventDetails: React.FC = () => {
   const { id } = useLocalSearchParams();
   const toastController = useToastController();
-  const { user: currentAuthenticatedUser } = useAuth();
 
   const { data: _event, loading, setData: setEvent } = useDataLoader({ promiseFunction: fetchEventData });
-  const { data: _threads, loading: threadsLoading, setData: setThreads } = useDataLoader({
+  const {
+    data: _threads,
+    loading: threadsLoading,
+    setData: setThreads
+  } = useDataLoader({
     promiseFunction: getThreadsData,
     enabled: !!_event
   });
@@ -532,26 +93,17 @@ const EventDetails: React.FC = () => {
       const response = await getEventById(id as string);
 
       return response.data;
-    } catch (error: any) {
-      toastController.show(error?.message ?? "Something went wrong");
-    }
+    } catch (error: any) {}
   }
 
   async function getThreadsData() {
-    const threadsIds = Object.values(_event?.threads || {});
-    const threadsResponse = await Promise.all<{ data: IBaseThread | null; error: Record<string, any> }>(
-      threadsIds.map((id) => getThreadById({ id }))
-    );
-    const filteredResponse = threadsResponse.map((t) => t.data).filter(Boolean);
-    const _returnObj = filteredResponse.reduce(
-      (acc, cur) => {
-        if (cur) acc[cur.type] = cur;
-        return acc;
-      },
-      {} as Record<EThreadType, IBaseThread>
-    );
-
-    return _returnObj;
+    try {
+      const data = await getEventThreads(id as string, {});
+      if (data.error) throw data.error;
+      return data.data.items as IBaseThread[];
+    } catch (error: any) {
+      toastController.show(error?.message ?? "Something went wrong");
+    }
   }
 
   const createdBy = _event?.creator;
@@ -560,51 +112,22 @@ const EventDetails: React.FC = () => {
   const participants = _event?.participants;
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [sheetStack, setSheetStack] = useState<Array<BaseCommonProps>>([]);
 
-  const handleClick = ({
-    messageId,
-    threadId,
-    parentId
-  }: {
-    messageId?: string;
-    threadId?: string;
-    parentId?: string;
-  }) => {
-    if (messageId || threadId || parentId) {
-      setSheetStack((prev) => [...prev, { parentId, threadId, messageId }]);
-      setIsSheetOpen(true);
-    }
-  };
-
-  const handleSheetBack = useCallback(() => {
-    setSheetStack((prev) => {
-      if (prev.length > 1) return prev.slice(0, -1);
-      else {
-        setIsSheetOpen(false);
-        return [];
-      }
-    });
-  }, []);
-
-  const messageViewRef = useRef<{ addMessage: (data: AddMessageProp) => void }>(null);
-  const socket = useSocket();
+  const messageViewRef = useRef<{
+    addMessage: (data: IMessageViewAddMessageProp) => void;
+    handleClick: (data: Record<string, any>) => void;
+  }>(null);
 
   useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, ({ data }) => {
-    if (!data || data.eventId !== id) return;
-    setThreads((prev) => ({ ...(prev || {}), [data.type]: data }));
+    if (!data || data.eventId !== id || !data.type) return;
+    setThreads((prev) => [prev, data.thread]);
   });
 
   useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_UPDATED, ({ data }) => {
     if (!data) return;
     setThreads((prev) => {
       if (!prev) return prev;
-      const existing = Object.values(prev).find((t) => t.id === data.id);
-      if (!existing) return prev;
-      return {
-        ...prev,
-        [existing.type]: { ...existing, ...data }
-      } as Record<EThreadType, IBaseThread>;
+      return prev.map((f) => (f.id === data.thread.id ? { ...f, ...data.thread } : f));
     });
   });
 
@@ -612,8 +135,7 @@ const EventDetails: React.FC = () => {
     if (!data) return;
     setThreads((prev) => {
       if (!prev) return prev;
-      const entries = Object.entries(prev).filter(([, t]) => t.id !== data.id);
-      return Object.fromEntries(entries) as Record<EThreadType, IBaseThread>;
+      return prev.filter((f) => f.id !== data.thread.id);
     });
   });
 
@@ -626,13 +148,35 @@ const EventDetails: React.FC = () => {
         updated.creator = { ...updated.creator, ...data };
       }
       if (updated.participants) {
-        updated.participants = updated.participants.map((p) =>
+        updated.participants = updated.participants.map((p: { user: IBaseUser }) =>
           p.user?.id === data.id ? { ...p, user: { ...p.user, ...data } } : p
         );
       }
       return updated;
     });
   });
+
+  const [sheetStack, setSheetStack] = useState<Array<IMessageViewBaseProps>>([]);
+
+  const handleClick = useCallback(
+    ({ messageId, threadId, parentId }: { messageId?: string; threadId?: string; parentId?: string }) => {
+      if (messageId || threadId || parentId) {
+        setSheetStack((prev) => [...prev, { parentId, threadId, messageId }]);
+        setIsSheetOpen(true);
+      }
+    },
+    [setIsSheetOpen]
+  );
+
+  const handleSheetBack = useCallback(() => {
+    setSheetStack((prev) => {
+      if (prev.length > 1) return prev.slice(0, -1);
+      else {
+        setIsSheetOpen(false);
+        return [];
+      }
+    });
+  }, []);
 
   return (
     <>
@@ -722,41 +266,46 @@ const EventDetails: React.FC = () => {
 
                 {!!_event?.verifiers.length && <VerifiersListing verifiers={_event.verifiers} />}
 
-                {[EThreadType.Discussion, EThreadType.QnA].map((threadType) => {
-                  const thread = _threads?.[threadType];
-                  return (
-                    (threadsLoading || thread) && (
-                      <CardWrapper key={threadType}>
-                        <XStack
-                          gap={"$4"}
-                          justify={"space-between"}
-                        >
-                          <H6>{startCase(threadType)}</H6>
-                          <ChevronRight
-                            size={20}
-                            color={"$color"}
-                            cursor="pointer"
-                            onPress={() => {
-                              handleClick({ threadId: thread?.id });
-                            }}
-                          />
-                        </XStack>
-                        {threadsLoading ? (
-                          <SpinningLoader />
-                        ) : (
-                          thread &&
-                          !!thread.messages?.length && (
+                {(threadsLoading || _threads?.length) && (
+                  <CardWrapper>
+                    <XStack
+                      gap={"$4"}
+                      justify={"space-between"}
+                    >
+                      <H6>Discussion</H6>
+                    </XStack>
+                    {threadsLoading ? (
+                      <SpinningLoader />
+                    ) : (
+                      _threads?.map((thread) => {
+                        return (
+                          <View
+                            flex={1}
+                            width={"100%"}
+                          >
+                            <ChevronRight
+                              size={20}
+                              color={"$color"}
+                              cursor="pointer"
+                              position="absolute"
+                              t={0}
+                              r={0}
+                              z={10}
+                              onPress={() => {
+                                handleClick({ threadId: thread?.id });
+                              }}
+                            />
                             <MessageCard
                               thread={omit(thread, ["messages"])}
                               handleClick={handleClick}
-                              message={thread.messages[0]}
+                              message={thread.messages![0]}
                             />
-                          )
-                        )}
-                      </CardWrapper>
-                    )
-                  );
-                })}
+                          </View>
+                        );
+                      })
+                    )}
+                  </CardWrapper>
+                )}
               </YStack>
             )
           )}
@@ -790,55 +339,12 @@ const EventDetails: React.FC = () => {
           bg={"$accent12"}
           mx={"auto"}
         >
-          <View
-            position="relative"
-            width={"100%"}
-            flex={1}
-          >
-            {sheetStack.map((sheetData, index) => (
-              <MessageView
-                key={`${sheetData.threadId}-${sheetData.parentId}-${sheetData.messageId}-${index}`}
-                {...sheetData}
-                onBack={handleSheetBack}
-                handleClick={handleClick}
-                parentRef={messageViewRef}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  zIndex: index,
-                  display: index === sheetStack.length - 1 ? "flex" : "none"
-                }}
-              />
-            ))}
-          </View>
-
-          <MessageInputBar
-            context={{ eventId: id, maxAttachments: 3 }}
-            sendButtonCb={(data) => {
-              // take the top most sheet data and based on that add message
-              const topMostSheetData = sheetStack[sheetStack.length - 1];
-              const { parentId, threadId } = topMostSheetData;
-              const messageContent = {
-                content: { text: data?.message, media: data?.mediaIds || [] }
-              };
-              const newMessage = {
-                ...messageContent,
-                userId: currentAuthenticatedUser?.id,
-                parentId,
-                threadId,
-                isEdited: false
-              };
-
-              socket.emit(
-                PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED,
-                newMessage,
-                ({ data, error }: { data: AddMessageProp; error: any }) => {
-                  if (error) {
-                    toastController.show(error?.message ?? "Something went wrong");
-                  } else messageViewRef?.current?.addMessage(data);
-                }
-              );
-            }}
+          <MessageViewSheetContent
+            messageViewRef={messageViewRef}
+            setIsSheetOpen={setIsSheetOpen}
+            sheetStack={sheetStack}
+            handleClick={handleClick}
+            handleSheetBack={handleSheetBack}
           />
         </Sheet.Frame>
       </Sheet>

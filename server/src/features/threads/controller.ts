@@ -7,10 +7,11 @@ import { isEmpty } from "@utils";
 import { emitSocketEvent } from "@socket/emitter";
 import { PLATFORM_SOCKET_EVENTS } from "@constants";
 import EventService from "@features/events/service";
+import MessageService from "@features/messages/service";
 
 const threadsService = new ThreadsService();
-const messageService = new MessageService();
 const eventService = new EventService();
+const messageService = new MessageService();
 
 export const getThreads = async (
   req: ICustomRequest & IRequestPagination,
@@ -33,7 +34,7 @@ export const createThread = async (req: ICustomRequest, res: Response) => {
 export const getThread = async (req: ICustomRequest, res: Response) => {
   const { threadId } = req.params;
   const { includeMessages } = req.query;
-  const threadData = await threadsService.getById(threadId, true);
+  const threadData = await threadsService.getById(threadId);
 
   const thread = threadData.data;
   if (isEmpty(thread)) {
@@ -49,8 +50,6 @@ export const getThread = async (req: ICustomRequest, res: Response) => {
       : parseInt(includeMessages as string, 10) || 1;
 
   if (parsedIncludeMessages) {
-    const { default: MessageService } = await import("@features/messages/service");
-    const messageService = new MessageService();
     const messages = await messageService.getAll(
       {
         threadId: threadId,
@@ -69,7 +68,7 @@ export const updateThread = async (req: ICustomRequest, res: Response) => {
   const thread = await threadsService.update(threadId, req.body, true);
   emitSocketEvent(PLATFORM_SOCKET_EVENTS.THREAD_UPDATED, {
     data: { id: threadId, ...req.body },
-    error: null
+    error: null,
   });
   return res.status(200).json(thread);
 };
@@ -79,7 +78,7 @@ export const deleteThread = async (req: ICustomRequest, res: Response) => {
   const thread = await threadsService.delete(threadId);
   emitSocketEvent(PLATFORM_SOCKET_EVENTS.THREAD_DELETED, {
     data: { id: threadId },
-    error: null
+    error: null,
   });
   return res.status(200).json(thread);
 };

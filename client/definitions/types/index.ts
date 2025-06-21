@@ -33,13 +33,19 @@ export interface IBaseUser extends ITimeStamp {
 }
 
 // Message Content Type
-export type IMessageContent =
-  | { text: string } // Plain text message
-  | {
-      text?: string; // Optional caption
-      media?: IMedia[] | string[]; // Array of media IDs
-      links?: { url: string; title: string }[]; // Array of links with titles
-    }; // Rich object message
+export type IMessageContent = {
+  text?: string; // Optional caption
+  media?: IMedia[] | string[]; // Array of media IDs
+  links?: { url: string; title: string }[]; // Array of links with titles
+}; // Rich object message
+
+export interface IReaction extends ITimeStamp {
+  id: string;
+  contentId: string;
+  emoji: string;
+  userId: string;
+  user?: IBaseUser;
+}
 
 // Message Interface
 export interface IMessage extends ITimeStamp {
@@ -51,6 +57,7 @@ export interface IMessage extends ITimeStamp {
   threadId: string;
   children: IPaginatedDataResponse<IMessage>;
   user?: IBaseUser;
+  reactions: IReaction[];
 }
 
 export interface IPaginatedDataResponse<T> {

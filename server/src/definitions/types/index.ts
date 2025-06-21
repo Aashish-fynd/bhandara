@@ -155,6 +155,7 @@ export interface IReaction extends ITimeStamp {
   contentId: string;
   emoji: string;
   userId: string;
+  user?: IBaseUser;
 }
 
 export interface IPaginationParams {

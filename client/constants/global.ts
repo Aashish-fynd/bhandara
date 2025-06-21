@@ -30,3 +30,5 @@ export const PLATFORM_SOCKET_EVENTS = {
   // USERs
   USER_UPDATED: "user:updated"
 };
+
+export const COMMON_EMOJIS = ["👍", "❤️", "😂", "🎉", "😮", "😢"];

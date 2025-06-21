@@ -134,4 +134,8 @@ export const base64ToBlob = (base64DataUri: string): Blob => {
   return new Blob([byteArray], { type: contentType });
 };
 
+export const formTruthyValues = (data: Record<string, any>) => {
+  return Object.fromEntries(Object.entries(data).filter(([_, value]) => Boolean(value)));
+};
+
 export * from "./compression";

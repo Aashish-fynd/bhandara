@@ -18,6 +18,7 @@ import {
   verifyEvent,
   associateEventMedia,
   deleteEventMedia,
+  getEventThreads,
 } from "@features/events/controller";
 const router = Router();
 
@@ -41,6 +42,12 @@ router.delete(
   "/:eventId/tags/:tagId",
   [validateParams(["eventId", "tagId"])],
   asyncHandler(deleteEventTag)
+);
+
+router.get(
+  "/:eventId/threads",
+  [validateParams(["eventId"])],
+  asyncHandler(getEventThreads)
 );
 
 router.post("/:eventId/verify", asyncHandler(verifyEvent));

@@ -120,7 +120,8 @@ class UserService {
         const { data: usernameData, error: usernameError } =
           await this.getUserByUsername(username);
         if (usernameError) throw new BadRequestError(usernameError.message);
-        if (usernameData) throw new BadRequestError("Username already exists");
+        if (!isEmpty(usernameData.items))
+          throw new BadRequestError("Username already exists");
       }
 
       const promises: Promise<any>[] = [
@@ -138,7 +139,7 @@ class UserService {
 
       const results = await Promise.all(promises);
 
-      const updatedUser = results[0].data as IBaseUser;
+      const updatedUser = results[0].data[0].dataValues as IBaseUser;
 
       await this.deleteCache(id);
 
@@ -210,7 +211,10 @@ class UserService {
     return { data: tags.data.items, error: tags.error };
   }
 
-  async getUserProfiles(ids: string[]): Promise<{
+  async getUserProfiles(
+    ids: string[],
+    transformerFunction?: (user: IBaseUser) => Record<string, any>
+  ): Promise<{
     data: Record<string, IBaseUser>;
     error: any;
   }> {
@@ -243,10 +247,14 @@ class UserService {
     const { data: mediaData } = await this.mediaService.getMediaByIds(mediaIds);
 
     const safeUsers = fetchedUsers.reduce((acc, user) => {
-      acc[user.id] = getLeanUser({
-        ...user,
-        mediaId: mediaData[user.mediaId as string],
-      });
+      acc[user.id] = getSafeUser(
+        transformerFunction
+          ? (transformerFunction({
+              ...user,
+              media: mediaData[user.mediaId as string],
+            }) as IBaseUser)
+          : user
+      );
 
       return acc;
     }, {} as Record<string, IBaseUser>);
@@ -261,13 +269,22 @@ class UserService {
    * @param {keyof T} [populateKey] - Optional key to populate the user profile in the data
    * @returns {Promise<Array<T>>} Array of items with user profiles populated
    */
-  async getAndPopulateUserProfiles<T extends Record<string, any>>(
-    data: Array<T>,
-    searchKey: keyof T,
-    populateKey?: keyof T
-  ): Promise<Array<T>> {
+  async getAndPopulateUserProfiles<T extends Record<string, any>>({
+    data,
+    searchKey,
+    populateKey,
+    transformerFunction,
+  }: {
+    data: Array<T>;
+    searchKey: keyof T;
+    populateKey?: keyof T;
+    transformerFunction?: (user: IBaseUser) => Record<string, any>;
+  }): Promise<Array<T>> {
     const ids = data.map((item) => item[searchKey]);
-    const { data: users, error: usersError } = await this.getUserProfiles(ids);
+    const { data: users, error: usersError } = await this.getUserProfiles(
+      ids,
+      transformerFunction
+    );
     if (usersError) throw usersError;
 
     return data.map((item) => {

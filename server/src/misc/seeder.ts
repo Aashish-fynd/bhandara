@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createClient } from "@supabase/supabase-js";
 import { faker } from "@faker-js/faker";
 import dotenv from "dotenv";

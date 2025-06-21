@@ -4,12 +4,13 @@ import { base64ToBlob, uriToBlob, compressFile } from "@/utils";
 import { MEDIA_BUCKET_CONFIG } from "@/constants/media";
 import axios from "axios";
 import { IBaseResponse, IMedia, IPaginatedDataResponse } from "@/definitions/types";
+import { EMediaType } from "@/definitions/enums";
 
 export interface IPickerAsset {
   uri: string;
   mimeType: string | null;
   size: number;
-  type: string;
+  type: EMediaType;
   name: string;
 }
 

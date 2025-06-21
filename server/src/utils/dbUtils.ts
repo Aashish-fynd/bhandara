@@ -1,12 +1,12 @@
 import { FindOptions, Model, ModelStatic, Op, Transaction } from "sequelize";
 import { IPaginationParams } from "@/definitions/types";
 import { getDBConnection } from "@connections/db";
+import logger from "@logger";
 
 export interface PaginatedResult<T> {
   items: T[];
   pagination: IPaginationParams;
 }
-
 export async function findAllWithPagination<T extends Model>(
   model: ModelStatic<T>,
   where: Record<string, any> = {},
@@ -25,59 +25,68 @@ export async function findAllWithPagination<T extends Model>(
   const _pagination = {
     limit: limit ?? 10,
     page: page ?? 1,
-    next: next ?? undefined,
+    next: next ?? null,
     sortBy: sortBy ?? "createdAt",
     sortOrder: sortOrder ?? "desc",
   };
 
+  const isCursorMode = !!next;
+  const effectiveLimit = limit + 1;
+
   const options: FindOptions = {
     raw: true,
     where: { ...where },
-    order: [[_pagination.sortBy, _pagination.sortOrder.toUpperCase() as any]],
+    order: [[_pagination.sortBy, _pagination.sortOrder.toUpperCase()]],
+    limit: effectiveLimit,
   };
 
-  if (select) options.attributes = select.split(",").map((s) => s.trim());
+  // Select specific fields
+  if (select) {
+    options.attributes = select.split(",").map((s) => s.trim());
+  }
 
-  if (next) {
+  // Cursor-based pagination
+  if (isCursorMode) {
     (options.where as any)[_pagination.sortBy] = {
-      [_pagination.sortOrder === "asc" ? Op.gt : Op.lt]: next,
+      [_pagination.sortOrder === "asc" ? Op.gt : Op.lt]: _pagination.next,
     };
-    options.limit = _pagination.limit + 1;
   } else {
-    options.limit = _pagination.limit;
+    // Offset-based pagination
     options.offset = (_pagination.page - 1) * _pagination.limit;
   }
 
-  if (modifyOptions) modifyOptions(options);
+  // Allow user-defined modification
+  if (modifyOptions) {
+    Object.assign(options, modifyOptions(options));
+  }
 
   const { rows, count } = await model.findAndCountAll(options);
-  const resultItems = rows.slice(0, _pagination.limit) as T[];
-  const paginationObj: IPaginationParams = {
-    limit: _pagination.limit,
-    page: _pagination.page,
-    next: _pagination.next,
+
+  const hasNext = rows.length > _pagination.limit;
+  const items = hasNext
+    ? (rows.slice(0, _pagination.limit) as T[])
+    : (rows as T[]);
+
+  const paginationResult = {
+    limit,
     total: count,
-    sortBy: _pagination.sortBy,
-    sortOrder: _pagination.sortOrder,
   } as IPaginationParams;
 
-  paginationObj.hasNext = rows.length > limit;
-
-  if (next) {
-    paginationObj.next =
-      rows.length > _pagination.limit
-        ? (rows as any)[_pagination.limit][_pagination.sortBy]
-        : null;
-    delete paginationObj.page;
-    delete paginationObj.hasNext;
+  if (isCursorMode) {
+    delete paginationResult.total;
+    paginationResult.next = hasNext
+      ? rows[_pagination.limit][_pagination.sortBy]
+      : null;
   } else {
-    paginationObj.next = paginationObj.hasNext
-      ? (rows as any)[_pagination.limit - 1][_pagination.sortBy]
+    paginationResult.page = _pagination.page;
+    paginationResult.hasNext = hasNext;
+    paginationResult.next = hasNext
+      ? rows[_pagination.limit - 1][_pagination.sortBy]
       : null;
   }
 
   return {
-    data: { items: resultItems, pagination: paginationObj },
+    data: { items, pagination: paginationResult },
     error: null,
   };
 }
@@ -102,19 +111,28 @@ export async function updateRecord<T extends Model>(
   model: ModelStatic<T>,
   id: string,
   data: Partial<T>
-): Promise<{ data: T | T[] | null; error: any }> {
+): Promise<{ data: T | null; error: any }> {
   const [, updatedResult] = await model.update(data as any, {
     where: { id: id as any },
     returning: true,
   });
 
-  return { data: updatedResult, error: null };
+  if (updatedResult.length > 1) {
+    logger.warn(`Found records ${updatedResult.length} matching id:${id}`);
+  }
+
+  return { data: updatedResult[0], error: null };
 }
 
 export async function deleteRecord<T extends Model>(
   model: ModelStatic<T>,
-  id: string
-): Promise<{ data: T | null; error: any }> {
+  id: string,
+  skipGet = false
+): Promise<{ data: T | null | number; error: any }> {
+  if (skipGet) {
+    const result = await model.destroy({ where: { id: id as any } });
+    return { data: result, error: null };
+  }
   const row = await model.findByPk(id);
   if (!row) return { data: null, error: null };
   await (row as any).destroy();

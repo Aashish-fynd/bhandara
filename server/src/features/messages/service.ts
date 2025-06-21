@@ -17,19 +17,14 @@ import { isEmpty } from "@utils";
 import UserService from "@features/users/service";
 import { BadRequestError } from "@exceptions";
 import ReactionService from "@features/reactions/service";
-import ThreadsService from "@features/threads/service";
 
 // Note: Thread data is intentionally not populated here to avoid
 // circular dependencies between services. Controllers should fetch
 // thread details separately when needed.
-
 class MessageService {
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
   private readonly reactionService: ReactionService;
-  private readonly threadsService: ThreadsService;
-
-  private readonly populateFields = ["user", "thread", "reactions", "media"];
 
   private readonly populateFields = ["user", "reactions", "media"];
 
@@ -37,56 +32,6 @@ class MessageService {
     this.mediaService = new MediaService();
     this.userService = new UserService();
     this.reactionService = new ReactionService();
-    this.threadsService = new ThreadsService();
-  }
-
-  private async populateMessage(message: IMessage, fields: string[]) {
-    const promises: Record<string, Promise<any>> = {};
-
-    fields.forEach((field) => {
-      switch (field) {
-        case "user":
-          promises.user = this.userService.getById(message.userId);
-          break;
-        case "thread":
-          promises.thread = this.threadsService.getById(message.threadId);
-          break;
-        case "reactions":
-          promises.reactions = this.reactionService.getReactions(
-            `messages/${message.id}`
-          );
-          break;
-        case "media":
-          if ("media" in message.content) {
-            const ids = (message.content.media as string[]) || [];
-            promises.media = this.mediaService
-              .getMediaByIds(ids)
-              .then((res) => res.data);
-          }
-          break;
-      }
-    });
-
-    const results = await Promise.allSettled(Object.values(promises));
-    const resolved: Record<string, any> = {};
-    Object.keys(promises).forEach((key, idx) => {
-      const r = results[idx];
-      resolved[key] = r.status === "fulfilled" ? r.value : null;
-    });
-
-    if (fields.includes("user")) message.user = resolved.user?.data || null;
-    if (fields.includes("thread")) (message as any).thread = resolved.thread?.data || null;
-    if (fields.includes("reactions")) message.reactions = resolved.reactions?.data || [];
-    if (fields.includes("media") && resolved.media) {
-      message.content = {
-        ...message.content,
-        media: (message.content.media as string[]).map(
-          (id) => resolved.media[id]
-        ),
-      } as IMessageContent;
-    }
-
-    return message;
   }
 
   private async populateMessage(message: IMessage, fields: string[]) {
@@ -121,7 +66,8 @@ class MessageService {
     });
 
     if (fields.includes("user")) message.user = resolved.user?.data || null;
-    if (fields.includes("reactions")) message.reactions = resolved.reactions?.data || [];
+    if (fields.includes("reactions"))
+      message.reactions = resolved.reactions?.data || [];
     if (fields.includes("media") && resolved.media) {
       message.content = {
         ...message.content,
@@ -171,11 +117,11 @@ class MessageService {
     const childMessages = await Promise.all(childMessagesPromises);
 
     const parentMessageWithPopulatedUsers =
-      await this.userService.getAndPopulateUserProfiles(
-        parentLevelMessages?.items || [],
-        "userId",
-        "user"
-      );
+      await this.userService.getAndPopulateUserProfiles({
+        data: parentLevelMessages?.items || [],
+        searchKey: "userId",
+        populateKey: "user",
+      });
 
     // Using the same index ensures each child is matched with its correct parent
     const messagesWithChildren = parentMessageWithPopulatedUsers?.map(
@@ -227,11 +173,11 @@ class MessageService {
       });
 
       const userPopulatedMessages =
-        await this.userService.getAndPopulateUserProfiles(
-          data.items,
-          "userId",
-          "user"
-        );
+        await this.userService.getAndPopulateUserProfiles({
+          data: data.items,
+          searchKey: "userId",
+          populateKey: "user",
+        });
 
       const reactionPromises = userPopulatedMessages.map((msg) =>
         this.reactionService.getReactions(`messages/${msg.id}`)
@@ -249,7 +195,10 @@ class MessageService {
     return { data };
   }
 
-  async create<U extends Partial<Omit<IMessage, "id" | "updatedAt">>>(data: U, populate?: boolean | string[]) {
+  async create<U extends Partial<Omit<IMessage, "id" | "updatedAt">>>(
+    data: U,
+    populate?: boolean | string[]
+  ) {
     const result = await validateMessageCreate(data, async (validData) => {
       if (validData.parentId) {
         const parent = await this.getById(validData.parentId);
@@ -268,7 +217,11 @@ class MessageService {
     return result;
   }
 
-  async update<U extends Partial<IMessage>>(id: string, data: U, populate?: boolean | string[]) {
+  async update<U extends Partial<IMessage>>(
+    id: string,
+    data: U,
+    populate?: boolean | string[]
+  ) {
     const result = await validateMessageUpdate(data, async (validData) => {
       if (validData.parentId) {
         const parent = await this.getById(validData.parentId);
@@ -294,7 +247,9 @@ class MessageService {
       const fields =
         populate === true
           ? this.populateFields
-          : this.populateFields.filter((f) => (populate as string[]).includes(f));
+          : this.populateFields.filter((f) =>
+              (populate as string[]).includes(f)
+            );
       const populated = await this.populateMessage(data as IMessage, fields);
       return { data: populated, error: result.error };
     }

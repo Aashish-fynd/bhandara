@@ -1,4 +1,11 @@
-import { Model, ModelCtor, Op, Sequelize, Transaction } from "sequelize";
+import {
+  Attributes,
+  Model,
+  ModelStatic,
+  Op,
+  Sequelize,
+  Transaction,
+} from "sequelize";
 import { getDBConnection } from "@connections/db";
 import { EQueryOperator } from "@/definitions/enums";
 
@@ -52,7 +59,7 @@ export default class DBService {
   }
 
   async query<T extends Model>(
-    model: ModelCtor<T>,
+    model: ModelStatic<T>,
     {
       query = [],
       select,
@@ -77,25 +84,28 @@ export default class DBService {
     return { data: data as T[], count: null, error: null };
   }
 
-  async insert<T extends Model>(model: ModelCtor<T>, data: any): Promise<{ data: T; error: any }> {
+  async insert<T extends Model>(
+    model: ModelStatic<T>,
+    data: any
+  ): Promise<{ data: T; error: any }> {
     const res = await model.create(data as any);
     return { data: res.toJSON() as T, error: null };
   }
 
   async updateById<T extends Model>(
-    model: ModelCtor<T>,
+    model: ModelStatic<T>,
     id: string,
     data: any
-  ): Promise<{ data: T | null; error: any }> {
+  ): Promise<{ data: T | null; error: any; count: number }> {
     const [count, rows] = await model.update(data, {
-      where: { id },
+      where: { id: id as Attributes<T> },
       returning: true,
     });
-    return { data: (rows[0] as T) || null, error: null };
+    return { data: (rows[0] as T) || null, error: null, count };
   }
 
   async deleteById<T extends Model>(
-    model: ModelCtor<T>,
+    model: ModelStatic<T>,
     id: string
   ): Promise<{ data: T | null; error: any }> {
     const row = await model.findByPk(id);
@@ -105,7 +115,7 @@ export default class DBService {
   }
 
   async deleteByQuery<T extends Model>(
-    model: ModelCtor<T>,
+    model: ModelStatic<T>,
     filters: SimpleFilter[],
     single = false
   ): Promise<{ data: T | null; error: any }> {
@@ -113,7 +123,7 @@ export default class DBService {
     if (single) {
       const row = await model.findOne({ where });
       if (!row) return { data: null, error: null };
-      await (row as any).destroy();
+      await row.destroy();
       return { data: row.toJSON() as T, error: null };
     }
     await model.destroy({ where });

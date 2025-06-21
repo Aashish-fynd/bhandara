@@ -71,17 +71,15 @@ export const getUserByQuery = async (req: ICustomRequest, res: Response) => {
     const { data: emailData } = await userService.getUserByEmail(
       email as string
     );
-    if (isEmpty(emailData)) throw new NotFoundError("User not found");
     data = emailData;
-  }
-
-  if (username) {
+  } else if (username) {
     const { data: usernameData } = await userService.getUserByUsername(
       username as string
     );
-    if (isEmpty(usernameData)) throw new NotFoundError("User not found");
-    data = usernameData;
+    data = usernameData.items?.[0];
   }
+
+  if (isEmpty(data)) throw new NotFoundError("User not found");
 
   return res.status(200).json({ data: getSafeUser(data), error: null });
 };

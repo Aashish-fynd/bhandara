@@ -1,4 +1,6 @@
-import { Adapt, Button, Input, Label, Popover, PopoverProps, XStack, YStack } from "tamagui";
+import React, { forwardRef } from "react";
+import { useRef } from "react";
+import { Adapt, Popover, PopoverProps } from "tamagui";
 
 interface IProps extends PopoverProps {
   children?: React.ReactNode;
@@ -6,7 +8,9 @@ interface IProps extends PopoverProps {
   trigger?: React.ReactNode;
 }
 
-export function PopoverWrapper({ children, shouldAdapt, trigger, ...props }: IProps) {
+export const PopoverWrapper = forwardRef<any, IProps>(({ children, shouldAdapt, trigger, ...props }, ref) => {
+  delete (props as any).ref;
+
   return (
     <Popover
       size="$5"
@@ -14,6 +18,7 @@ export function PopoverWrapper({ children, shouldAdapt, trigger, ...props }: IPr
       stayInFrame
       offset={15}
       resize
+      ref={ref}
       {...props}
     >
       <Popover.Trigger asChild>{trigger}</Popover.Trigger>
@@ -44,4 +49,6 @@ export function PopoverWrapper({ children, shouldAdapt, trigger, ...props }: IPr
       {children}
     </Popover>
   );
-}
+});
+
+PopoverWrapper.displayName = "PopoverWrapper";

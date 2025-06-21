@@ -2,7 +2,7 @@ import { getDBConnection } from "@connections/db";
 import { DataTypes, Model } from "sequelize";
 import { getUUIDv7 } from "@helpers";
 import { REACTION_TABLE_NAME } from "./constants";
-import { IReaction } from "@/definitions/types";
+import { IBaseUser, IReaction } from "@/definitions/types";
 type ReactionAttributes = Omit<
   IReaction,
   "createdAt" | "updatedAt" | "deletedAt"
@@ -16,6 +16,8 @@ export class Reaction extends Model<ReactionAttributes, ReactionAttributes> {
   declare createdAt: Date;
   declare updatedAt: Date;
   declare deletedAt?: Date;
+
+  declare user?: IBaseUser;
 }
 
 Reaction.init(

@@ -33,7 +33,7 @@ export const createEvent = async (req: ICustomRequest, res: Response) => {
     {
       body: req.body,
       tagIds: req.body.tagIds || req.body.tags || [],
-      mediaIds: req.body.mediaIds || req.body.media || []
+      mediaIds: req.body.mediaIds || req.body.media || [],
     },
     true
   );
@@ -45,7 +45,7 @@ export const updateEvent = async (req: ICustomRequest, res: Response) => {
   const event = await eventService.update(req.params.id, req.body, true);
   emitSocketEvent(PLATFORM_SOCKET_EVENTS.EVENT_UPDATED, {
     data: { id: req.params.id, ...req.body },
-    error: null
+    error: null,
   });
   return res.status(200).json(event);
 };
@@ -57,7 +57,7 @@ export const deleteEvent = async (req: ICustomRequest, res: Response) => {
 
   emitSocketEvent(PLATFORM_SOCKET_EVENTS.EVENT_DELETED, {
     data: { id: req.params.id },
-    error: null
+    error: null,
   });
 
   return res.status(200).json(event);
@@ -118,4 +118,14 @@ export const deleteEventMedia = async (req: ICustomRequest, res: Response) => {
 
   const event = await eventService.deleteEventMedia(eventId, mediaId);
   return res.status(200).json(event);
+};
+
+export const getEventThreads = async (
+  req: ICustomRequest & IRequestPagination,
+  res: Response
+) => {
+  const { eventId } = req.params;
+  const threads = await eventService.getThreads(eventId, req.pagination);
+
+  return res.status(200).json(threads);
 };

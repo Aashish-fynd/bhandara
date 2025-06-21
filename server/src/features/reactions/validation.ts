@@ -1,7 +1,12 @@
 import { validateSchema } from "@/helpers";
-import { REACTION_TABLE_NAME, COMMON_EMOJIS, ALLOWED_REACTION_TABLES } from "./constants";
+import {
+  REACTION_TABLE_NAME,
+  COMMON_EMOJIS,
+  EAllowedReactionTables,
+} from "./constants";
 
-const basePattern = `^(${ALLOWED_REACTION_TABLES.join("|")})\\/[0-9a-fA-F-]{36}$`;
+const allowedContentPaths = Object.values(EAllowedReactionTables);
+const basePattern = `^(${allowedContentPaths.join("|")})\\/[0-9a-fA-F-]{36}$`;
 
 const reactionSchema = {
   type: "object",
@@ -9,7 +14,9 @@ const reactionSchema = {
     contentId: {
       type: "string",
       pattern: basePattern,
-      errorMessage: `contentId must be of the form '<table>/<uuid>' where table is one of ${ALLOWED_REACTION_TABLES.join(", ")}`,
+      errorMessage: `contentId must be of the form '<table>/<uuid>' where table is one of ${allowedContentPaths.join(
+        ", "
+      )}`,
     },
     emoji: {
       type: "string",
@@ -40,7 +47,9 @@ const updateSchema = {
     contentId: {
       type: "string",
       pattern: basePattern,
-      errorMessage: `contentId must be of the form '<table>/<uuid>' where table is one of ${ALLOWED_REACTION_TABLES.join(", ")}`,
+      errorMessage: `contentId must be of the form '<table>/<uuid>' where table is one of ${allowedContentPaths.join(
+        ", "
+      )}`,
     },
     emoji: {
       type: "string",
@@ -68,4 +77,3 @@ export const validateReactionUpdate = validateSchema(
   `${REACTION_TABLE_NAME}_UPDATE`,
   updateSchema
 );
-
