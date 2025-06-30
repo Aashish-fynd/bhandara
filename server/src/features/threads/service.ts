@@ -50,7 +50,7 @@ class ThreadsService {
     });
 
     if (fields.includes("messages")) {
-      thread.messages = resolved.messages?.data;
+      thread.messages = resolved.messages?.items;
     }
 
     return thread;
@@ -65,22 +65,22 @@ class ThreadsService {
     data: U,
     populate?: boolean | string[]
   ) {
-    const result = await validateThreadCreate(data, async (validData) => {
+    const created = await validateThreadCreate(data, async (validData) => {
       if (validData.parentId) {
         const parent = await this.getById(validData.parentId);
-        if (!parent.data) throw new BadRequestError("Parent thread not found");
-        if (parent.data.parentId)
+        if (!parent) throw new BadRequestError("Parent thread not found");
+        if (parent.parentId)
           throw new BadRequestError(
             "Nested threads beyond one level are not allowed"
           );
       }
       return createRecord(Thread, validData);
     });
-    if (populate && result.data) {
-      const { data: populated } = await this.getById(result.data.id);
-      return { data: populated, error: result.error };
+    let thread = (created as any)?.dataValues || (created as any)?.[0]?.dataValues || created;
+    if (populate && thread) {
+      thread = await this.getById(thread.id);
     }
-    return result;
+    return thread;
   }
 
   @MethodCacheSync({})
@@ -94,22 +94,22 @@ class ThreadsService {
     data: U,
     populate?: boolean | string[]
   ) {
-    const result = await validateThreadUpdate(data, async (validData) => {
+    const updated = await validateThreadUpdate(data, async (validData) => {
       if (validData.parentId) {
         const parent = await this.getById(validData.parentId);
-        if (!parent.data) throw new BadRequestError("Parent thread not found");
-        if (parent.data.parentId)
+        if (!parent) throw new BadRequestError("Parent thread not found");
+        if (parent.parentId)
           throw new BadRequestError(
             "Nested threads beyond one level are not allowed"
           );
       }
-      return updateRecord(Thread, id, validData);
+      return updateRecord(Thread, { id }, validData);
     });
-    if (populate && !result.error) {
-      const { data: populated } = await this.getById(id);
-      return { data: populated, error: result.error };
+    let thread = (updated as any)?.[0] ?? updated;
+    if (populate && thread) {
+      thread = await this.getById(id);
     }
-    return result;
+    return thread as any;
   }
 
   async getAll(
@@ -121,7 +121,7 @@ class ThreadsService {
   }
 
   delete(id: string) {
-    return deleteRecord(Thread, id);
+    return deleteRecord(Thread, { id });
   }
 }
 

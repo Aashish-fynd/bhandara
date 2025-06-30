@@ -23,9 +23,9 @@ export const getThreads = async (
 
 export const createThread = async (req: ICustomRequest, res: Response) => {
   const thread = await threadsService.create(req.body, true);
-  if (thread.data) {
-    const event = await eventService.getById(thread.data.eventId);
-    (thread.data as any).event = event.data;
+  if (thread) {
+    const event = await eventService.getById((thread as any).eventId);
+    (thread as any).event = event;
   }
   emitSocketEvent(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, thread);
   return res.status(201).json(thread);
@@ -34,9 +34,7 @@ export const createThread = async (req: ICustomRequest, res: Response) => {
 export const getThread = async (req: ICustomRequest, res: Response) => {
   const { threadId } = req.params;
   const { includeMessages } = req.query;
-  const threadData = await threadsService.getById(threadId);
-
-  const thread = threadData.data;
+  const thread = await threadsService.getById(threadId);
   if (isEmpty(thread)) {
     throw new NotFoundError("Thread not found");
   }
@@ -57,7 +55,7 @@ export const getThread = async (req: ICustomRequest, res: Response) => {
       { limit: parsedIncludeMessages }
     );
 
-    threadData.data.messages = messages.data.items;
+    (thread as any).messages = messages.items;
   }
 
   return res.status(200).json({ data: thread, error: null });

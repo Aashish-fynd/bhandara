@@ -121,7 +121,7 @@ export const getMediaPublicUrls = async (
   const signedUrls = await mediaService.getMediaByIds(
     (ids as string).split(",")
   );
-  if (isEmpty(signedUrls.data))
+  if (isEmpty(signedUrls))
     throw new NotFoundError("Media(s) not found at path");
 
   return res.status(200).json(signedUrls);
