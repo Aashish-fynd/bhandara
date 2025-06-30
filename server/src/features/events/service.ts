@@ -125,7 +125,7 @@ class EventService {
   @MethodCacheSync<IEvent>({})
   async getById(id: string, populate?: boolean | string[]) {
     const data = await Event.findByPk(id, { raw: true });
-    if (!data) return { data: null, error: null };
+    if (!data) return null;
 
     if (populate) {
       const fields =
@@ -135,10 +135,10 @@ class EventService {
               (populate as string[]).includes(f)
             );
       const populated = await this.populateEvent(data as IEvent, fields);
-      return { data: populated, error: null };
+      return populated;
     }
 
-    return { data, error: null };
+    return data as IEvent;
   }
 
   async getEventData(id: string) {
@@ -149,13 +149,12 @@ class EventService {
   async createEvent(body: Partial<IEvent>, populate?: boolean | string[]) {
     if (!body.status) body.status = EEventStatus.Draft;
     const result = await validateEventCreate(body, (data) =>
-      createRecord(Event, data as any)
-    );
-    if (populate && result.data) {
-      const { data: populated } = await this.getById(result.data.id, populate);
-      return { data: populated, error: result.error };
+      createRecord(Event, data as any))
+
+    if (populate) {
+      createdEvent = await this.getById(result.id, populate);
     }
-    return result;
+    return createdEvent;
   }
 
   @MethodCacheSync<IEvent>({})
@@ -169,13 +168,13 @@ class EventService {
       throw new BadRequestError('Cannot update a cancelled event');
     }
     const result = await validateEventUpdate(data, (data) =>
-      updateRecord(Event, id, data)
+      updateRecord(Event, {id}, data)
     );
-    if (populate && !result.error) {
-      const { data: populated } = await this.getById(id, populate);
-      return { data: populated, error: result.error };
+    let eventData = (updated as any)?.[0] ?? updated;
+    if (populate && eventData) {
+      eventData = await this.getById(id, populate);
     }
-    return result;
+    return eventData as any;
   }
 
   async getAll(
@@ -185,7 +184,8 @@ class EventService {
     if (Array.isArray(where.status)) {
       where.status = { [Op.in]: where.status };
     }
-    const { data } = await findAllWithPagination(Event, where, pagination);
+
+    const data = await findAllWithPagination(Event, where, pagination);
     if (data.items) {
       await Promise.all(
         data.items.map(async (event) => {
@@ -211,11 +211,11 @@ class EventService {
               verifiersPromise,
               reactionsPromise,
             ]);
-          event.media = media.data || [];
-          event.tags = tags.data || [];
+          event.media = media || [];
+          event.tags = tags;
           event.participants = participants || [];
           event.verifiers = verifiers || [];
-          event.reactions = reactions.data || [];
+          event.reactions = reactions;
         })
       );
 
@@ -225,7 +225,7 @@ class EventService {
         populateKey: "creator",
       });
     }
-    return { data, error: null };
+    return data;
   }
 
   @MethodCacheSync<IEvent>({})
@@ -239,7 +239,7 @@ class EventService {
 
   @MethodCacheSync<IEvent>({})
   delete(id: string) {
-    return deleteRecord(Event, id);
+    return deleteRecord(Event, { id });
   }
 
   @MethodCacheSync<Record<string, IBaseUser>>({
@@ -252,17 +252,16 @@ class EventService {
     type: "participants" | "verifiers",
     userIds: string[]
   ) {
-    const { data } = await this.userService.getAll(
+    const { items } = await this.userService.getAll(
       { id: userIds },
       { limit: 1000 },
       "id,name,email,deletedAt"
     );
-    const userMap = data.items?.reduce((acc, user) => {
+    const userMap = items?.reduce((acc, user) => {
       acc[user.id] = user;
       return acc;
     }, {} as Record<string, IBaseUser>);
-
-    return { data: userMap, error: null, type, eventId };
+    return { users: userMap, type, eventId };
   }
 
   async verifyEvent(
@@ -273,7 +272,7 @@ class EventService {
       longitude: number;
     }
   ) {
-    const { data } = await this.getById(eventId);
+    const data = await this.getById(eventId);
     const { latitude, longitude } = currentCoordinates;
     const { latitude: eventLatitude, longitude: eventLongitude } =
       data.location.coordinates;
@@ -305,7 +304,8 @@ class EventService {
       throw new BadRequestError("You are already a verifier");
     }
 
-    return this.update(eventId, updateData);
+    await this.update(eventId, updateData);
+    return true;
   }
 
   async joinLeaveEvent(
@@ -318,11 +318,10 @@ class EventService {
       this.userService.getById(userId),
     ]);
 
-    if (event.error || user.error)
-      throw new Error((event.error || user.error) as any);
+    if (!event || !user) throw new NotFoundError("Event or user not found");
 
-    const eventData = event.data;
-    const userData = user.data;
+    const eventData = event;
+    const userData = user;
 
     if (eventData.status !== EEventStatus.Ongoing) {
       throw new BadRequestError(`Event is ${eventData.status}`);
@@ -352,10 +351,7 @@ class EventService {
       throw new BadRequestError("Invalid action");
     }
     await this.update(eventId, updateData);
-    return {
-      data: `Successfully ${action === "join" ? "joined" : "left"} the event`,
-      error: null,
-    };
+    return `Successfully ${action === "join" ? "joined" : "left"} the event`;
   }
 
   async associateMediaToEvent(eventId: string, mediaId: string) {
@@ -365,14 +361,11 @@ class EventService {
       this.mediaService.getEventMediaJunctionRow(eventId, mediaId),
     ]);
 
-    if (event.error || media.error)
-      throw new Error((event.error || media.error) as any);
-
-    if (!isEmpty(eventMedia.data))
-      throw new BadRequestError("Media is already associated to this event");
-
-    if (isEmpty(event.data) || isEmpty(media.data))
+    if (!event || !media)
       throw new NotFoundError("Event or media not found");
+
+    if (eventMedia)
+      throw new BadRequestError("Media is already associated to this event");
 
     return this.mediaService.createEventMediaJunctionRow(eventId, mediaId);
   }
@@ -382,11 +375,11 @@ class EventService {
   }
 
   async getThreads(eventId: string, pagination: IPaginationParams) {
-    const { data, error } = await this.threadService.getAll(
+    const { items, pagination: threadPagination } = await this.threadService.getAll(
       { eventId },
       pagination
     );
-    let threads = data.items;
+    let threads = items;
     if (!isEmpty(threads)) {
       await Promise.all(
         threads.map(async (t) => {
@@ -394,14 +387,11 @@ class EventService {
             { threadId: t.id },
             { limit: 1 }
           );
-          t.messages = messages.data.items || [];
+          t.messages = messages.items || [];
         })
       );
     }
-    return {
-      data: { items: threads, pagination: data.pagination },
-      error,
-    };
+    return { items: threads, pagination: threadPagination };
   }
 }
 

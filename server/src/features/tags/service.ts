@@ -53,7 +53,7 @@ class TagService {
        WHERE t."deletedAt" IS NULL AND t."parentId" IS NULL
        GROUP BY t."id";`
     );
-    return { data: results as any, error: null };
+    return results as any;
   }
 
   @MethodCacheSync<ITag>({
@@ -62,57 +62,61 @@ class TagService {
     cacheDeleter: deleteEventTagsCache,
   })
   async getAllEventTags(eventId: string) {
-    const { data: event } = await findById(Event, eventId);
+    const event = await findById(Event, eventId);
 
     const tagIds = event?.tags || ([] as string[]);
 
-    if (!tagIds.length) return { data: [], error: null };
+    if (!tagIds.length) return [];
 
-    const { data } = await findAllWithPagination(
+    const data = await findAllWithPagination(
       Tag,
       { id: tagIds },
       { limit: tagIds.length }
     );
 
-    return { data: data.items, error: null };
+    return data.items;
   }
 
   @MethodCacheSync<ITag>()
   async create<U extends Partial<Omit<ITag, "id" | "updatedAt">>>(data: U) {
-    return validateTagCreate(data, (validatedData: U) =>
+    const res = await validateTagCreate(data, (validatedData: U) =>
       createRecord(Tag, validatedData)
     );
+    return res;
   }
 
   @MethodCacheSync<ITag>()
   async update<U extends Partial<ITag>>(id: string, data: U) {
-    return validateTagUpdate(data, (validatedData: U) =>
-      updateRecord(Tag, id, validatedData)
+    const res = await validateTagUpdate(data, (validatedData: U) =>
+      updateRecord(Tag, { id }, validatedData)
     );
+    return res;
   }
 
   @MethodCacheSync<ITag>()
   delete(id: string) {
-    return deleteRecord(Tag, id);
+    return deleteRecord(Tag, { id });
   }
 
   @MethodCacheSync<ITag>({})
   async associateTagToEvent(eventId: string, tagId: string) {
-    const { data: event } = await findById(Event, eventId);
-    if (!event[0]) return { data: null, error: null };
-    const tags = new Set((event[0].tags || []) as string[]);
+    const event = await findById(Event, eventId);
+    if (!event) return null;
+    const tags = new Set((event.tags || []) as string[]);
     tags.add(tagId);
-    return updateRecord(Event, eventId, { tags: Array.from(tags) });
+    const data = await updateRecord(Event, { id: eventId }, { tags: Array.from(tags) });
+    return data;
   }
 
   async dissociateTagFromEvent(eventId: string, tagId: string) {
     await deleteEventTagsCache(eventId);
-    const { data: event } = await findById(Event, eventId);
-    if (!event[0]) return { data: null, error: null };
-    const tags = (event[0].tags || []) as string[];
-    return updateRecord(Event, eventId, {
+    const event = await findById(Event, eventId);
+    if (!event) return null;
+    const tags = (event.tags || []) as string[];
+    const data = await updateRecord(Event, { id: eventId }, {
       tags: tags.filter((t) => t !== tagId),
     });
+    return data;
   }
 
   @MethodCacheSync<ITag>({

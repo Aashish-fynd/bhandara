@@ -12,8 +12,8 @@ interface CacheOperations<T = any> {
 
 // Interface for the class that will use the decorator
 export interface CacheableClass<T = any> extends CacheOperations<T> {
-  getById: (id: string) => Promise<{ data: T | null; error: any }>;
-  _getByIdNoCache: (id: string) => Promise<{ data: T | null; error: any }>;
+  getById: (id: string) => Promise<T | null>;
+  _getByIdNoCache: (id: string) => Promise<T | null>;
 }
 
 // Options for the decorator
@@ -26,11 +26,27 @@ export interface CacheDecoratorOptions<T = any> {
   customCacheKey?: (...args: any[]) => string;
 }
 
+const extractData = <T>(result: any): T | null => {
+  if (result && typeof result === "object" && "data" in result) {
+    return result.data as T;
+  }
+  return (result ?? null) as T | null;
+};
+
+const extractError = (result: any) => {
+  if (result && typeof result === "object" && "error" in result) {
+    return result.error;
+  }
+  return null;
+};
+
 const checkAndThrowRLSError = <T>(
-  result: { data: T | null; error: any },
+  result: any,
   existingData: T | null
 ) => {
-  if (!result?.error && !result?.data && !isEmpty(existingData)) {
+  const data = extractData<T>(result);
+  const error = extractError(result);
+  if (!error && !data && !isEmpty(existingData)) {
     throw new UnauthorizedError("Operation not allowed");
   }
 };
@@ -86,25 +102,26 @@ function MethodCacheSync<T = any>(options?: CacheDecoratorOptions<T>) {
       switch (methodType) {
         case "create": {
           const result = await originalMethod.apply(this, args);
+          const data = extractData<T>(result);
 
-          if (result?.data) {
+          if (data) {
             const getCacheKey = (id: string) =>
               options?.customCacheKey ? options.customCacheKey(id) : id;
 
-            if (Array.isArray(result.data)) {
-              const promises = result.data.map(async (item: any) => {
+            if (Array.isArray(data)) {
+              const promises = data.map(async (item: any) => {
                 await boundSetCache(getCacheKey(item.id), item);
               });
               await Promise.all(promises);
-            } else {
-              await boundSetCache(getCacheKey(result.data.id), result.data);
+            } else if (typeof data === "object") {
+              await boundSetCache(getCacheKey((data as any).id), data);
             }
           }
-          return result;
+          return result as ReturnType<M>;
         }
 
         case "update": {
-          let { data: existingData } = await boundGetById(cacheKey);
+          const existingData = await boundGetById(cacheKey);
           if (isEmpty(existingData))
             throw new NotFoundError("Resource not found");
 
@@ -113,42 +130,43 @@ function MethodCacheSync<T = any>(options?: CacheDecoratorOptions<T>) {
 
           const cacheSaver =
             options?.cacheSetterWithExistingTTL || boundSetCache;
+          const data = extractData<T>(result);
 
-          if (result?.data) {
-            if (typeof result.data === "object") {
-              await cacheSaver(cacheKey, { ...existingData, ...result.data });
+          if (data) {
+            if (typeof data === "object") {
+              await cacheSaver(cacheKey, { ...existingData, ...data });
             } else {
-              await cacheSaver(cacheKey, result.data);
+              await cacheSaver(cacheKey, data);
             }
           }
-          return result;
+          return result as ReturnType<M>;
         }
 
         case "delete": {
-          let { data: existingData } = await boundGetById(cacheKey);
+          const existingData = await boundGetById(cacheKey);
           if (isEmpty(existingData))
             throw new NotFoundError("Resource not found");
 
           const result = await originalMethod.apply(this, args);
           checkAndThrowRLSError(result, existingData);
 
-          if (result?.data) await boundDeleteCache(cacheKey, existingData);
+          const data = extractData<T>(result);
+          if (data) await boundDeleteCache(cacheKey, existingData as any);
 
-          return result;
+          return result as ReturnType<M>;
         }
 
         case "get": {
           const cachedData = await boundGetCache(cacheKey);
-          if (!isEmpty(cachedData))
-            return { data: cachedData, error: null } as ReturnType<M>;
+          if (!isEmpty(cachedData)) return cachedData as ReturnType<M>;
 
           const result = await originalMethod.apply(this, args);
-          checkAndThrowRLSError(result, cachedData);
+          checkAndThrowRLSError(result, cachedData as any);
 
-          if (!isEmpty(result?.data))
-            await boundSetCache(cacheKey, result.data);
+          const data = extractData<T>(result);
+          if (!isEmpty(data)) await boundSetCache(cacheKey, data as any);
 
-          return result;
+          return result as ReturnType<M>;
         }
 
         default:

@@ -20923,17 +20923,6 @@ __export(tamagui_config_exports, {
 });
 module.exports = __toCommonJS(tamagui_config_exports);
 
-// node_modules/@tamagui/constants/dist/esm/constants.mjs
-var import_react = require("react");
-var isWeb = true;
-var isWindowDefined = typeof window < "u";
-var isServer = isWeb && !isWindowDefined;
-var isClient = isWeb && isWindowDefined;
-var useIsomorphicLayoutEffect = isServer ? import_react.useEffect : import_react.useLayoutEffect;
-var isChrome = typeof navigator < "u" && /Chrome/.test(navigator.userAgent || "");
-var isWebTouchable = isClient && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-var isIos = process.env.TEST_NATIVE_PLATFORM === "ios";
-
 // node_modules/@tamagui/use-presence/dist/esm/PresenceContext.mjs
 var React = __toESM(require("react"), 1);
 var import_jsx_runtime = require("react/jsx-runtime");
@@ -20958,274 +20947,16 @@ function usePresence() {
 }
 __name(usePresence, "usePresence");
 
-// node_modules/@tamagui/animations-react-native/dist/esm/createAnimations.mjs
-var import_web = require("@tamagui/core");
-var import_react2 = __toESM(require("react"), 1);
-var import_react_native_web = __toESM(require_cjs(), 1);
-var animatedStyleKey = {
-  transform: true,
-  opacity: true
-};
-var colorStyleKey = {
-  backgroundColor: true,
-  color: true,
-  borderColor: true,
-  borderLeftColor: true,
-  borderRightColor: true,
-  borderTopColor: true,
-  borderBottomColor: true
-};
-var costlyToAnimateStyleKey = {
-  borderRadius: true,
-  borderTopLeftRadius: true,
-  borderTopRightRadius: true,
-  borderBottomLeftRadius: true,
-  borderBottomRightRadius: true,
-  borderWidth: true,
-  borderLeftWidth: true,
-  borderRightWidth: true,
-  borderTopWidth: true,
-  borderBottomWidth: true,
-  ...colorStyleKey
-  // TODO for other keys like height or width, it's better to not add them here till layout animations are ready
-};
-var AnimatedView = import_react_native_web.Animated.View;
-var AnimatedText = import_react_native_web.Animated.Text;
-function useAnimatedNumber(initial) {
-  const state = import_react2.default.useRef(null);
-  return state.current || (state.current = {
-    composite: null,
-    val: new import_react_native_web.Animated.Value(initial),
-    strategy: {
-      type: "spring"
-    }
-  }), {
-    getInstance() {
-      return state.current.val;
-    },
-    getValue() {
-      return state.current.val._value;
-    },
-    stop() {
-      state.current.composite?.stop(), state.current.composite = null;
-    },
-    setValue(next, {
-      type,
-      ...config2
-    } = {
-      type: "spring"
-    }, onFinish) {
-      const val = state.current.val, handleFinish = onFinish ? ({
-        finished
-      }) => finished ? onFinish() : null : void 0;
-      if (type === "direct") val.setValue(next);
-      else if (type === "spring") {
-        state.current.composite?.stop();
-        const composite = import_react_native_web.Animated.spring(val, {
-          ...config2,
-          toValue: next,
-          useNativeDriver: !isWeb
-        });
-        composite.start(handleFinish), state.current.composite = composite;
-      } else {
-        state.current.composite?.stop();
-        const composite = import_react_native_web.Animated.timing(val, {
-          ...config2,
-          toValue: next,
-          useNativeDriver: !isWeb
-        });
-        composite.start(handleFinish), state.current.composite = composite;
-      }
-    }
-  };
-}
-__name(useAnimatedNumber, "useAnimatedNumber");
-var useAnimatedNumberReaction = /* @__PURE__ */ __name(({
-  value
-}, onValue) => {
-  const onChange = (0, import_web.useEvent)((current) => {
-    onValue(current.value);
-  });
-  import_react2.default.useEffect(() => {
-    const id = value.getInstance().addListener(onChange);
-    return () => {
-      value.getInstance().removeListener(id);
-    };
-  }, [value, onChange]);
-}, "useAnimatedNumberReaction");
-var useAnimatedNumberStyle = /* @__PURE__ */ __name((value, getStyle) => getStyle(value.getInstance()), "useAnimatedNumberStyle");
-function createAnimations(animations2) {
-  return {
-    isReactNative: true,
-    animations: animations2,
-    View: AnimatedView,
-    Text: AnimatedText,
-    useAnimatedNumber,
-    useAnimatedNumberReaction,
-    useAnimatedNumberStyle,
-    usePresence,
-    ResetPresence,
-    useAnimations: /* @__PURE__ */ __name(({
-      props,
-      onDidAnimate,
-      style,
-      componentState,
-      presence
-    }) => {
-      const isDisabled = isWeb && componentState.unmounted === true, isExiting = presence?.[0] === false, sendExitComplete = presence?.[1], animateStyles = import_react2.default.useRef({}), animatedTranforms = import_react2.default.useRef([]), animationsState = import_react2.default.useRef(/* @__PURE__ */ new WeakMap()), animateOnly = props.animateOnly || [], hasAnimateOnly = !!props.animateOnly, args = [JSON.stringify(style), componentState, isExiting, !!onDidAnimate], isThereNoNativeStyleKeys = import_react2.default.useMemo(() => isWeb ? true : Object.keys(style).some((key) => animateOnly ? !animatedStyleKey[key] && animateOnly.indexOf(key) === -1 : !animatedStyleKey[key]), args), res = import_react2.default.useMemo(() => {
-        const runners = [], completions = [], nonAnimatedStyle = {};
-        for (const key in style) {
-          const val = style[key];
-          if (!isDisabled) {
-            if (animatedStyleKey[key] == null && !costlyToAnimateStyleKey[key]) {
-              nonAnimatedStyle[key] = val;
-              continue;
-            }
-            if (hasAnimateOnly && !animateOnly.includes(key)) {
-              nonAnimatedStyle[key] = val;
-              continue;
-            }
-            if (key !== "transform") {
-              animateStyles.current[key] = update(key, animateStyles.current[key], val);
-              continue;
-            }
-            if (val) {
-              if (typeof val == "string") {
-                console.warn("Warning: Tamagui can't animate string transforms yet!");
-                continue;
-              }
-              for (const [index, transform] of val.entries()) {
-                if (!transform) continue;
-                const tkey = Object.keys(transform)[0], currentTransform = animatedTranforms.current[index]?.[tkey];
-                animatedTranforms.current[index] = {
-                  [tkey]: update(tkey, currentTransform, transform[tkey])
-                }, animatedTranforms.current = [...animatedTranforms.current];
-              }
-            }
-          }
-        }
-        const animatedStyle = {
-          ...Object.fromEntries(Object.entries(animateStyles.current).map(([k, v]) => [k, animationsState.current.get(v)?.interpolation || v])),
-          transform: animatedTranforms.current.map((r2) => {
-            const key = Object.keys(r2)[0], val = animationsState.current.get(r2[key])?.interpolation || r2[key];
-            return {
-              [key]: val
-            };
-          })
-        };
-        return {
-          runners,
-          completions,
-          style: [nonAnimatedStyle, animatedStyle]
-        };
-        function update(key, animated, valIn) {
-          const isColorStyleKey = colorStyleKey[key], [val, type] = isColorStyleKey ? [0, void 0] : getValue(valIn);
-          let animateToValue = val;
-          const value = animated || new import_react_native_web.Animated.Value(val), curInterpolation = animationsState.current.get(value);
-          let interpolateArgs;
-          if (type && (interpolateArgs = getInterpolated(curInterpolation?.current ?? value._value, val, type), animationsState.current.set(value, {
-            interpolation: value.interpolate(interpolateArgs),
-            current: val
-          })), isColorStyleKey && (animateToValue = curInterpolation?.animateToValue ? 0 : 1, interpolateArgs = getColorInterpolated(
-            curInterpolation?.current,
-            // valIn is the next color
-            valIn,
-            animateToValue
-          ), animationsState.current.set(value, {
-            current: valIn,
-            interpolation: value.interpolate(interpolateArgs),
-            animateToValue: curInterpolation?.animateToValue ? 0 : 1
-          })), value) {
-            const animationConfig = getAnimationConfig(key, animations2, props.animation);
-            let resolve;
-            const promise = new Promise((res2) => {
-              resolve = res2;
-            });
-            completions.push(promise), runners.push(() => {
-              value.stopAnimation();
-              function getAnimation() {
-                return import_react_native_web.Animated[animationConfig.type || "spring"](value, {
-                  toValue: animateToValue,
-                  useNativeDriver: !isWeb && !isThereNoNativeStyleKeys,
-                  ...animationConfig
-                });
-              }
-              __name(getAnimation, "getAnimation");
-              (animationConfig.delay ? import_react_native_web.Animated.sequence([import_react_native_web.Animated.delay(animationConfig.delay), getAnimation()]) : getAnimation()).start(({
-                finished
-              }) => {
-                finished && resolve();
-              });
-            });
-          }
-          return process.env.NODE_ENV === "development" && props.debug === "verbose" && console.info(" \u{1F4A0} animate", key, `from (${value._value}) to`, valIn, `(${val})`, "type", type, "interpolate", interpolateArgs), value;
-        }
-        __name(update, "update");
-      }, args);
-      return useIsomorphicLayoutEffect(() => {
-        res.runners.forEach((r2) => r2());
-        let cancel = false;
-        return Promise.all(res.completions).then(() => {
-          cancel || (onDidAnimate?.(), isExiting && sendExitComplete?.());
-        }), () => {
-          cancel = true;
-        };
-      }, args), process.env.NODE_ENV === "development" && props.debug === "verbose" && console.info("Animated", {
-        response: res,
-        inputStyle: style,
-        isExiting
-      }), res;
-    }, "useAnimations")
-  };
-}
-__name(createAnimations, "createAnimations");
-function getColorInterpolated(currentColor, nextColor, animateToValue) {
-  const inputRange = [0, 1], outputRange = [currentColor || nextColor, nextColor];
-  return animateToValue === 0 && outputRange.reverse(), {
-    inputRange,
-    outputRange
-  };
-}
-__name(getColorInterpolated, "getColorInterpolated");
-function getInterpolated(current, next, postfix = "deg") {
-  next === current && (current = next - 1e-9);
-  const inputRange = [current, next], outputRange = [`${current}${postfix}`, `${next}${postfix}`];
-  return next < current && (inputRange.reverse(), outputRange.reverse()), {
-    inputRange,
-    outputRange
-  };
-}
-__name(getInterpolated, "getInterpolated");
-function getAnimationConfig(key, animations2, animation) {
-  if (typeof animation == "string") return animations2[animation];
-  let type = "", extraConf;
-  const shortKey = transformShorthands[key];
-  if (Array.isArray(animation)) {
-    type = animation[0];
-    const conf = animation[1]?.[key] ?? animation[1]?.[shortKey];
-    conf && (typeof conf == "string" ? type = conf : (type = conf.type || type, extraConf = conf));
-  } else {
-    const val = animation?.[key] ?? animation?.[shortKey];
-    type = val?.type, extraConf = val;
-  }
-  return {
-    ...animations2[type],
-    ...extraConf
-  };
-}
-__name(getAnimationConfig, "getAnimationConfig");
-var transformShorthands = {
-  x: "translateX",
-  y: "translateY",
-  translateX: "x",
-  translateY: "y"
-};
-function getValue(input, isColor = false) {
-  if (typeof input != "string") return [input];
-  const [_, number, after] = input.match(/([-0-9]+)(deg|%|px)/) ?? [];
-  return [+number, after];
-}
-__name(getValue, "getValue");
+// node_modules/@tamagui/constants/dist/esm/constants.mjs
+var import_react = require("react");
+var isWeb = true;
+var isWindowDefined = typeof window < "u";
+var isServer = isWeb && !isWindowDefined;
+var isClient = isWeb && isWindowDefined;
+var useIsomorphicLayoutEffect = isServer ? import_react.useEffect : import_react.useLayoutEffect;
+var isChrome = typeof navigator < "u" && /Chrome/.test(navigator.userAgent || "");
+var isWebTouchable = isClient && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+var isIos = process.env.TEST_NATIVE_PLATFORM === "ios";
 
 // node_modules/tamagui/dist/esm/createTamagui.mjs
 var import_core = require("@tamagui/core");
@@ -21446,7 +21177,7 @@ function createTheme(palette, definition, options, name, skipCache = false) {
   const cacheKey = skipCache ? "" : JSON.stringify([name, palette, definition, options]);
   if (!skipCache && identityCache.has(cacheKey)) return identityCache.get(cacheKey);
   const theme = {
-    ...Object.fromEntries(Object.entries(definition).map(([key, offset]) => [key, getValue2(palette, offset)])),
+    ...Object.fromEntries(Object.entries(definition).map(([key, offset]) => [key, getValue(palette, offset)])),
     ...options?.nonInheritedValues
   };
   return setThemeInfo(theme, {
@@ -21457,7 +21188,7 @@ function createTheme(palette, definition, options, name, skipCache = false) {
   }), cacheKey && identityCache.set(cacheKey, theme), theme;
 }
 __name(createTheme, "createTheme");
-var getValue2 = /* @__PURE__ */ __name((palette, value) => {
+var getValue = /* @__PURE__ */ __name((palette, value) => {
   if (!palette) throw new Error("No palette!");
   if (typeof value == "string") return value;
   const max = palette.length - 1, next = (value === 0 ? !isMinusZero(value) : value >= 0) ? value : max + value, index = Math.min(Math.max(0, next), max);
@@ -22663,9 +22394,9 @@ var themes = {
 };
 
 // node_modules/@tamagui/animations-css/dist/esm/createAnimations.mjs
-var import_web2 = require("@tamagui/core");
-var import_react3 = __toESM(require("react"), 1);
-function createAnimations2(animations2) {
+var import_web = require("@tamagui/core");
+var import_react2 = __toESM(require("react"), 1);
+function createAnimations(animations2) {
   const reactionListeners = /* @__PURE__ */ new WeakMap();
   return {
     animations: animations2,
@@ -22673,7 +22404,7 @@ function createAnimations2(animations2) {
     ResetPresence,
     supportsCSSVars: true,
     useAnimatedNumber(initial) {
-      const [val, setVal] = import_react3.default.useState(initial), [onFinish, setOnFinish] = (0, import_react3.useState)();
+      const [val, setVal] = import_react2.default.useState(initial), [onFinish, setOnFinish] = (0, import_react2.useState)();
       return useIsomorphicLayoutEffect(() => {
         onFinish && (onFinish?.(), setOnFinish(void 0));
       }, [onFinish]), {
@@ -22693,7 +22424,7 @@ function createAnimations2(animations2) {
     useAnimatedNumberReaction({
       value
     }, onValue) {
-      import_react3.default.useEffect(() => {
+      import_react2.default.useEffect(() => {
         const instance = value.getInstance();
         let queue = reactionListeners.get(instance);
         if (!queue) {
@@ -22725,7 +22456,7 @@ function createAnimations2(animations2) {
         return node.addEventListener("transitionend", onFinishAnimation), node.addEventListener("transitioncancel", onFinishAnimation), () => {
           node.removeEventListener("transitionend", onFinishAnimation), node.removeEventListener("transitioncancel", onFinishAnimation);
         };
-      }, [sendExitComplete, isExiting]), animation && (Array.isArray(style.transform) && (style.transform = (0, import_web2.transformsToString)(style.transform)), style.transition = keys.map((key) => {
+      }, [sendExitComplete, isExiting]), animation && (Array.isArray(style.transform) && (style.transform = (0, import_web.transformsToString)(style.transform)), style.transition = keys.map((key) => {
         const override = animations2[animationConfig?.[key]] ?? animation;
         return `${key} ${override}`;
       }).join(", ")), process.env.NODE_ENV === "development" && props.debug === "verbose" && console.info("CSS animation", {
@@ -22743,11 +22474,11 @@ function createAnimations2(animations2) {
     }, "useAnimations")
   };
 }
-__name(createAnimations2, "createAnimations");
+__name(createAnimations, "createAnimations");
 
 // node_modules/@tamagui/config/dist/esm/animationsCSS.mjs
 var smoothBezier = "cubic-bezier(0.215, 0.610, 0.355, 1.000)";
-var animationsCSS = createAnimations2({
+var animationsCSS = createAnimations({
   "75ms": "ease-in 75ms",
   "100ms": "ease-in 100ms",
   "200ms": "ease-in 200ms",
@@ -22948,18 +22679,332 @@ var defaultSizes2 = {
   16: 134
 };
 
-// tamagui.config.ts
-var animations = createAnimations({
+// node_modules/@tamagui/animations-react-native/dist/esm/createAnimations.mjs
+var import_web2 = require("@tamagui/core");
+var import_react3 = __toESM(require("react"), 1);
+var import_react_native_web = __toESM(require_cjs(), 1);
+var animatedStyleKey = {
+  transform: true,
+  opacity: true
+};
+var colorStyleKey = {
+  backgroundColor: true,
+  color: true,
+  borderColor: true,
+  borderLeftColor: true,
+  borderRightColor: true,
+  borderTopColor: true,
+  borderBottomColor: true
+};
+var costlyToAnimateStyleKey = {
+  borderRadius: true,
+  borderTopLeftRadius: true,
+  borderTopRightRadius: true,
+  borderBottomLeftRadius: true,
+  borderBottomRightRadius: true,
+  borderWidth: true,
+  borderLeftWidth: true,
+  borderRightWidth: true,
+  borderTopWidth: true,
+  borderBottomWidth: true,
+  ...colorStyleKey
+  // TODO for other keys like height or width, it's better to not add them here till layout animations are ready
+};
+var AnimatedView = import_react_native_web.Animated.View;
+var AnimatedText = import_react_native_web.Animated.Text;
+function useAnimatedNumber(initial) {
+  const state = import_react3.default.useRef(null);
+  return state.current || (state.current = {
+    composite: null,
+    val: new import_react_native_web.Animated.Value(initial),
+    strategy: {
+      type: "spring"
+    }
+  }), {
+    getInstance() {
+      return state.current.val;
+    },
+    getValue() {
+      return state.current.val._value;
+    },
+    stop() {
+      state.current.composite?.stop(), state.current.composite = null;
+    },
+    setValue(next, {
+      type,
+      ...config2
+    } = {
+      type: "spring"
+    }, onFinish) {
+      const val = state.current.val, handleFinish = onFinish ? ({
+        finished
+      }) => finished ? onFinish() : null : void 0;
+      if (type === "direct") val.setValue(next);
+      else if (type === "spring") {
+        state.current.composite?.stop();
+        const composite = import_react_native_web.Animated.spring(val, {
+          ...config2,
+          toValue: next,
+          useNativeDriver: !isWeb
+        });
+        composite.start(handleFinish), state.current.composite = composite;
+      } else {
+        state.current.composite?.stop();
+        const composite = import_react_native_web.Animated.timing(val, {
+          ...config2,
+          toValue: next,
+          useNativeDriver: !isWeb
+        });
+        composite.start(handleFinish), state.current.composite = composite;
+      }
+    }
+  };
+}
+__name(useAnimatedNumber, "useAnimatedNumber");
+var useAnimatedNumberReaction = /* @__PURE__ */ __name(({
+  value
+}, onValue) => {
+  const onChange = (0, import_web2.useEvent)((current) => {
+    onValue(current.value);
+  });
+  import_react3.default.useEffect(() => {
+    const id = value.getInstance().addListener(onChange);
+    return () => {
+      value.getInstance().removeListener(id);
+    };
+  }, [value, onChange]);
+}, "useAnimatedNumberReaction");
+var useAnimatedNumberStyle = /* @__PURE__ */ __name((value, getStyle) => getStyle(value.getInstance()), "useAnimatedNumberStyle");
+function createAnimations2(animations2) {
+  return {
+    isReactNative: true,
+    animations: animations2,
+    View: AnimatedView,
+    Text: AnimatedText,
+    useAnimatedNumber,
+    useAnimatedNumberReaction,
+    useAnimatedNumberStyle,
+    usePresence,
+    ResetPresence,
+    useAnimations: /* @__PURE__ */ __name(({
+      props,
+      onDidAnimate,
+      style,
+      componentState,
+      presence
+    }) => {
+      const isDisabled = isWeb && componentState.unmounted === true, isExiting = presence?.[0] === false, sendExitComplete = presence?.[1], animateStyles = import_react3.default.useRef({}), animatedTranforms = import_react3.default.useRef([]), animationsState = import_react3.default.useRef(/* @__PURE__ */ new WeakMap()), animateOnly = props.animateOnly || [], hasAnimateOnly = !!props.animateOnly, args = [JSON.stringify(style), componentState, isExiting, !!onDidAnimate], isThereNoNativeStyleKeys = import_react3.default.useMemo(() => isWeb ? true : Object.keys(style).some((key) => animateOnly ? !animatedStyleKey[key] && animateOnly.indexOf(key) === -1 : !animatedStyleKey[key]), args), res = import_react3.default.useMemo(() => {
+        const runners = [], completions = [], nonAnimatedStyle = {};
+        for (const key in style) {
+          const val = style[key];
+          if (!isDisabled) {
+            if (animatedStyleKey[key] == null && !costlyToAnimateStyleKey[key]) {
+              nonAnimatedStyle[key] = val;
+              continue;
+            }
+            if (hasAnimateOnly && !animateOnly.includes(key)) {
+              nonAnimatedStyle[key] = val;
+              continue;
+            }
+            if (key !== "transform") {
+              animateStyles.current[key] = update(key, animateStyles.current[key], val);
+              continue;
+            }
+            if (val) {
+              if (typeof val == "string") {
+                console.warn("Warning: Tamagui can't animate string transforms yet!");
+                continue;
+              }
+              for (const [index, transform] of val.entries()) {
+                if (!transform) continue;
+                const tkey = Object.keys(transform)[0], currentTransform = animatedTranforms.current[index]?.[tkey];
+                animatedTranforms.current[index] = {
+                  [tkey]: update(tkey, currentTransform, transform[tkey])
+                }, animatedTranforms.current = [...animatedTranforms.current];
+              }
+            }
+          }
+        }
+        const animatedStyle = {
+          ...Object.fromEntries(Object.entries(animateStyles.current).map(([k, v]) => [k, animationsState.current.get(v)?.interpolation || v])),
+          transform: animatedTranforms.current.map((r2) => {
+            const key = Object.keys(r2)[0], val = animationsState.current.get(r2[key])?.interpolation || r2[key];
+            return {
+              [key]: val
+            };
+          })
+        };
+        return {
+          runners,
+          completions,
+          style: [nonAnimatedStyle, animatedStyle]
+        };
+        function update(key, animated, valIn) {
+          const isColorStyleKey = colorStyleKey[key], [val, type] = isColorStyleKey ? [0, void 0] : getValue2(valIn);
+          let animateToValue = val;
+          const value = animated || new import_react_native_web.Animated.Value(val), curInterpolation = animationsState.current.get(value);
+          let interpolateArgs;
+          if (type && (interpolateArgs = getInterpolated(curInterpolation?.current ?? value._value, val, type), animationsState.current.set(value, {
+            interpolation: value.interpolate(interpolateArgs),
+            current: val
+          })), isColorStyleKey && (animateToValue = curInterpolation?.animateToValue ? 0 : 1, interpolateArgs = getColorInterpolated(
+            curInterpolation?.current,
+            // valIn is the next color
+            valIn,
+            animateToValue
+          ), animationsState.current.set(value, {
+            current: valIn,
+            interpolation: value.interpolate(interpolateArgs),
+            animateToValue: curInterpolation?.animateToValue ? 0 : 1
+          })), value) {
+            const animationConfig = getAnimationConfig(key, animations2, props.animation);
+            let resolve;
+            const promise = new Promise((res2) => {
+              resolve = res2;
+            });
+            completions.push(promise), runners.push(() => {
+              value.stopAnimation();
+              function getAnimation() {
+                return import_react_native_web.Animated[animationConfig.type || "spring"](value, {
+                  toValue: animateToValue,
+                  useNativeDriver: !isWeb && !isThereNoNativeStyleKeys,
+                  ...animationConfig
+                });
+              }
+              __name(getAnimation, "getAnimation");
+              (animationConfig.delay ? import_react_native_web.Animated.sequence([import_react_native_web.Animated.delay(animationConfig.delay), getAnimation()]) : getAnimation()).start(({
+                finished
+              }) => {
+                finished && resolve();
+              });
+            });
+          }
+          return process.env.NODE_ENV === "development" && props.debug === "verbose" && console.info(" \u{1F4A0} animate", key, `from (${value._value}) to`, valIn, `(${val})`, "type", type, "interpolate", interpolateArgs), value;
+        }
+        __name(update, "update");
+      }, args);
+      return useIsomorphicLayoutEffect(() => {
+        res.runners.forEach((r2) => r2());
+        let cancel = false;
+        return Promise.all(res.completions).then(() => {
+          cancel || (onDidAnimate?.(), isExiting && sendExitComplete?.());
+        }), () => {
+          cancel = true;
+        };
+      }, args), process.env.NODE_ENV === "development" && props.debug === "verbose" && console.info("Animated", {
+        response: res,
+        inputStyle: style,
+        isExiting
+      }), res;
+    }, "useAnimations")
+  };
+}
+__name(createAnimations2, "createAnimations");
+function getColorInterpolated(currentColor, nextColor, animateToValue) {
+  const inputRange = [0, 1], outputRange = [currentColor || nextColor, nextColor];
+  return animateToValue === 0 && outputRange.reverse(), {
+    inputRange,
+    outputRange
+  };
+}
+__name(getColorInterpolated, "getColorInterpolated");
+function getInterpolated(current, next, postfix = "deg") {
+  next === current && (current = next - 1e-9);
+  const inputRange = [current, next], outputRange = [`${current}${postfix}`, `${next}${postfix}`];
+  return next < current && (inputRange.reverse(), outputRange.reverse()), {
+    inputRange,
+    outputRange
+  };
+}
+__name(getInterpolated, "getInterpolated");
+function getAnimationConfig(key, animations2, animation) {
+  if (typeof animation == "string") return animations2[animation];
+  let type = "", extraConf;
+  const shortKey = transformShorthands[key];
+  if (Array.isArray(animation)) {
+    type = animation[0];
+    const conf = animation[1]?.[key] ?? animation[1]?.[shortKey];
+    conf && (typeof conf == "string" ? type = conf : (type = conf.type || type, extraConf = conf));
+  } else {
+    const val = animation?.[key] ?? animation?.[shortKey];
+    type = val?.type, extraConf = val;
+  }
+  return {
+    ...animations2[type],
+    ...extraConf
+  };
+}
+__name(getAnimationConfig, "getAnimationConfig");
+var transformShorthands = {
+  x: "translateX",
+  y: "translateY",
+  translateX: "x",
+  translateY: "y"
+};
+function getValue2(input, isColor = false) {
+  if (typeof input != "string") return [input];
+  const [_, number, after] = input.match(/([-0-9]+)(deg|%|px)/) ?? [];
+  return [+number, after];
+}
+__name(getValue2, "getValue");
+
+// animations.ts
+var animations = createAnimations2({
+  "75ms": {
+    type: "timing",
+    duration: 75
+  },
+  "100ms": {
+    type: "timing",
+    duration: 100
+  },
+  "200ms": {
+    type: "timing",
+    duration: 200
+  },
+  superBouncy: {
+    type: "spring",
+    damping: 5,
+    mass: 0.7,
+    stiffness: 200
+  },
   bouncy: {
     type: "spring",
-    damping: 10,
+    damping: 9,
     mass: 0.9,
-    stiffness: 100,
-    duration: 100
+    stiffness: 150
+  },
+  kindaBouncy: {
+    type: "spring",
+    damping: 16,
+    mass: 1,
+    stiffness: 25
+  },
+  superLazy: {
+    type: "spring",
+    damping: 25,
+    mass: 2,
+    stiffness: 25
   },
   lazy: {
     type: "spring",
-    damping: 20,
+    damping: 18,
+    stiffness: 50
+  },
+  medium: {
+    damping: 16,
+    stiffness: 120,
+    mass: 0.8
+  },
+  slowest: {
+    type: "spring",
+    damping: 15,
+    stiffness: 10,
+    duration: 300
+  },
+  slow: {
+    type: "spring",
+    damping: 15,
     stiffness: 60
   },
   quick: {
@@ -22967,8 +23012,27 @@ var animations = createAnimations({
     damping: 20,
     mass: 1.2,
     stiffness: 250
+  },
+  tooltip: {
+    type: "spring",
+    damping: 10,
+    mass: 0.9,
+    stiffness: 100
+  },
+  quicker: {
+    type: "spring",
+    damping: 20,
+    mass: 1,
+    stiffness: 250
+  },
+  quickest: {
+    damping: 14,
+    mass: 0.1,
+    stiffness: 380
   }
 });
+
+// tamagui.config.ts
 var headingFont = createInterFont({
   weight: {
     regular: "400",

@@ -50,9 +50,7 @@ class MessageService {
         case "media":
           if ("media" in message.content) {
             const ids = (message.content.media as string[]) || [];
-            promises.media = this.mediaService
-              .getMediaByIds(ids)
-              .then((res) => res.data);
+            promises.media = this.mediaService.getMediaByIds(ids);
           }
           break;
       }
@@ -84,16 +82,15 @@ class MessageService {
     where: Record<string, any> = {},
     pagination: Partial<IPaginationParams> = {}
   ) {
-    const { data: parentLevelMessages, error } = await findAllWithPagination(
-      Message,
-      { ...where, parentId: null },
-      pagination
-    );
-
-    if (error) return { error };
+    const { items: parentItems, pagination: parentPagination } =
+      await findAllWithPagination(
+        Message,
+        { ...where, parentId: null },
+        pagination
+      );
 
     // Step 2: Fetch total count of parent threads for pagination metadata
-    const childMessagesPromises = (parentLevelMessages?.items || [])?.map(
+    const childMessagesPromises = (parentItems || [])?.map(
       async (m) => {
         const mediaIds = [...((m.content as any)?.media || [])];
 
@@ -101,7 +98,7 @@ class MessageService {
 
         if ("media" in m.content) {
           m.content.media = (m.content.media as string[]).map((media) => {
-            return mediaData.data[media];
+            return mediaData[media];
           });
         }
 
@@ -109,7 +106,7 @@ class MessageService {
           this.getChildren(m.threadId, m.id, { limit: 1 }),
           this.reactionService.getReactions(`messages/${m.id}`),
         ]);
-        m.reactions = reactions.data;
+        m.reactions = reactions;
         return children;
       }
     );
@@ -118,7 +115,7 @@ class MessageService {
 
     const parentMessageWithPopulatedUsers =
       await this.userService.getAndPopulateUserProfiles({
-        data: parentLevelMessages?.items || [],
+        data: parentItems || [],
         searchKey: "userId",
         populateKey: "user",
       });
@@ -127,16 +124,13 @@ class MessageService {
     const messagesWithChildren = parentMessageWithPopulatedUsers?.map(
       (parent, index) => ({
         ...parent,
-        children: childMessages[index].data,
+        children: childMessages[index].items,
       })
     );
 
     return {
-      data: {
-        items: messagesWithChildren || [],
-        pagination: parentLevelMessages!.pagination,
-      },
-      error: null,
+      items: messagesWithChildren || [],
+      pagination: parentPagination,
     };
   }
 
@@ -160,9 +154,7 @@ class MessageService {
         })
         .flat();
 
-      const { data: mediaData } = await this.mediaService.getMediaByIds(
-        mediaIds
-      );
+      const mediaData = await this.mediaService.getMediaByIds(mediaIds);
 
       data.items.forEach((m) => {
         if ("media" in m.content) {
@@ -184,37 +176,34 @@ class MessageService {
       );
       const reactionResults = await Promise.all(reactionPromises);
       userPopulatedMessages.forEach((msg, idx) => {
-        msg.reactions = reactionResults[idx].data;
+        msg.reactions = reactionResults[idx];
       });
 
-      return {
-        data: { items: userPopulatedMessages, pagination: data.pagination },
-      };
+      return { items: userPopulatedMessages, pagination: data.pagination };
     }
-
-    return { data };
+    return data;
   }
 
   async create<U extends Partial<Omit<IMessage, "id" | "updatedAt">>>(
     data: U,
     populate?: boolean | string[]
   ) {
-    const result = await validateMessageCreate(data, async (validData) => {
+    const created = await validateMessageCreate(data, async (validData) => {
       if (validData.parentId) {
         const parent = await this.getById(validData.parentId);
-        if (!parent.data) throw new BadRequestError("Parent message not found");
-        if (parent.data.parentId)
+        if (!parent) throw new BadRequestError("Parent message not found");
+        if (parent.parentId)
           throw new BadRequestError(
             "Nested messages beyond one level are not allowed"
           );
       }
       return createRecord(Message, validData);
     });
-    if (populate && result.data) {
-      const { data: populated } = await this.getById(result.data.id, populate);
-      return { data: populated, error: result.error };
+    let msg = (created as any)?.dataValues || (created as any)?.[0]?.dataValues || created;
+    if (populate && msg) {
+      msg = await this.getById(msg.id, populate);
     }
-    return result;
+    return msg;
   }
 
   async update<U extends Partial<IMessage>>(
@@ -222,27 +211,26 @@ class MessageService {
     data: U,
     populate?: boolean | string[]
   ) {
-    const result = await validateMessageUpdate(data, async (validData) => {
+    const updated = await validateMessageUpdate(data, async (validData) => {
       if (validData.parentId) {
         const parent = await this.getById(validData.parentId);
-        if (!parent.data) throw new BadRequestError("Parent message not found");
-        if (parent.data.parentId)
+        if (!parent) throw new BadRequestError("Parent message not found");
+        if (parent.parentId)
           throw new BadRequestError(
             "Nested messages beyond one level are not allowed"
           );
       }
-      return updateRecord(Message, id, validData);
+      return updateRecord(Message, { id }, validData);
     });
-    if (populate && !result.error) {
-      const { data: populated } = await this.getById(id, populate);
-      return { data: populated, error: result.error };
+    let msg = (updated as any)?.[0] ?? updated;
+    if (populate && msg) {
+      msg = await this.getById(id, populate);
     }
-    return result;
+    return msg;
   }
 
   async getById(id: string, populate?: boolean | string[]) {
-    const result = await findById(Message, id);
-    const data = result.data;
+    const data = await findById(Message, id);
     if (populate && data) {
       const fields =
         populate === true
@@ -251,13 +239,13 @@ class MessageService {
               (populate as string[]).includes(f)
             );
       const populated = await this.populateMessage(data as IMessage, fields);
-      return { data: populated, error: result.error };
+      return populated;
     }
-    return result;
+    return data as any;
   }
 
   async delete(id: string) {
-    return deleteRecord(Message, id);
+    return deleteRecord(Message, { id });
   }
 }
 

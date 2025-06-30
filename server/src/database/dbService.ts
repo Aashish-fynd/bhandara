@@ -71,63 +71,63 @@ export default class DBService {
       modifyOptions?: (opts: any) => any;
       count?: boolean;
     }
-  ): Promise<{ data: T[]; count: number | null; error: any }> {
+  ): Promise<{ data: T[]; count: number | null }> {
     let options: any = { where: this.buildWhere(query) };
     if (select) options.attributes = select.split(",").map((s) => s.trim());
     if (modifyOptions) options = modifyOptions(options) || options;
 
     if (count) {
       const res = await model.findAndCountAll(options);
-      return { data: res.rows as T[], count: res.count, error: null };
+      return { data: res.rows as T[], count: res.count };
     }
     const data = await model.findAll(options);
-    return { data: data as T[], count: null, error: null };
+    return { data: data as T[], count: null };
   }
 
   async insert<T extends Model>(
     model: ModelStatic<T>,
     data: any
-  ): Promise<{ data: T; error: any }> {
+  ): Promise<T> {
     const res = await model.create(data as any);
-    return { data: res.toJSON() as T, error: null };
+    return res.toJSON() as T;
   }
 
   async updateById<T extends Model>(
     model: ModelStatic<T>,
     id: string,
     data: any
-  ): Promise<{ data: T | null; error: any; count: number }> {
+  ): Promise<{ data: T | null; count: number }> {
     const [count, rows] = await model.update(data, {
       where: { id: id as Attributes<T> },
       returning: true,
     });
-    return { data: (rows[0] as T) || null, error: null, count };
+    return { data: (rows[0] as T) || null, count };
   }
 
   async deleteById<T extends Model>(
     model: ModelStatic<T>,
     id: string
-  ): Promise<{ data: T | null; error: any }> {
+  ): Promise<T | null> {
     const row = await model.findByPk(id);
-    if (!row) return { data: null, error: null };
+    if (!row) return null;
     await (row as any).destroy();
-    return { data: row.toJSON() as T, error: null };
+    return row.toJSON() as T;
   }
 
   async deleteByQuery<T extends Model>(
     model: ModelStatic<T>,
     filters: SimpleFilter[],
     single = false
-  ): Promise<{ data: T | null; error: any }> {
+  ): Promise<T | null> {
     const where = this.buildWhere(filters);
     if (single) {
       const row = await model.findOne({ where });
-      if (!row) return { data: null, error: null };
+      if (!row) return null;
       await row.destroy();
-      return { data: row.toJSON() as T, error: null };
+      return row.toJSON() as T;
     }
     await model.destroy({ where });
-    return { data: null, error: null };
+    return null;
   }
 
   async transaction<T>(callback: (t: Transaction) => Promise<T>) {
