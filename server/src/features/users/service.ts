@@ -139,7 +139,7 @@ class UserService {
 
       const results = await Promise.all(promises);
 
-      const updatedUser = results[0].data[0].dataValues as IBaseUser;
+      const updatedUser = results[0].data.dataValues as IBaseUser;
 
       await this.deleteCache(id);
 

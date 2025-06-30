@@ -86,7 +86,7 @@ Event.init(
     },
     capacity: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     tags: {
       type: DataTypes.JSONB,

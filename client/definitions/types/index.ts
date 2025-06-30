@@ -145,6 +145,7 @@ export interface IMedia extends ITimeStamp {
   storage: IMediaStorage; // JSONB field
   accessLevel: EAccessLevel;
   metadata: Record<string, any>;
+  name: string;
 
   path?: string;
 }
@@ -171,6 +172,7 @@ export interface IPaginationParams extends IPaginationResponse {
 
 export interface IAddress {
   address: string;
+  place: string;
   street: string;
   postcode: string;
   city: string;

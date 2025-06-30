@@ -1,20 +1,22 @@
 import { IBaseUser } from "@/definitions/types";
 import React from "react";
-import { YStack, XStack, Text, Card, Separator, Theme } from "tamagui";
+import { YStack, XStack, Text, Card, Separator, Theme, Popover } from "tamagui";
 import CustomAvatar from "../CustomAvatar";
 import { OutlineButton } from "./Buttons";
 import { formatDateToLongString } from "@/utils/date.utils";
 import { useAuth } from "@/contexts/AuthContext";
-import CustomTooltip from "../CustomTooltip";
-import { CardWrapper } from "./common-styles";
+import { CardWrapper, PopoverContent } from "./common-styles";
+import { PopoverWrapper } from "../PopoverWrapper";
+import { useRouter } from "expo-router";
 
 const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNode }) => {
   const { user: _authenticatedUser } = useAuth();
   const username = user.username ? `@${user.username}` : "";
+  const router = useRouter();
 
   return (
     <CardWrapper
-      width={300}
+      width={"auto"}
       p={0}
     >
       <XStack
@@ -83,7 +85,23 @@ const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNo
           </YStack>
         </>
       )}
-      {user.id === _authenticatedUser?.id && <OutlineButton size={"medium"}>Edit Profile</OutlineButton>}
+      {user.id === _authenticatedUser?.id && (
+        <YStack
+          p="$5"
+          pt={0}
+          gap="$2"
+        >
+          <Popover.Close>
+            <OutlineButton
+              size={"medium"}
+              width={"auto"}
+              onPress={() => router.push("/profile?")}
+            >
+              Edit Profile
+            </OutlineButton>
+          </Popover.Close>
+        </YStack>
+      )}
     </CardWrapper>
   );
 };
@@ -96,22 +114,21 @@ const ProfileAvatarPreview = ({
   user: IBaseUser;
   children: React.ReactNode;
   extraMeta?: React.ReactNode;
-}) => {
-  return (
-    <CustomTooltip
-      trigger={children}
-      tooltipConfig={{
-        unstyled: true
-      }}
-      tooltipContentConfig={{
-        unstyled: true
-      }}
+}) => (
+  <PopoverWrapper
+    trigger={children}
+    hoverable
+  >
+    <PopoverContent
+      z={1000}
+      p={0}
+      rounded={"unset"}
     >
       <Theme name={"dark"}>
         <Preview user={user}>{extraMeta}</Preview>
       </Theme>
-    </CustomTooltip>
-  );
-};
+    </PopoverContent>
+  </PopoverWrapper>
+);
 
 export default ProfileAvatarPreview;

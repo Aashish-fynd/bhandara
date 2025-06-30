@@ -1,32 +1,23 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Badge, CardWrapper } from "../ui/common-styles";
 import { XStack, ScrollView, View, YStack, Text } from "tamagui";
-import { HelpCircle, Plus, RotateCw, SendHorizontal, X } from "@tamagui/lucide-icons";
+import { Plus, RotateCw, SendHorizontal, X } from "@tamagui/lucide-icons";
 import { FilledButton, OutlineButton } from "../ui/Buttons";
 import { TextareaField } from "../Form";
 import { Platform } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { PopoverWrapper } from "../PopoverWrapper";
 import AddPopoverContents from "./AddPopoverContents";
-import { deleteMedia, IPickerAsset } from "@/common/api/media.action";
+import { deleteMedia } from "@/common/api/media.action";
 import AssetPreview from "./AssetPreview";
-import { IMedia } from "@/definitions/types";
 import { CircularProgressLoader, SpinningLoader } from "../ui/Loaders";
 import CustomTooltip from "../CustomTooltip";
+import { EMediaType } from "@/definitions/enums";
+import { IAttachedFile } from "@/common/utils/file.utils";
 
 interface IProps {
   context: Record<string, any>;
   sendButtonCb: (data: Record<string, any>, onSuccess?: () => void) => void;
-}
-
-export interface IAttachedFile extends Omit<IPickerAsset, "uri"> {
-  error?: string;
-  uploadedRatio?: number;
-  retryCallback?: () => void;
-  uploadResult?: IMedia;
-  isDeleting?: boolean;
-  publicURL?: IMedia["publicUrl"];
-  uri?: string;
 }
 
 const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
@@ -35,25 +26,7 @@ const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
   const textAreaRef = useRef<any>(null);
 
   const maxAttachmentLimit = context?.maxAttachments;
-
-  const actions = [
-    {
-      icon: Plus,
-      disabled: false,
-      handler: () => {
-        // Could implement file picker here as an alternative way to attach files
-      }
-    },
-    {
-      icon: SendHorizontal,
-      disabled: !message && attachedFiles.length === 0,
-      handler: () => {
-        // Handle sending message with attachedFiles
-        setMessage("");
-        setAttachedFiles([]);
-      }
-    }
-  ];
+  const [height, setHeight] = useState(40);
 
   const handleMessageChange = (text: string) => {
     setMessage(text);
@@ -75,7 +48,7 @@ const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
         if (file) {
           fileItems.push({
             name: file.name,
-            type: file.type,
+            type: file.type as EMediaType,
             size: file.size,
             data: file
           });
@@ -139,6 +112,28 @@ const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
         };
       }
     }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      // delete all the attached files when user has exited but not sent the message
+      if (attachedFiles.length) {
+        new Promise(async (resolve, reject) => {
+          await Promise.all(
+            attachedFiles.map((f) => {
+              if (f?.uploadResult?.id) {
+                return deleteMedia(f.uploadResult.id);
+              } else {
+                return Promise.resolve(true);
+              }
+            })
+          );
+          setAttachedFiles([]);
+          setMessage("");
+          resolve("done");
+        });
+      }
+    };
   }, []);
 
   const removeAttachedFile = async (index: number) => {
@@ -304,6 +299,14 @@ const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
         ref={textAreaRef}
         // For native platforms, check clipboard when focus is gained
         onFocus={Platform.OS !== "web" ? () => checkNativeClipboard() : undefined}
+        numberOfLines={3}
+        multiline
+        onContentSizeChange={(e) => {
+          const newHeight = e.nativeEvent.contentSize.height;
+          setHeight(newHeight < 120 ? newHeight : 120); // optional max height cap
+        }}
+        height={height}
+        p={0}
       />
       <XStack
         gap={"$4"}

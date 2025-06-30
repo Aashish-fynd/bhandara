@@ -29,14 +29,7 @@ export const getEventById = async (req: ICustomRequest, res: Response) => {
 };
 
 export const createEvent = async (req: ICustomRequest, res: Response) => {
-  const event = await eventService.createEvent(
-    {
-      body: req.body,
-      tagIds: req.body.tagIds || req.body.tags || [],
-      mediaIds: req.body.mediaIds || req.body.media || [],
-    },
-    true
-  );
+  const event = await eventService.createEvent(req.body, false);
   emitSocketEvent(PLATFORM_SOCKET_EVENTS.EVENT_CREATED, event);
   return res.status(201).json(event);
 };

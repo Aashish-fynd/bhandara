@@ -5,7 +5,7 @@ import { IAddress } from "@/definitions/types";
 import { getUUIDv4 } from "@/helpers";
 import { getNavState } from "@/lib/navigationStore";
 import { ArrowLeft } from "@tamagui/lucide-icons";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { memo, useEffect, useRef, useState } from "react";
 import { Sheet, XStack, YStack } from "tamagui";
 
@@ -68,6 +68,7 @@ const Map = () => {
           <Search
             ref={searchRef}
             onSearchResultSelect={() => {}}
+            onMinimizedCheckClick={setInitialData}
           />
         </XStack>
         <MapViewComponent
@@ -81,7 +82,7 @@ const Map = () => {
         modal={true}
         open={true}
         zIndex={100_000}
-        animation={"quick"}
+        animation={"quickest"}
         dismissOnOverlayPress={false}
         dismissOnSnapToBottom={false}
         snapPoints={snapPoints}

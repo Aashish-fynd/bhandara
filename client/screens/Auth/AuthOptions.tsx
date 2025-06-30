@@ -82,6 +82,7 @@ const AuthOptions = ({
 
         setExistingAuthData({ isUserComingFromSocialAuth: true, user, hasOnboarded: !!user.meta?.hasOnboarded });
       } catch (error: any) {
+        console.log("error", error);
         toastController.show(error?.message || "Error signing in with Google");
       } finally {
         setIsSocialAuthenticationInProgress(false);

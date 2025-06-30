@@ -1,7 +1,7 @@
 import { ICustomRequest } from "@definitions/types";
 import { Response } from "express";
 import MediaService from "./service";
-import { appendUUIDToFilename } from "./utils";
+import { getUniqueFilename } from "./utils";
 import { NotFoundError } from "@exceptions";
 import { isEmpty, pick } from "@utils";
 import { get32BitMD5Hash } from "@helpers";
@@ -32,9 +32,7 @@ export const getSignedUploadUrl = async (
 ) => {
   const { path, bucket, mimeType, parentPath, format, ...rest } = req.body;
 
-  const safePath = get32BitMD5Hash(path);
-
-  const uploadPath = `${parentPath || req.user.id}/${safePath}`;
+  const uploadPath = `${parentPath || req.user.id}/${path}`;
   const insertData = {
     path: uploadPath,
     bucket,

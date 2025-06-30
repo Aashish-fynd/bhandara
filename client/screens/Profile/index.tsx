@@ -13,13 +13,14 @@ import ActivityTabContent from "./tabs/Activity";
 
 import * as ImagePicker from "expo-image-picker";
 import { useToastController } from "@tamagui/toast";
-import { getSignedUrlForUpload } from "@/common/api/media.action";
 import { AVATAR_BUCKET } from "@/constants/global";
 import { updateUser } from "@/common/api/user.action";
 import { SpinningLoader } from "@/components/ui/Loaders";
 import { formatDateToLongString } from "@/utils/date.utils";
 import useSocketListener from "@/hooks/useSocketListener";
 import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
+import { uploadFile } from "@/common/utils/file.utils";
+import { EMediaType } from "@/definitions/enums";
 
 const Profile = () => {
   const { user, updateUser: updateUserContext } = useAuth();
@@ -78,15 +79,18 @@ const Profile = () => {
     try {
       setIsUploading(true);
       const { uri, type, mimeType, fileName, fileSize } = result.assets[0];
-      const mediaRow = await getSignedUrlForUpload({
-        name: fileName,
-        path: fileName,
-        type,
-        mimeType,
-        bucket: AVATAR_BUCKET,
-        size: fileSize,
-        file: uri
-      });
+      if (!fileSize) return;
+      const mediaRow = await uploadFile(
+        {
+          name: fileName!,
+          type: type as EMediaType,
+          mimeType: mimeType!,
+          size: fileSize,
+          uri
+        },
+        () => {},
+        { bucket: AVATAR_BUCKET, pPath: user.id }
+      );
       const updateUserResponse = await updateUser(user.id, {
         profilePic: null,
         mediaId: mediaRow.id
@@ -135,7 +139,7 @@ const Profile = () => {
               bg="$color"
               rounded="$10"
               p="$2"
-              z={1}
+              z={10}
               onPress={handleChangeProfilePicture}
               cursor={isUploading ? "not-allowed" : "pointer"}
               pointerEvents={isUploading ? "none" : "auto"}

@@ -5,8 +5,8 @@ import { IBaseUser, IMedia } from "@/definitions/types";
 import { getUserSession, logout as logoutApi } from "@/common/api/auth.action";
 
 interface AuthContextType {
-  user: IBaseUser | null;
-  session: { id: string } | null;
+  user: IBaseUser | undefined;
+  session: { id: string } | undefined;
   isLoading: boolean;
   setAuthState: (user: IBaseUser, session: { id: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -14,8 +14,8 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null,
-  session: null,
+  user: undefined,
+  session: undefined,
   isLoading: true,
   setAuthState: async () => {},
   logout: async () => {},
@@ -23,8 +23,8 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<IBaseUser | null>(null);
-  const [session, setSession] = useState<{ id: string } | null>(null);
+  const [user, setUser] = useState<IBaseUser | undefined>();
+  const [session, setSession] = useState<{ id: string } | undefined>();
   const [isLoading, setIsLoading] = useState(true);
 
   const setAuthState = async (user: IBaseUser, session: { id: string }) => {
@@ -43,8 +43,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     await logoutApi();
-    setUser(null);
-    setSession(null);
+    setUser(undefined);
+    setSession(undefined);
     await AsyncStorage.removeItem("sessionId");
   };
 

@@ -1,6 +1,6 @@
 import { IAddress } from "@/definitions/types";
 import React, { RefObject, useEffect, useImperativeHandle, useState } from "react";
-import { Spinner, Text, useDebounce, View, XStack, YStack } from "tamagui";
+import { Text, useDebounce, View, XStack, YStack } from "tamagui";
 import { InputGroup } from "../Form";
 import { FieldError, useForm } from "react-hook-form";
 import { isEmpty, startCase } from "@/utils";
@@ -8,7 +8,6 @@ import { FilledButton } from "../ui/Buttons";
 import { MapPin } from "@tamagui/lucide-icons";
 import { getAddressFromCoordinates } from "@/common/api/mapbox";
 import { useToastController } from "@tamagui/toast";
-import { ActivityIndicator } from "react-native";
 import { SpinningLoader } from "../ui/Loaders";
 import { setNavState } from "@/lib/navigationStore";
 import { router } from "expo-router";

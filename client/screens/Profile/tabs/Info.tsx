@@ -1,10 +1,10 @@
 import { getUserInterests, updateUser } from "@/common/api/user.action";
-import CustomTooltip from "@/components/CustomTooltip";
 import { InputGroup } from "@/components/Form";
+import InterestsDialog from "@/components/InterestsDialog";
 import LocationInput from "@/components/LocationInput";
-import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
-import { TagListing, TagPreviewTooltip } from "@/components/ui/common-components";
-import { Badge, CardWrapper } from "@/components/ui/common-styles";
+import { OutlineButton } from "@/components/ui/Buttons";
+import { TagListing } from "@/components/ui/common-components";
+import { CardWrapper } from "@/components/ui/common-styles";
 import { SpinningLoader } from "@/components/ui/Loaders";
 import UsernameInput from "@/components/UsernameInput";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,11 +12,10 @@ import { IAddress, ITag } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
 import { useDialog } from "@/hooks/useModal";
 import GenderSelection from "@/screens/OnBoarding/GenderSelection";
-import InterestSelection from "@/screens/OnBoarding/InterestSelection";
 import { isEmpty, pick, startCase } from "@/utils";
 import { Check, Pencil, Plus, X } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { H5, Text, XStack, YStack } from "tamagui";
 
@@ -29,105 +28,20 @@ type IFormData = {
   _location?: string;
 };
 
-const InterestBadge = ({ name }: { name: string }) => {
-  return <Text fontSize={"$3"}>{name}</Text>;
-};
-
-const InterestsDialog = ({
-  closeModal,
-  preSelectedTags,
-  setPreSelectedTags
-}: {
-  closeModal: () => void;
-  preSelectedTags: ITag[];
-  setPreSelectedTags: (tags: ITag[]) => void;
-}) => {
-  const { user } = useAuth();
-  const toastController = useToastController();
-  const selectedInterestsRef = useRef<ITag[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleUpdateInterests = async () => {
-    if (isEmpty(selectedInterestsRef.current)) {
-      closeModal();
-      return;
-    }
-
-    setIsSaving(true);
-
-    try {
-      // filter into deleted and added tags
-      const deletedTags = preSelectedTags?.filter((tag: ITag) => !selectedInterestsRef.current.includes(tag));
-      const addedTags = selectedInterestsRef.current?.filter((tag: ITag) => !preSelectedTags?.includes(tag));
-
-      // update user with deleted and added tags
-      const payload = {
-        deleted: deletedTags?.map((tag: ITag) => tag.id),
-        added: addedTags?.map((tag: ITag) => tag.id)
-      };
-      await updateUser(user?.id || "", { interests: payload });
-      closeModal();
-      toastController.show("Interests updated successfully");
-      setPreSelectedTags(selectedInterestsRef.current);
-    } catch (error: any) {
-      toastController.show(error?.message || "Something went wrong");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  return (
-    <>
-      <H5>Add Interest</H5>
-      <InterestSelection
-        cb={(tags) => {
-          selectedInterestsRef.current = tags;
-        }}
-        maxH={400}
-        preSelectedInterests={preSelectedTags || []}
-      />
-      <XStack
-        justify={"flex-end"}
-        gap={"$2"}
-      >
-        <OutlineButton
-          width={"auto"}
-          disabled={isSaving}
-          size={"medium"}
-          onPress={() => {
-            closeModal();
-            selectedInterestsRef.current = [];
-          }}
-        >
-          Cancel
-        </OutlineButton>
-        <FilledButton
-          size={"medium"}
-          width={"auto"}
-          onPress={handleUpdateInterests}
-          disabled={isSaving}
-          iconAfter={isSaving ? <SpinningLoader /> : undefined}
-        >
-          Update
-        </FilledButton>
-      </XStack>
-    </>
-  );
-};
-
-const Interests = () => {
+const Interests = ({ getInterestsPromise }: { getInterestsPromise: () => Promise<{ data?: ITag[]; error?: any }> }) => {
   const { user } = useAuth();
   const toastController = useToastController();
   const { close, open, RenderContent } = useDialog();
 
-  const { data, loading, setData } = useDataLoader({ promiseFunction: asyncGetUserInterests });
+  const { data, loading, setData } = useDataLoader({ promiseFunction: asyncGetInterests });
 
-  async function asyncGetUserInterests() {
+  async function asyncGetInterests() {
     try {
-      const { data, error } = await getUserInterests(user?.id || "");
+      const { data, error } = await getInterestsPromise();
       if (error) throw error;
       return data;
     } catch (error: any) {
-      toastController.show(error?.error?.message || "Something went wrong");
+      toastController.show(error?.message || "Something went wrong");
     }
   }
 
@@ -148,14 +62,20 @@ const Interests = () => {
             />
           )}
         </XStack>
-        {loading ? <SpinningLoader /> : <TagListing tags={data} />}
+        {loading ? <SpinningLoader /> : <TagListing tags={data || []} />}
       </CardWrapper>
 
       <RenderContent>
         <InterestsDialog
+          title="Add Interest"
           closeModal={close}
-          preSelectedTags={data}
-          setPreSelectedTags={setData}
+          preSelectedTags={data || []}
+          onUpdateInterests={async ({ deleted, added, currentSelectedTags }) => {
+            await updateUser(user!.id, {
+              interests: { deleted: deleted?.map((i) => i.id), added: added?.map((i) => i.id) }
+            });
+            setData(currentSelectedTags);
+          }}
         />
       </RenderContent>
     </>
@@ -339,7 +259,7 @@ const InfoTabContent = () => {
         </YStack>
       </CardWrapper>
 
-      <Interests />
+      <Interests getInterestsPromise={() => getUserInterests(user?.id || "")} />
     </YStack>
   );
 };

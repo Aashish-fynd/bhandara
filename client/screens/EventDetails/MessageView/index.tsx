@@ -4,7 +4,7 @@ import { SpinningLoader } from "@/components/ui/Loaders";
 import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSocket } from "@/contexts/Socket";
-import { IBaseThread, IBaseUser, IMessage, IPaginationResponse } from "@/definitions/types";
+import { IBaseThread, IBaseUser, IEvent, IMessage, IPaginationResponse } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
 import useSocketListener from "@/hooks/useSocketListener";
 import { memo, useCallback, useRef, useState } from "react";
@@ -17,18 +17,20 @@ enum ViewTypes {
   Thread = "thread",
   ChildMessages = "child",
   Message = "message",
-  None = 0
+  New = 0
 }
 
 type BaseCommonProps = {
   threadId?: string;
   parentId?: string;
   messageId?: string;
+  eventId?: string;
 };
 
 interface AddMessageProp extends IMessage {
   thread: IBaseThread;
   user: IBaseUser;
+  event?: IEvent;
 }
 
 export { BaseCommonProps as IMessageViewBaseProps, AddMessageProp as IMessageViewAddMessageProp };
@@ -37,20 +39,22 @@ interface IProps extends BaseCommonProps {
   onBack: () => void;
   style: YStackProps["style"];
   handleClick: (data: BaseCommonProps) => void;
-  parentRef?: React.MutableRefObject<{ addMessage: (msg: AddMessageProp) => void } | null>;
 }
 
-const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, style, parentRef }: IProps) => {
+const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, style, eventId }: IProps) => {
   const toastController = useToastController();
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   const paginationRef = useRef<IPaginationResponse>({ limit: 30, next: null, page: 1 });
+  const [currentView, setCurrentView] = useState(() => {
+    return determineViewType({ threadId, parentId, messageId });
+  });
 
   const headers = {
     [ViewTypes.Thread]: "Thread",
     [ViewTypes.Message]: "Message",
     [ViewTypes.ChildMessages]: "Messages",
-    [ViewTypes.None]: ""
+    [ViewTypes.New]: "New Thread"
   };
 
   const methodExecutors = {
@@ -62,17 +66,16 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
         parentId: parentId || "",
         pagination: paginationRef.current
       }),
-    [ViewTypes.None]: () => {}
+    [ViewTypes.New]: () => {}
   };
 
-  const determineViewType = ({ threadId, parentId, messageId }: BaseCommonProps) => {
+  function determineViewType({ threadId, parentId, messageId }: BaseCommonProps) {
     if (parentId && threadId) return ViewTypes.ChildMessages;
     if (threadId && messageId) return ViewTypes.Message;
     if (threadId) return ViewTypes.Thread;
-    return ViewTypes.None;
-  };
+    return ViewTypes.New;
+  }
 
-  const currentView = determineViewType({ threadId, parentId, messageId });
   const getFormattedData = (data: any) => {
     const _data = data?.data;
     if (currentView === ViewTypes.ChildMessages) {
@@ -99,15 +102,6 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
 
   const { data, loading, setData } = useDataLoader({ promiseFunction: () => methodExecutor(currentView) });
 
-  useSocketListener(
-    PLATFORM_SOCKET_EVENTS.MESSAGE_UPDATED,
-    ({ data, error }: { data: Record<string, any>; error: any }) => {
-      console.log("data", { data, error });
-      if (error) return;
-      setData((prev) => prev.map((f) => (f.id === data.id ? { ...f, reactions: [...f.reactions, data.reaction] } : f)));
-    }
-  );
-
   useSocketListener(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, ({ data, error }: { data: AddMessageProp; error: any }) => {
     if (error) return;
     if (data.threadId === threadId) {
@@ -115,11 +109,21 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
       setData((prev: IMessage[]) => [rest, ...prev]);
     }
   });
+  useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, ({ data, error }: { data: IBaseThread; error: any }) => {
+    console.log({ data, error });
+    if (error) return;
+
+    if (data.eventId === eventId) {
+      const messages = data.messages;
+      setData((prev: IMessage[]) => [...(messages || []), ...(prev || [])]);
+      setCurrentView(ViewTypes.Thread);
+    }
+  });
 
   const lastFetchedNext = useRef<string | null>(null);
 
   const handleEndReached = async () => {
-    if ([ViewTypes.Message, ViewTypes.None].includes(currentView)) return;
+    if ([ViewTypes.Message, ViewTypes.New].includes(currentView)) return;
     const currentPagination = paginationRef.current;
 
     const shouldPaginate =
@@ -138,18 +142,12 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
           next: currentPagination?.next
         };
 
-        const res = await methodExecutor(currentView);
+        const res = await methodExecutors[currentView]();
         const newItems = res?.data?.items || [];
-        const newPagination = res?.pagination || res?.data?.pagination;
+        const newPagination = res?.data?.pagination;
 
         if (newItems.length) {
-          setData((prev: any) => ({
-            ...prev,
-            data: {
-              ...prev.data,
-              items: [...prev.data?.items, ...newItems]
-            }
-          }));
+          setData((prev: any) => [...prev, ...newItems]);
           paginationRef.current = newPagination;
         }
       } catch (err: any) {

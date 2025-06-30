@@ -1,31 +1,18 @@
 import { validateSchema } from "@/helpers";
 import { EVENT_TABLE_NAME } from "./constants";
-import { EEventParticipantStatus, EEventStatus } from "@definitions/enums";
+import {
+  EEventParticipantStatus,
+  EEventStatus,
+  EEventType,
+} from "@definitions/enums";
 
 const locationSchema = {
   type: "object",
   properties: {
     address: { type: "string", errorMessage: "Address must be a valid string" },
-    coordinates: {
-      type: "object",
-      properties: {
-        latitude: { type: "number", errorMessage: "Latitude must be a number" },
-        longitude: {
-          type: "number",
-          errorMessage: "Longitude must be a number",
-        },
-      },
-      required: ["latitude", "longitude"],
-      additionalProperties: false,
-      errorMessage: "Coordinates must include valid 'latitude' and 'longitude'",
-    },
-    venueName: {
-      type: ["string", "null"],
-      errorMessage: "Venue name must be a string or null",
-    },
   },
   required: ["address"],
-  additionalProperties: false,
+  additionalProperties: true,
   errorMessage: {
     type: "Location data must be an object",
     required: {
@@ -82,33 +69,50 @@ const verifierSchema = {
 const eventSchema = {
   type: "object",
   properties: {
+    id: {
+      type: ["string", "null"],
+      format: "uuid",
+    },
     name: { type: "string", errorMessage: "Name must be a valid string" },
     description: {
       type: "string",
       errorMessage: "Description must be a valid string",
     },
     location: locationSchema,
-    participants: {
-      type: "array",
-      items: participantSchema,
-      uniqueItems: true,
-      errorMessage: "Participants must be an array of unique objects",
-    },
-    verifiers: {
-      type: "array",
-      items: verifierSchema,
-      uniqueItems: true,
-      errorMessage: "Verifiers must be an array of unique objects",
-    },
-    threadId: {
-      type: "string",
-      format: "uuid",
-      errorMessage: "threadId must be a valid UUID",
+    // participants: {
+    //   type: "array",
+    //   items: participantSchema,
+    //   uniqueItems: true,
+    //   errorMessage: "Participants must be an array of unique objects",
+    // },
+    // verifiers: {
+    //   type: ["array", null],
+    //   items: verifierSchema,
+    //   uniqueItems: true,
+    //   errorMessage: "Verifiers must be an array of unique objects",
+    // },
+    timings: {
+      type: "object",
+      properties: {
+        start: {
+          type: "string",
+          format: "date-time",
+          errorMessage: "Start time is required",
+        },
+        end: {
+          type: "string",
+          format: "date-time",
+          errorMessage: "End time is required",
+        },
+      },
+      required: ["end", "start"],
     },
     type: {
       type: "string",
-      enum: ["organized", "custom"],
-      errorMessage: "Type must be one of 'organized' or 'custom'",
+      enum: Object.values(EEventType),
+      errorMessage: `Type must be one of ${Object.values(EEventType).join(
+        ", "
+      )}`,
     },
     createdBy: {
       type: "string",
@@ -123,23 +127,32 @@ const eventSchema = {
       )}`,
     },
     capacity: {
-      type: "integer",
-      minimum: 0,
+      type: ["integer", "null"],
+      minimum: 50,
       errorMessage: "Capacity must be a non-negative integer",
+    },
+    medias: {
+      type: ["array", "null"],
+      items: { type: "string", format: "uuid" },
+      uniqueItems: true,
+    },
+    tags: {
+      type: ["array"],
+      items: { type: "string", format: "uuid" },
+      uniqueItems: true,
     },
   },
   required: [
     "name",
     "description",
     "location",
-    "participants",
-    "verifiers",
-    "threadId",
+    "timings",
     "type",
     "createdBy",
     "status",
-    "capacity",
+    "tags",
   ],
+
   additionalProperties: false,
   errorMessage: {
     type: "Event data must be an object",
@@ -147,8 +160,6 @@ const eventSchema = {
       name: "Name is required",
       description: "Description is required",
       location: "Location is required",
-      participants: "Participants is required",
-      verifiers: "Verifiers is required",
       type: "Type is required",
       createdBy: "createdBy is required",
       status: "Status is required",

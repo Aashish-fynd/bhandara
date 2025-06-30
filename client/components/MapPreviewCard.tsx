@@ -6,7 +6,7 @@ import * as Location from "expo-location";
 import { getStaticMapImageUrl } from "@/common/api/mapbox";
 import { CardWrapper, CircleBgWrapper } from "./ui/common-styles";
 import { Image, Text, XStack, YStack } from "tamagui";
-import { Building, Compass, Crosshair, Landmark, MapPin, Navigation } from "@tamagui/lucide-icons";
+import { Building, Compass, Crosshair, Landmark, MapPin, Navigation, Signpost } from "@tamagui/lucide-icons";
 import { formatDistance } from "@/helpers";
 import { FilledButton } from "./ui/Buttons";
 import { Linking } from "react-native";
@@ -27,6 +27,7 @@ const MapPreviewCard = (location: IAddress) => {
 
     _func();
   }, []);
+
   const _getMapUrl = () => {
     if (location.latitude && location.longitude) {
       const staticMapUrl = getStaticMapImageUrl({
@@ -49,6 +50,8 @@ const MapPreviewCard = (location: IAddress) => {
         { latitude: location.latitude, longitude: location.longitude }
       )
     : "-";
+
+  const _distanceAwayLabel = distanceAway !== "-" ? formatDistance(distanceAway) : distanceAway;
 
   return (
     <CardWrapper
@@ -98,7 +101,7 @@ const MapPreviewCard = (location: IAddress) => {
           justify={"flex-start"}
           height={"100%"}
         >
-          {location.building && (
+          {(location.building || location?.place) && (
             <XStack
               gap={"$2"}
               items="center"
@@ -107,7 +110,24 @@ const MapPreviewCard = (location: IAddress) => {
                 size={16}
                 color={"$color10"}
               />
-              <Text>{location.building}</Text>
+              <Text>{location.building || location.place}</Text>
+            </XStack>
+          )}
+          {location.street && (
+            <XStack
+              gap={"$2"}
+              items="center"
+            >
+              <Signpost
+                size={16}
+                color={"$color10"}
+              />
+              <Text
+                fontSize={"$2"}
+                color={"$color10"}
+              >
+                {location.street}
+              </Text>
             </XStack>
           )}
           {location.landmark && (
@@ -151,7 +171,7 @@ const MapPreviewCard = (location: IAddress) => {
               color={"$color10"}
               fontSize={"$2"}
             >
-              {distanceAway !== "-" ? formatDistance(distanceAway) : distanceAway} away
+              {_distanceAwayLabel} away
             </Text>
           </XStack>
           <FilledButton
