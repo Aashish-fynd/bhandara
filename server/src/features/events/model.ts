@@ -83,6 +83,7 @@ Event.init(
     status: {
       type: DataTypes.ENUM(...Object.values(EEventStatus)),
       allowNull: false,
+      defaultValue: EEventStatus.Draft,
     },
     capacity: {
       type: DataTypes.INTEGER,

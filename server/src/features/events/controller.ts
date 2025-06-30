@@ -14,7 +14,16 @@ export const getEvents = async (
   req: ICustomRequest & IRequestPagination,
   res: Response
 ) => {
-  const events = await eventService.getAll({}, req.pagination);
+  const { createdBy, status } = req.query;
+  const where: Record<string, any> = {};
+  if (createdBy) where.createdBy = createdBy;
+  if (status) {
+    const statuses = (status as string)
+      .split(',')
+      .filter((s) => Object.values(EEventStatus).includes(s as EEventStatus));
+    if (statuses.length) where.status = statuses;
+  }
+  const events = await eventService.getAll(where, req.pagination);
   return res.status(200).json(events);
 };
 

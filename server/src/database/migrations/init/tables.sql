@@ -7,7 +7,7 @@ CREATE TYPE "ThreadType" AS ENUM ('discussion', 'qna');
 CREATE TYPE "AccessLevel" AS ENUM ('public', 'private', 'restricted');
 CREATE TYPE "MediaType" AS ENUM ('image', 'video', 'audio', 'document');
 CREATE TYPE "EventType" AS ENUM ('organized', 'custom');
-CREATE TYPE "EventStatus" AS ENUM ('upcoming', 'ongoing', 'completed', 'cancelled');
+CREATE TYPE "EventStatus" AS ENUM ('draft', 'upcoming', 'ongoing', 'completed', 'cancelled');
 
 -- Media Table
 CREATE TABLE "Media" (

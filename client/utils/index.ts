@@ -139,3 +139,4 @@ export const formTruthyValues = (data: Record<string, any>) => {
 };
 
 export * from "./compression";
+export * from "./share.utils";
