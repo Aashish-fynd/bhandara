@@ -25,6 +25,7 @@ export enum EMediaType {
 }
 
 export enum EEventStatus {
+  Draft = "draft",
   Upcoming = "upcoming",
   Ongoing = "ongoing",
   Completed = "completed",
