@@ -2,18 +2,23 @@ import React, { memo, useCallback, useEffect, useImperativeHandle, useRef, useSt
 
 import { getEventById, getEventThreads } from "@/common/api/events.action";
 import { BackButtonHeader, IdentityCard, TagListing, UserCluster } from "@/components/ui/common-components";
-import { Badge, CardWrapper, CircleBgWrapper } from "@/components/ui/common-styles";
+import { Badge, CardWrapper, CircleBgWrapper, PopoverContent } from "@/components/ui/common-styles";
 import { SpinningLoader } from "@/components/ui/Loaders";
 import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import { EEventType, EThreadType } from "@/definitions/enums";
 import { IAddress, IBaseThread, IBaseUser, IEvent, IMessage, IReaction } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
-import { ChevronRight, Plus, Share2 } from "@tamagui/lucide-icons";
+import { ChevronRight, Plus, Share2, Pencil, Trash } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { H4, H6, ScrollView, Sheet, Text, View, XStack, YStack } from "tamagui";
 import { formatDateWithTimeString } from "@/utils/date.utils";
-import { omit } from "@/utils";
+import { omit, shareLink } from "@/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { updateEvent } from "@/common/api/events.action";
+import { EEventStatus } from "@/definitions/enums";
+import { PopoverWrapper } from "@/components/PopoverWrapper";
+import config from "@/config";
 
 import useSocketListener from "@/hooks/useSocketListener";
 import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
@@ -113,6 +118,9 @@ const EventDetails: React.FC = () => {
   const isOrganized = _event?.type === EEventType.Organized;
   const tags = _event?.tags;
   const participants = _event?.participants;
+  const { user } = useAuth();
+  const router = useRouter();
+  const isOwner = user?.id === _event?.createdBy;
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -204,20 +212,53 @@ const EventDetails: React.FC = () => {
           title={_event?.name ?? "Event Details"}
           navigateTo="/home"
         >
-          <View
-            bg={"$color4"}
-            rounded={"$4"}
-            items={"center"}
-            justify={"center"}
-            cursor={"pointer"}
-            height={"100%"}
-          >
-            <Share2
-              size={24}
-              color={"$accent1"}
+          {isOwner ? (
+            <PopoverWrapper
+              trigger={
+                <View
+                  bg={"$color4"}
+                  rounded={"$4"}
+                  items={"center"}
+                  justify={"center"}
+                  cursor={"pointer"}
+                  height={"100%"}
+                >
+                  <Share2 size={24} color={"$accent1"} />
+                </View>
+              }
+            >
+            <PopoverContent p="$3" bg="$color3" borderWidth={1} borderColor="$borderColor">
+                <YStack gap="$2">
+                  <Text cursor="pointer" onPress={() => _event && shareLink(`${config.server.baseURL}/event/${_event.id}`)}>
+                    Share
+                  </Text>
+                  <Text cursor="pointer" onPress={() => router.push(`/event-form?id=${_event?.id}`)}>
+                    Edit
+                  </Text>
+                  <Text cursor="pointer" onPress={async () => {
+                    if (_event) {
+                      await updateEvent(_event.id, { status: EEventStatus.Cancelled });
+                      router.back();
+                    }
+                  }}>
+                    Cancel
+                  </Text>
+                </YStack>
+              </PopoverContent>
+            </PopoverWrapper>
+          ) : (
+            <View
+              bg={"$color4"}
+              rounded={"$4"}
+              items={"center"}
+              justify={"center"}
               cursor={"pointer"}
-            />
-          </View>
+              height={"100%"}
+              onPress={() => _event && shareLink(`${config.server.baseURL}/event/${_event.id}`)}
+            >
+              <Share2 size={24} color={"$accent1"} />
+            </View>
+          )}
         </BackButtonHeader>
         <ScrollView
           gap={"$4"}

@@ -7,6 +7,7 @@ import {
   runTransaction,
   updateRecord,
 } from "@utils/dbUtils";
+import { Op } from "sequelize";
 import {
   EAccessLevel,
   EEventParticipantStatus,
@@ -146,6 +147,7 @@ class EventService {
 
   @MethodCacheSync<IEvent>({})
   async createEvent(body: Partial<IEvent>, populate?: boolean | string[]) {
+    if (!body.status) body.status = EEventStatus.Draft;
     const result = await validateEventCreate(body, (data) =>
       createRecord(Event, data as any)
     );
@@ -162,6 +164,10 @@ class EventService {
     data: U,
     populate?: boolean | string[]
   ) {
+    const { data: existing } = await this.getById(id);
+    if (existing && existing.status === EEventStatus.Cancelled) {
+      throw new BadRequestError('Cannot update a cancelled event');
+    }
     const result = await validateEventUpdate(data, (data) =>
       updateRecord(Event, id, data)
     );
@@ -176,6 +182,9 @@ class EventService {
     where: Record<string, any> = {},
     pagination?: Partial<IPaginationParams>
   ) {
+    if (Array.isArray(where.status)) {
+      where.status = { [Op.in]: where.status };
+    }
     const { data } = await findAllWithPagination(Event, where, pagination);
     if (data.items) {
       await Promise.all(
@@ -217,6 +226,15 @@ class EventService {
       });
     }
     return { data, error: null };
+  }
+
+  @MethodCacheSync<IEvent>({})
+  async cancel(id: string) {
+    const result = await updateRecord(Event, id, {
+      status: EEventStatus.Cancelled,
+    });
+    await this.deleteCache(id);
+    return result;
   }
 
   @MethodCacheSync<IEvent>({})

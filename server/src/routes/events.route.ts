@@ -7,7 +7,6 @@ import {
 } from "@middlewares";
 
 import {
-  deleteEvent,
   updateEvent,
   getEventById,
   createEvent,
@@ -19,6 +18,7 @@ import {
   associateEventMedia,
   deleteEventMedia,
   getEventThreads,
+  deleteEvent,
 } from "@features/events/controller";
 const router = Router();
 
