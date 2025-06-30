@@ -93,7 +93,7 @@ export async function findById<T extends Model>(
   id: string
 ): Promise<T | null> {
   const res = await model.findByPk(id, { raw: true });
-  return (res as any) || null;
+  return (res as T) || null;
 }
 
 export async function createRecord<T extends Model>(
@@ -110,7 +110,7 @@ export async function updateRecord<T extends Model>(
   data: Partial<T>
 ): Promise<T> {
   const [count, updatedResult] = await model.update(data as any, {
-    where: { ...where },
+    where: { ...(where as any) },
     returning: true,
   });
 
