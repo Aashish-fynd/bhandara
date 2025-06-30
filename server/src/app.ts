@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import cookieparser from "cookie-parser";
+import swaggerUI from "swagger-ui-express";
 
 import helmet from "helmet";
 import config from "@config";
@@ -11,6 +12,7 @@ import {
 } from "@middlewares";
 import appRoutes from "@routes";
 import { NotFoundError } from "@exceptions";
+import { swaggerSpec } from "@docs/swagger";
 
 const createServer = () => {
   const app = express();
@@ -34,15 +36,8 @@ const createServer = () => {
 
   // routes setup
 
-  // // swagger docs
-  // // load yaml file
-  // const openapiYamlFile = fs.readFileSync(
-  //   __dirname + "/docs/openapi.yaml",
-  //   "utf8"
-  // );
-  // const swaggerDocument = Yaml.parse(openapiYamlFile);
-
-  // app.use("/docs", swaggerUI.serve, swaggerUI.setup(swaggerDocument));
+  // swagger docs
+  app.use("/docs", swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
   app.get("/", (req, res) => {
     res.send({
