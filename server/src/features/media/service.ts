@@ -26,7 +26,7 @@ import {
 import { getMediaCache } from "./helpers";
 import { get32BitMD5Hash } from "@helpers";
 import logger from "@logger";
-import { appendUUIDToFilename } from "./utils";
+import { getUniqueFilename as getUniqueFilename } from "./utils";
 import { BadRequestError } from "@exceptions";
 import CustomError from "@exceptions/CustomError";
 import { CACHE_NAMESPACE_CONFIG } from "@constants";
@@ -87,7 +87,7 @@ class MediaService {
           bucket,
           base64FileData: file,
           mimeType,
-          path: appendUUIDToFilename(path),
+          path: getUniqueFilename(path),
           options,
         });
 
@@ -155,14 +155,14 @@ class MediaService {
         if (validatedData.options.size > bucketConfig.maxSize)
           throw new BadRequestError("File size too large");
 
-        const path = appendUUIDToFilename(validatedData.path);
+        const path = getUniqueFilename(validatedData.path);
 
         omit(validatedData, ["path", "bucket", "options"]);
         delete restOptions.path;
 
         // create media record
         const createData = {
-          url: `${path}`,
+          url: path,
           storage: {
             metadata: {},
             bucket,
@@ -217,7 +217,7 @@ class MediaService {
       const { path, ...rest } = validatedData;
       return createRecord(Media, {
         ...rest,
-        path: appendUUIDToFilename(path),
+        path: getUniqueFilename(path),
       });
     });
     return res;

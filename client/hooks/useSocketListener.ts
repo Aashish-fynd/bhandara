@@ -40,7 +40,6 @@ const useSocketListener = (event: string, handler: (...args: any[]) => void) => 
     if (!socket) return;
 
     registerSocketHandler(event, handler);
-
     if (!initializedEvents.has(event)) {
       socket.on(event, (...args: any[]) => {
         const handlers = getSocketHandlers(event);

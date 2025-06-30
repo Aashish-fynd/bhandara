@@ -1,10 +1,10 @@
-import { retrieveSearchItem, suggestSearchResults } from "@/common/api/mapbox";
+import { getAddressFromCoordinates, retrieveSearchItem, suggestSearchResults } from "@/common/api/mapbox";
 import { formatDistance, getUUIDv4 } from "@/helpers";
-import { ArrowUp, ChevronUp, Cross, MapPin, Route, X } from "@tamagui/lucide-icons";
+import { ArrowRight, ArrowUp, Check, ChevronUp, Cross, MapPin, Route, X } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Input, Spinner, Text, useDebounce, View, XStack, YStack } from "tamagui";
-import { FilledButton } from "../ui/Buttons";
+import { AnimatePresence, Input, Spinner, Text, useDebounce, View, XStack, YStack } from "tamagui";
+import { FilledButton, OutlineButton } from "../ui/Buttons";
 import PulsatingDot from "../PulsatingDot";
 import { SpinningLoader } from "../ui/Loaders";
 
@@ -48,10 +48,12 @@ const Search = forwardRef(
   (
     {
       currentLocation,
-      onSearchResultSelect
+      onSearchResultSelect,
+      onMinimizedCheckClick
     }: {
       currentLocation?: [number, number];
       onSearchResultSelect: (result: any) => void;
+      onMinimizedCheckClick?: (result: any) => void;
     },
     ref
   ) => {
@@ -65,6 +67,7 @@ const Search = forwardRef(
     const currentMinimizedSearchId = useRef<string | null>(null);
     const onSearchResultSelectRef = useRef<any>(onSearchResultSelect);
     const currentLocationRef = useRef<[number, number] | undefined>(currentLocation);
+    const [isSelectedSearchApplying, setIsSelectedSearchApplying] = useState(false);
 
     useImperativeHandle(ref, () => ({
       setCallBack: (callback: (result: any) => void) => {
@@ -145,6 +148,7 @@ const Search = forwardRef(
               onChangeText={handleAddressSearch}
               width={"100%"}
               height={36}
+              disabled={isSelectedSearchApplying}
               onPressIn={() => {
                 if (isMinimized) {
                   setIsMinimized(false);
@@ -158,7 +162,7 @@ const Search = forwardRef(
                 justify={"center"}
                 t={0}
                 r={"$3"}
-                z={1000}
+                z={100}
                 height={"100%"}
                 onPress={() => setSearch("")}
                 animation={"quick"}
@@ -264,68 +268,86 @@ const Search = forwardRef(
 
         {/* minimized state */}
         {isMinimized && currentMinimizedSearchId.current && (
-          <View
-            position="absolute"
-            b={"$8"}
-            l={0}
-            r={0}
-            z={1000}
+          <XStack
+            gap={"$3"}
+            p={"$3"}
+            rounded={"$6"}
+            bg={"$background"}
+            width={"min-content"}
+            onPress={handleSuggestionPress(currentMinimizedSearchId.current)}
+            cursor={"pointer"}
             items={"center"}
-            width={"100%"}
+            maxW={"80%"}
+            position="absolute"
+            t={85}
+            l={"$6"}
+            z={100}
+            enterStyle={{ y: -10, opacity: 1 }}
+            exitStyle={{ y: 10, opacity: 1 }}
+            animation={"quicker"}
           >
-            <XStack
-              gap={"$3"}
-              p={"$3"}
-              rounded={"$6"}
-              bg={"$background"}
-              width={"auto"}
-              onPress={handleSuggestionPress(currentMinimizedSearchId.current)}
-              cursor={"pointer"}
-              items={"center"}
-              maxW={"80%"}
+            <PulsatingDot
+              size={10}
+              color="$accent1"
+            />
+            <YStack
+              gap={"$1"}
+              flex={1}
             >
-              <PulsatingDot
-                size={10}
-                color="$accent1"
-              />
-              <YStack
-                gap={"$1"}
-                flex={1}
+              <Text
+                fontSize={"$3"}
+                numberOfLines={1}
+                ellipse
+                color={"$color"}
               >
-                <Text
-                  fontSize={"$3"}
-                  numberOfLines={1}
-                  ellipse
-                  color={"$color"}
-                >
-                  {currentRetrievedCachedResults.current[currentMinimizedSearchId.current].properties.name}
-                </Text>
-                <Text
-                  fontSize={"$1"}
-                  numberOfLines={1}
-                  ellipse
-                  fontWeight={300}
-                  color={"$color06"}
-                >
-                  {currentRetrievedCachedResults.current[currentMinimizedSearchId.current].properties.full_address}
-                </Text>
-              </YStack>
+                {currentRetrievedCachedResults.current[currentMinimizedSearchId.current].properties.name}
+              </Text>
+              <Text
+                fontSize={"$1"}
+                numberOfLines={1}
+                ellipse
+                fontWeight={300}
+                color={"$color06"}
+              >
+                {currentRetrievedCachedResults.current[currentMinimizedSearchId.current].properties.full_address}
+              </Text>
+            </YStack>
 
-              {currentRetrievedCachedResults.current[currentMinimizedSearchId.current].properties.distance && (
-                <Text
-                  fontSize={"$1"}
-                  color={"$accentColor"}
-                  bg={"$accentBackground"}
-                  py={"$1"}
-                  px={"$2"}
-                  rounded={10000}
-                >
-                  {formatDistance(
-                    currentRetrievedCachedResults.current[currentMinimizedSearchId.current].properties.distance
-                  )}
-                </Text>
-              )}
+            {currentRetrievedCachedResults.current[currentMinimizedSearchId.current].properties.distance && (
+              <Text
+                fontSize={"$1"}
+                color={"$accentColor"}
+                bg={"$accentBackground"}
+                py={"$1"}
+                px={"$2"}
+                rounded={10000}
+              >
+                {formatDistance(
+                  currentRetrievedCachedResults.current[currentMinimizedSearchId.current].properties.distance
+                )}
+              </Text>
+            )}
 
+            <OutlineButton
+              p={0}
+              height={28}
+              width={28}
+              rounded={"$3"}
+              justify={"center"}
+              items={"center"}
+              disabled={isSelectedSearchApplying}
+              icon={
+                <ArrowRight
+                  size={16}
+                  stroke={"$background"}
+                />
+              }
+              onPress={(e) => {
+                e.stopPropagation();
+                setIsMinimized(false);
+              }}
+            />
+            {onMinimizedCheckClick && (
               <FilledButton
                 p={0}
                 height={28}
@@ -333,19 +355,39 @@ const Search = forwardRef(
                 rounded={"$3"}
                 justify={"center"}
                 items={"center"}
+                disabled={isSelectedSearchApplying}
                 icon={
-                  <ArrowUp
-                    size={16}
-                    stroke={"$background"}
-                  />
+                  isSelectedSearchApplying ? (
+                    <SpinningLoader />
+                  ) : (
+                    <Check
+                      size={16}
+                      stroke={"$background"}
+                    />
+                  )
                 }
-                onPress={(e) => {
-                  e.stopPropagation();
-                  setIsMinimized(false);
+                onPress={async (e) => {
+                  setIsSelectedSearchApplying(true);
+                  try {
+                    e.stopPropagation();
+                    setIsMinimized(false);
+                    setSearch("");
+                    setResults([]);
+
+                    const { coordinates } =
+                      currentRetrievedCachedResults.current[currentMinimizedSearchId.current || ""]?.geometry || {};
+                    const coords = { longitude: coordinates?.[0], latitude: coordinates?.[1] };
+                    const address = await getAddressFromCoordinates(coords);
+                    onMinimizedCheckClick({ ...address, ...coords });
+                  } catch (error: any) {
+                    toastController.show(error?.message || "Unable to apply results");
+                  } finally {
+                    setIsSelectedSearchApplying(false);
+                  }
                 }}
               />
-            </XStack>
-          </View>
+            )}
+          </XStack>
         )}
       </>
     );

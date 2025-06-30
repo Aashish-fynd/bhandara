@@ -6,14 +6,14 @@ interface IProps extends PopoverProps {
   children?: React.ReactNode;
   shouldAdapt?: boolean;
   trigger?: React.ReactNode;
+  asChild?: boolean;
 }
 
-export const PopoverWrapper = forwardRef<any, IProps>(({ children, shouldAdapt, trigger, ...props }, ref) => {
+export const PopoverWrapper = forwardRef<any, IProps>(({ children, shouldAdapt, trigger, asChild, ...props }, ref) => {
   delete (props as any).ref;
 
   return (
     <Popover
-      size="$5"
       allowFlip
       stayInFrame
       offset={15}
@@ -21,7 +21,7 @@ export const PopoverWrapper = forwardRef<any, IProps>(({ children, shouldAdapt, 
       ref={ref}
       {...props}
     >
-      <Popover.Trigger asChild>{trigger}</Popover.Trigger>
+      <Popover.Trigger asChild={asChild}>{trigger}</Popover.Trigger>
 
       {shouldAdapt && (
         <Adapt

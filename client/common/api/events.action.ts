@@ -1,4 +1,4 @@
-import { IEvent, IPaginationParams } from "@/definitions/types";
+import { IBaseResponse, IEvent, IPaginationParams } from "@/definitions/types";
 import axiosClient from "./base";
 import { formTruthyValues } from "@/utils";
 
@@ -25,4 +25,9 @@ export const getEventThreads = async (eventId: string, pagination?: Partial<IPag
   const queryParams = new URLSearchParams(formTruthyValues(pagination || {}));
   const threadsResponse = await axiosClient.get(`/events/${eventId}/threads?${queryParams.toString()}`);
   return threadsResponse.data;
+};
+
+export const createEvent = async (data: Record<string, any>): Promise<IBaseResponse<IEvent>> => {
+  const createResponse = await axiosClient.post("/events", data);
+  return createResponse.data;
 };

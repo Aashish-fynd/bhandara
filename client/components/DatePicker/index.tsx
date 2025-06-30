@@ -13,7 +13,15 @@ const SidebarButton = styled(Button, {
   pressStyle: { bg: "$black3" }
 });
 
-export default function DateRangePicker() {
+export default function DateRangePicker({
+  onClose,
+  onSubmit,
+  initialDates
+}: {
+  onClose: () => void;
+  onSubmit: (...args: Date[]) => void;
+  initialDates?: Date[];
+}) {
   const [showOptions, setShowOptions] = useState(false);
   const [selectedRange, setSelectedRange] = useState<{ from?: Date; to?: Date }>({});
 
@@ -21,7 +29,6 @@ export default function DateRangePicker() {
   const [showEndDate, setShowEndDate] = useState(false);
   const [showStartTime, setShowStartTime] = useState(false);
   const [showEndTime, setShowEndTime] = useState(false);
-
 
   const formatDate = (date?: Date) => (date ? date.toDateString() : "Select Date");
   const formatTime = (date?: Date) =>

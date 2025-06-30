@@ -8,7 +8,7 @@ import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import { EEventType, EThreadType } from "@/definitions/enums";
 import { IAddress, IBaseThread, IBaseUser, IEvent, IMessage, IReaction } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
-import { ChevronRight, Share2 } from "@tamagui/lucide-icons";
+import { ChevronRight, Plus, Share2 } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
 import { useLocalSearchParams } from "expo-router";
 import { H4, H6, ScrollView, Sheet, Text, View, XStack, YStack } from "tamagui";
@@ -21,6 +21,7 @@ import MapPreviewCard from "@/components/MapPreviewCard";
 import MessageCard from "./MessageView/MessageCard";
 import { IMessageViewAddMessageProp, IMessageViewBaseProps } from "./MessageView";
 import MessageViewSheetContent from "./MessageViewSheetContent";
+import { OutlineButton } from "@/components/ui/Buttons";
 
 export const VerifiersListing = ({ verifiers }: { verifiers: IEvent["verifiers"] }) => {
   // sort the latest ones first
@@ -75,7 +76,9 @@ export const VerifiersListing = ({ verifiers }: { verifiers: IEvent["verifiers"]
 };
 
 const EventDetails: React.FC = () => {
-  const { id } = useLocalSearchParams();
+  const searchParams = useLocalSearchParams();
+  const id = searchParams["id"] as string;
+
   const toastController = useToastController();
 
   const { data: _event, loading, setData: setEvent } = useDataLoader({ promiseFunction: fetchEventData });
@@ -120,7 +123,8 @@ const EventDetails: React.FC = () => {
 
   useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, ({ data }) => {
     if (!data || data.eventId !== id || !data.type) return;
-    setThreads((prev) => [prev, data.thread]);
+    delete data.event;
+    setThreads((prev) => [data, ...(prev || [])]);
   });
 
   useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_UPDATED, ({ data }) => {
@@ -159,13 +163,23 @@ const EventDetails: React.FC = () => {
   const [sheetStack, setSheetStack] = useState<Array<IMessageViewBaseProps>>([]);
 
   const handleClick = useCallback(
-    ({ messageId, threadId, parentId }: { messageId?: string; threadId?: string; parentId?: string }) => {
-      if (messageId || threadId || parentId) {
-        setSheetStack((prev) => [...prev, { parentId, threadId, messageId }]);
+    ({
+      messageId,
+      threadId,
+      parentId,
+      eventId
+    }: {
+      messageId?: string;
+      threadId?: string;
+      parentId?: string;
+      eventId?: string;
+    }) => {
+      if (messageId || threadId || parentId || eventId) {
+        setSheetStack((prev) => [...prev, { parentId, threadId, messageId, eventId }]);
         setIsSheetOpen(true);
       }
     },
-    [setIsSheetOpen]
+    []
   );
 
   const handleSheetBack = useCallback(() => {
@@ -264,48 +278,66 @@ const EventDetails: React.FC = () => {
                   </CardWrapper>
                 )}
 
-                {!!_event?.verifiers.length && <VerifiersListing verifiers={_event.verifiers} />}
+                {!!_event?.verifiers?.length && <VerifiersListing verifiers={_event.verifiers} />}
 
-                {(threadsLoading || _threads?.length) && (
-                  <CardWrapper>
-                    <XStack
-                      gap={"$4"}
-                      justify={"space-between"}
+                <CardWrapper>
+                  <XStack
+                    gap={"$4"}
+                    justify={"space-between"}
+                  >
+                    <H6>Discussion</H6>
+                    <Plus
+                      onPress={() => handleClick({ eventId: id })}
+                      cursor="pointer"
+                      size={20}
+                    />
+                  </XStack>
+                  {threadsLoading ? (
+                    <SpinningLoader />
+                  ) : _threads?.length ? (
+                    _threads?.map((thread) => {
+                      return (
+                        <View
+                          flex={1}
+                          width={"100%"}
+                        >
+                          <ChevronRight
+                            size={20}
+                            color={"$color"}
+                            cursor="pointer"
+                            position="absolute"
+                            t={0}
+                            r={0}
+                            z={10}
+                            onPress={() => {
+                              handleClick({ threadId: thread?.id });
+                            }}
+                          />
+                          <MessageCard
+                            thread={omit(thread, ["messages"])}
+                            handleClick={handleClick}
+                            message={thread.messages![0]}
+                          />
+                        </View>
+                      );
+                    })
+                  ) : (
+                    <YStack
+                      items={"center"}
+                      justify={"center"}
+                      gap={"$2"}
                     >
-                      <H6>Discussion</H6>
-                    </XStack>
-                    {threadsLoading ? (
-                      <SpinningLoader />
-                    ) : (
-                      _threads?.map((thread) => {
-                        return (
-                          <View
-                            flex={1}
-                            width={"100%"}
-                          >
-                            <ChevronRight
-                              size={20}
-                              color={"$color"}
-                              cursor="pointer"
-                              position="absolute"
-                              t={0}
-                              r={0}
-                              z={10}
-                              onPress={() => {
-                                handleClick({ threadId: thread?.id });
-                              }}
-                            />
-                            <MessageCard
-                              thread={omit(thread, ["messages"])}
-                              handleClick={handleClick}
-                              message={thread.messages![0]}
-                            />
-                          </View>
-                        );
-                      })
-                    )}
-                  </CardWrapper>
-                )}
+                      <Text fontSize={"$3"}>No threads yet. Start by creating one</Text>
+                      <OutlineButton
+                        size={"medium"}
+                        width={150}
+                        onPress={() => handleClick({ eventId: id })}
+                      >
+                        <Text>Start a thread</Text>
+                      </OutlineButton>
+                    </YStack>
+                  )}
+                </CardWrapper>
               </YStack>
             )
           )}
@@ -323,7 +355,6 @@ const EventDetails: React.FC = () => {
         snapPoints={[80]}
         defaultPosition={0}
         snapPointsMode="percent"
-        unmountChildrenWhenHidden
       >
         <Sheet.Overlay
           shadowColor={"$black1"}

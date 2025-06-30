@@ -1,4 +1,4 @@
-import React, { Dispatch, memo, Ref, RefObject, SetStateAction, useState } from "react";
+import React, { Dispatch, memo, Ref, RefObject, SetStateAction, useEffect, useState } from "react";
 import MessageView, { IMessageViewAddMessageProp, IMessageViewBaseProps } from "./MessageView";
 import { View } from "tamagui";
 import MessageInputBar from "@/components/MessageInputBar";
@@ -16,7 +16,7 @@ interface Props {
   sheetStack: Array<IMessageViewBaseProps>;
 }
 
-const MessageViewSheetContent = ({ messageViewRef, handleClick, handleSheetBack, sheetStack }: Props) => {
+const MessageViewSheetContent = ({ handleClick, handleSheetBack, sheetStack }: Props) => {
   const { id } = useLocalSearchParams();
 
   const { user: currentAuthenticatedUser } = useAuth();
@@ -51,7 +51,9 @@ const MessageViewSheetContent = ({ messageViewRef, handleClick, handleSheetBack,
         sendButtonCb={(data, onSuccess) => {
           // take the top most sheet data and based on that add message
           const topMostSheetData = sheetStack[sheetStack.length - 1];
-          const { parentId, threadId } = topMostSheetData;
+          const { parentId, threadId, eventId } = topMostSheetData;
+
+          const createNewThread = !threadId && eventId;
           const messageContent = {
             content: { text: data?.message, media: data?.mediaIds || [] }
           };
@@ -60,15 +62,16 @@ const MessageViewSheetContent = ({ messageViewRef, handleClick, handleSheetBack,
             userId: currentAuthenticatedUser?.id,
             parentId,
             threadId,
-            isEdited: false
+            isEdited: false,
+            eventId
           };
 
           socket.emit(
-            PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED,
+            createNewThread ? PLATFORM_SOCKET_EVENTS.THREAD_CREATED : PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED,
             newMessage,
-            ({ data, error }: { data: IMessageViewAddMessageProp; error: any }) => {
+            ({ error }: { data: IMessageViewAddMessageProp; error: any }) => {
               if (error) {
-                toastController.show(error?.message ?? "Something went wrong");
+                toastController.show(error ?? "Something went wrong");
               } else {
                 onSuccess?.();
               }

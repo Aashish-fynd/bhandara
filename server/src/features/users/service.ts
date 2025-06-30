@@ -138,7 +138,7 @@ class UserService {
 
       const results = await Promise.all(promises);
 
-      const updatedUser = (results[0] as any).dataValues ?? results[0];
+      const updatedUser = results[0].dataValues as IBaseUser;
 
       await this.deleteCache(id);
 

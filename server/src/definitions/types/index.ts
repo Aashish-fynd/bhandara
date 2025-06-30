@@ -61,12 +61,14 @@ export interface ILockHistory {
 export interface IBaseThread extends ITimeStamp {
   id: string;
   type: EThreadType;
-  status: EAccessLevel;
   visibility: EAccessLevel;
   lockHistory: ILockHistory[];
   parentId?: string | null;
   eventId: string;
   messages?: IMessage[];
+
+  createdBy: string;
+  creator: IBaseUser;
 }
 
 // Location Interface

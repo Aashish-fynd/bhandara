@@ -11,12 +11,15 @@ export const threadSchema = {
         ","
       )}`,
     },
-    status: {
+    createdBy: {
       type: "string",
-      enum: Object.values(EAccessLevel),
-      errorMessage: `Status must be one of ${Object.values(EThreadType).join(
-        ","
-      )}`,
+      format: "uuid",
+      errorMessage: "Creator is required",
+    },
+    eventId: {
+      type: "string",
+      format: "uuid",
+      errorMessage: "Event ID is required",
     },
     visibility: {
       type: "string",
@@ -44,7 +47,7 @@ export const threadSchema = {
       errorMessage: "Each lock event must have 'lockedBy' and 'lockedAt'",
     },
   },
-  required: ["type", "status", "visibility"],
+  required: ["type", "createdBy", "visibility"],
   additionalProperties: false,
   errorMessage: {
     type: "Thread data must be an object",
@@ -59,13 +62,6 @@ export const threadSchema = {
 export const updateSchema = {
   type: "object",
   properties: {
-    status: {
-      type: "string",
-      enum: Object.values(EAccessLevel),
-      errorMessage: `Status must be one of ${Object.values(EThreadType).join(
-        ","
-      )}`,
-    },
     visibility: {
       type: "string",
       enum: Object.values(EAccessLevel),
@@ -74,7 +70,7 @@ export const updateSchema = {
       ).join(",")}`,
     },
     lockHistory: {
-      type: "object",
+      type: ["object", "null"],
       properties: {
         lockedBy: {
           type: "string",

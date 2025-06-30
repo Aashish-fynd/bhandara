@@ -7,13 +7,12 @@ import { IBaseThread, ILockHistory } from "@/definitions/types";
 
 type ThreadAttributes = Omit<
   IBaseThread,
-  "createdAt" | "updatedAt" | "deletedAt" | "messages"
+  "createdAt" | "updatedAt" | "deletedAt" | "messages" | "creator"
 >;
 
 export class Thread extends Model<ThreadAttributes, ThreadAttributes> {
   declare id: string;
   declare type: EThreadType;
-  declare status: EAccessLevel;
   declare visibility: EAccessLevel;
   declare parentId?: string | null;
   declare eventId: string;
@@ -21,7 +20,10 @@ export class Thread extends Model<ThreadAttributes, ThreadAttributes> {
   declare createdAt: Date;
   declare updatedAt: Date;
   declare deletedAt?: Date;
+  declare createdBy: IBaseThread["createdBy"];
+
   declare messages?: any[];
+  declare creator?: IBaseThread["creator"];
 }
 
 Thread.init(
@@ -33,10 +35,6 @@ Thread.init(
     },
     type: {
       type: DataTypes.ENUM(...Object.values(EThreadType)),
-      allowNull: false,
-    },
-    status: {
-      type: DataTypes.ENUM(...Object.values(EAccessLevel)),
       allowNull: false,
     },
     visibility: {
@@ -52,6 +50,10 @@ Thread.init(
       references: { model: "Events", key: "id" },
     },
     lockHistory: { type: DataTypes.JSONB, defaultValue: {} },
+    createdBy: {
+      type: DataTypes.UUID,
+      references: { model: "Users", key: "id" },
+    },
   },
   {
     modelName: "Thread",

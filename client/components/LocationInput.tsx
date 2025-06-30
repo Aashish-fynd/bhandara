@@ -1,4 +1,4 @@
-import { MapPin } from "@tamagui/lucide-icons";
+import { MapPin, RotateCw } from "@tamagui/lucide-icons";
 import React, { useState } from "react";
 import { InputGroup } from "./Form";
 import { Text, Tooltip, useDebounce } from "tamagui";
@@ -15,11 +15,12 @@ import { isEmpty } from "@/utils";
 import { IAddress } from "@/definitions/types";
 import CustomTooltip from "./CustomTooltip";
 import { askForLocation } from "@/utils/location";
+import { CardWrapper } from "./ui/common-styles";
 
 type PartialAddress = Partial<IAddress> & { _location?: string };
 
 interface IProps {
-  existingLocation: PartialAddress | null;
+  existingLocation?: PartialAddress;
   setValue: (value: IAddress & { _location: string }) => void;
   control: Control<any>;
   errors: FieldErrors<IAddress & { _location: string }>;
@@ -85,8 +86,8 @@ const LocationInput = ({ existingLocation, setValue, control, errors, isViewOnly
   };
 
   const handleLocationGetPress = async () => {
-    await askForLocation(onLocationGet, () => {
-      toastController.show("Permission denied for location");
+    await askForLocation(onLocationGet, (data: any) => {
+      toastController.show(data?.message || "Permission denied for location");
     });
   };
 
@@ -97,9 +98,9 @@ const LocationInput = ({ existingLocation, setValue, control, errors, isViewOnly
       label="Location"
       placeHolder="Use your current location"
       rules={{ required: "Location is required" }}
-      error={errors._location}
+      error={errors._location?.message}
       containerProps={{
-        onPress: handleLocationGetPress,
+        onPress: existingLocation?._location ? undefined : handleLocationGetPress,
         cursor: isViewOnly ? "initial" : "pointer",
         pointerEvents: isViewOnly ? "none" : "auto"
       }}
@@ -110,19 +111,45 @@ const LocationInput = ({ existingLocation, setValue, control, errors, isViewOnly
         isLocationLoading ? (
           <SpinningLoader />
         ) : existingLocation?._location && !isViewOnly ? (
-          <CustomTooltip
-            trigger={
-              <SquareArrowOutUpRight
-                size={20}
-                onPress={handleEditLocation}
-              />
-            }
-            tooltipConfig={{
-              delay: 200
-            }}
-          >
-            <Text fontSize={"$2"}>Edit location</Text>
-          </CustomTooltip>
+          <>
+            <CustomTooltip
+              trigger={
+                <RotateCw
+                  size={16}
+                  onPress={handleLocationGetPress}
+                />
+              }
+              tooltipConfig={{
+                delay: 200
+              }}
+            >
+              <CardWrapper
+                rounded={"$3"}
+                p={"$2"}
+              >
+                <Text fontSize={"$2"}>Refresh location</Text>
+              </CardWrapper>
+            </CustomTooltip>
+
+            <CustomTooltip
+              trigger={
+                <SquareArrowOutUpRight
+                  size={16}
+                  onPress={handleEditLocation}
+                />
+              }
+              tooltipConfig={{
+                delay: 200
+              }}
+            >
+              <CardWrapper
+                rounded={"$3"}
+                p={"$2"}
+              >
+                <Text fontSize={"$2"}>Edit location</Text>
+              </CardWrapper>
+            </CustomTooltip>
+          </>
         ) : (
           <MapPin size={20} />
         )

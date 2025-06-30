@@ -114,7 +114,7 @@ export const InputGroup = ({
   containerProps
 }: {
   control: Control<any>;
-  rules: any;
+  rules?: Record<string, any>;
   error: any;
   placeHolder: string;
   name: string;

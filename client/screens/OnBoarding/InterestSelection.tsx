@@ -135,8 +135,8 @@ const InterestSelection = ({
   if (loading) {
     return (
       <View
-        height={"75%"}
-        width={"100%"}
+        height={300}
+        width={400}
         justify="center"
         items="center"
       >

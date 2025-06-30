@@ -3,16 +3,20 @@ export async function askForLocation(
   onLocationGetSuccess?: (location: Location.LocationObject) => Promise<void> | void,
   onLocationGetFailed?: (resp: Location.LocationPermissionResponse) => void
 ) {
-  const response = await Location.requestForegroundPermissionsAsync();
-  if (response.status !== "granted") {
-    onLocationGetFailed?.(response);
-    return;
+  try {
+    const response = await Location.requestForegroundPermissionsAsync();
+    if (response.status !== "granted") {
+      onLocationGetFailed?.(response);
+      return;
+    }
+
+    const location = await Location.getCurrentPositionAsync({});
+
+    if (onLocationGetSuccess) await onLocationGetSuccess(location);
+    return location;
+  } catch (error: any) {
+    onLocationGetFailed?.(error);
   }
-
-  const location = await Location.getCurrentPositionAsync({});
-
-  if (onLocationGetSuccess) await onLocationGetSuccess(location);
-  return location;
 }
 
 interface CoordPoint {

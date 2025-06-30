@@ -4,7 +4,7 @@ import logger from "@logger";
 import { requestContextMiddleware, socketUserParser } from "@middlewares";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { IncomingMessage } from "http";
-import { IBaseUser, IReaction } from "@definitions/types";
+import { IBaseUser } from "@definitions/types";
 import { PLATFORM_SOCKET_EVENTS } from "@constants";
 import http from "http";
 import {
@@ -18,10 +18,8 @@ import {
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
 import { setPlatformNamespace, emitSocketEvent } from "./emitter";
-import {
-  EAllowedReactionTables,
-  COMMON_EMOJIS,
-} from "@features/reactions/constants";
+import { EAllowedReactionTables } from "@features/reactions/constants";
+import { EAccessLevel, EThreadType } from "@definitions/enums";
 
 interface CustomSocket
   extends Socket<
@@ -325,6 +323,61 @@ export function initializeSocket(server: http.Server) {
           }
         }
       );
+
+      socket.on(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, async (request, cb) => {
+        try {
+          const { eventId, ...messageData } = request || {};
+
+          if (!eventId)
+            throw new BadRequestError(`EventId is required for new thread`);
+
+          const eventResponse = await eventService.getById(eventId);
+
+          if (isEmpty(eventResponse.data))
+            throw new NotFoundError("Event not found");
+
+          const newThread = await threadService.create({
+            eventId,
+            type: EThreadType.Discussion,
+            createdBy: socketUserId,
+            visibility: EAccessLevel.Public,
+          });
+
+          if (isEmpty(newThread.data))
+            throw new Error("Unable able to create thread");
+
+          messageData.threadId = newThread.data.id;
+
+          const message = await messageService.create(messageData);
+          const media = (message.data.content?.media || []) as string[];
+
+          if (!isEmpty(media)) {
+            const mediaData = await mediaService.getMediaByIds(media);
+            const populatedMedia = media.map((i) => mediaData.data[i]);
+            message.data.content.media = populatedMedia;
+          }
+
+          if (message.data) {
+            (message.data as any).thread = eventResponse.data;
+            (message.data as any).user = socket.request.user;
+          }
+
+          newThread.data.messages = [message.data];
+          newThread.data.creator = socket.request.user;
+
+          emitSocketEvent(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, {
+            data: { ...newThread.data, event: eventResponse.data },
+            error: null,
+          });
+          cb({ data: true });
+        } catch (error) {
+          logger.error(`Error sending new message`, error);
+          cb?.({
+            error: error?.message || "Something went wrong",
+            stack: error,
+          });
+        }
+      });
 
       socket.on(PLATFORM_SOCKET_EVENTS.DISCONNECT, async () => {});
     }

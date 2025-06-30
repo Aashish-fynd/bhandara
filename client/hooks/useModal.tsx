@@ -80,9 +80,6 @@ const createDialogContent = (
           z={199}
         />
         <Dialog.Content
-          width={400}
-          gap={"$4"}
-          bordered
           elevate
           elevation={"$4"}
           shadowColor={"$shadow1"}

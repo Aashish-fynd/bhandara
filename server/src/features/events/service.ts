@@ -1,6 +1,7 @@
 import { IBaseUser, IEvent, IPaginationParams } from "@/definitions/types";
 import ThreadsService from "../threads/service";
 import {
+  createRecord,
   deleteRecord,
   findAllWithPagination,
   runTransaction,
@@ -144,52 +145,12 @@ class EventService {
   }
 
   @MethodCacheSync<IEvent>({})
-  async createEvent(
-    {
-      body,
-      tagIds,
-      mediaIds,
-    }: {
-      body: Partial<IEvent>;
-      tagIds: string[];
-      mediaIds: string[];
-    },
-    populate?: boolean | string[]
-  ) {
-    const event = await validateEventCreate(body, (data) =>
-      runTransaction(async (tx) => {
-        const event = await Event.create(
-          { ...(data as any), tags: tagIds, media: mediaIds },
-          { transaction: tx }
-        );
+  async createEvent(body: Partial<IEvent>, populate?: boolean | string[]) {
+    const result = await validateEventCreate(body, (data) =>
+      createRecord(Event, data as any))
 
-        await Thread.bulkCreate(
-          [
-            {
-              type: EThreadType.QnA,
-              status: EAccessLevel.Public,
-              visibility: EAccessLevel.Public,
-              eventId: event.id,
-              lockHistory: [],
-            },
-            {
-              type: EThreadType.Discussion,
-              status: EAccessLevel.Public,
-              visibility: EAccessLevel.Public,
-              eventId: event.id,
-              lockHistory: [],
-            },
-          ],
-          { transaction: tx }
-        );
-
-        // tags and media are already stored on Event
-        return event;
-      })
-    );
-    let createdEvent = (event as any)?.data || event || null;
-    if (populate && createdEvent) {
-      createdEvent = await this.getById(createdEvent.id, populate);
+    if (populate) {
+      createdEvent = await this.getById(result.id, populate);
     }
     return createdEvent;
   }
@@ -407,7 +368,7 @@ class EventService {
             { threadId: t.id },
             { limit: 1 }
           );
-          t.messages = messages.items;
+          t.messages = messages.items || [];
         })
       );
     }

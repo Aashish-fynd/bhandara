@@ -1,28 +1,7 @@
-import { createAnimations } from "@tamagui/animations-react-native";
 import { createTamagui } from "tamagui";
 import { defaultConfig } from "@tamagui/config/v4";
 import { createInterFont } from "@tamagui/font-inter";
-
-const animations = createAnimations({
-  bouncy: {
-    type: "spring",
-    damping: 10,
-    mass: 0.9,
-    stiffness: 100,
-    duration: 100
-  },
-  lazy: {
-    type: "spring",
-    damping: 20,
-    stiffness: 60
-  },
-  quick: {
-    type: "spring",
-    damping: 20,
-    mass: 1.2,
-    stiffness: 250
-  }
-});
+import { animations } from "./animations";
 
 const headingFont = createInterFont({
   weight: {

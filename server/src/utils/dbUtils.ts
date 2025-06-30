@@ -74,7 +74,6 @@ export async function findAllWithPagination<T extends Model>(
   } as IPaginationParams;
 
   if (isCursorMode) {
-    delete paginationResult.total;
     paginationResult.next = hasNext
       ? rows[_pagination.limit][_pagination.sortBy]
       : null;
