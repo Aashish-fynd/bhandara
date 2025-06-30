@@ -68,7 +68,7 @@ export const deleteMessage = async (req: ICustomRequest, res: Response) => {
 export const getMessageById = async (req: ICustomRequest, res: Response) => {
   const { messageId } = req.params;
   const message = await messagesService.getById(messageId, true);
-  if (isEmpty(message.data)) throw new NotFoundError("Message not found");
+  if (isEmpty(message)) throw new NotFoundError("Message not found");
 
   return res.status(200).json(message);
 };

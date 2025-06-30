@@ -43,11 +43,11 @@ class MediaService {
 
   @MethodCacheSync<IMedia>()
   async getEventMedia(eventId: string, limit: number | null = null) {
-    const { data: events } = await findById(Event, eventId);
+    const events = await findById(Event, eventId);
     const mediaIds = (events[0]?.media || []) as string[];
-    if (!mediaIds.length) return { data: [], error: null };
+    if (!mediaIds.length) return [];
 
-    const { data } = await findAllWithPagination(
+    const data = await findAllWithPagination(
       Media,
       { id: mediaIds },
       { limit: limit ?? mediaIds.length }
@@ -57,17 +57,14 @@ class MediaService {
       const publicUrl = await this.getPublicUrl(item.url, item.storage.bucket);
       return {
         ...item,
-        publicUrl: publicUrl.data.signedUrl,
-        publicUrlExpiresAt: publicUrl.data.expiresAt,
+        publicUrl: publicUrl.signedUrl,
+        publicUrlExpiresAt: publicUrl.expiresAt,
       };
     });
 
     const publicUrls = await Promise.all(publicUrlPromises);
 
-    return {
-      data: publicUrls,
-      error: null,
-    };
+    return publicUrls;
   }
 
   async uploadFile({
@@ -127,17 +124,18 @@ class MediaService {
       bucket,
       paths: [path],
     });
-    if (error) return { error };
-    return { data: { path, deleted: true }, error: null };
+    if (error) throw error;
+    return { path, deleted: true };
   }
 
   @MethodCacheSync<IMedia>({
     cacheSetterWithExistingTTL: updateMediaCache,
   })
   async update<U extends Partial<IMedia>>(id: string, data: U) {
-    return validateMediaUpdate(data, (validatedData) =>
-      updateRecord(Media, id, validatedData)
+    const res = await validateMediaUpdate(data, (validatedData) =>
+      updateRecord(Media, { id }, validatedData)
     );
+    return res;
   }
 
   async getSignedUrlForUpload(insertData: {
@@ -192,7 +190,7 @@ class MediaService {
           row: creationData as IMedia,
           ...signedUrl.data,
         };
-      })
+    })
     );
   }
 
@@ -215,25 +213,26 @@ class MediaService {
 
   @MethodCacheSync<IMedia>()
   async create<U extends Partial<Omit<IMedia, "id" | "updatedAt">>>(data: U) {
-    return validateMediaCreate(data, (validatedData) => {
+    const res = await validateMediaCreate(data, (validatedData) => {
       const { path, ...rest } = validatedData;
       return createRecord(Media, {
         ...rest,
         path: appendUUIDToFilename(path),
       });
     });
+    return res;
   }
 
   @MethodCacheSync<IMedia>()
-  async getById(id: string): Promise<{ data: IMedia; error: any }> {
+  async getById(id: string): Promise<IMedia | null> {
     const res = await findById(Media, id);
-    if (res.data) {
+    if (res) {
       const publicUrl = await this.getPublicUrl(
-        res.data.url,
-        res.data.storage.bucket
+        res.url,
+        res.storage.bucket
       );
-      res.data.publicUrl = publicUrl.data.signedUrl;
-      res.data.publicUrlExpiresAt = publicUrl.data.expiresAt;
+      (res as any).publicUrl = publicUrl.signedUrl;
+      (res as any).publicUrlExpiresAt = publicUrl.expiresAt;
     }
     return res;
   }
@@ -251,11 +250,8 @@ class MediaService {
     });
 
     return {
-      data: {
-        signedUrl: publicUrl.data.signedUrl,
-        expiresAt: new Date(Date.now() + 3600 * 24 * 1000),
-      },
-      error: null,
+      signedUrl: publicUrl.data.signedUrl,
+      expiresAt: new Date(Date.now() + 3600 * 24 * 1000),
     };
   }
 
@@ -285,36 +281,30 @@ class MediaService {
       return acc;
     }, {} as Record<string, { signedUrl: string; expiresAt: Date }>);
 
-    return {
-      data: mediaWithPublicUrls,
-      error: null,
-    };
+    return mediaWithPublicUrls;
   }
 
   @MethodCacheSync<IMedia>({})
   async delete(id: string) {
     return runTransaction(async (tx) => {
       const media = await Media.findByPk(id, { transaction: tx });
-      if (!media) return { data: null, error: null };
+      if (!media) return null;
       await media.destroy({ transaction: tx });
       const deletionResult = await this.deleteFile(
         media.storage.bucket,
         media.url
       );
       logger.debug(`Deleted media ${id}`, { deletionResult });
-      return { data: media, error: null };
+      return media;
     }) as any;
   }
 
-  async getMediaByIds(ids: string[]): Promise<{
-    data: Record<string, IMedia>;
-    error: CustomError | null;
-  }> {
+  async getMediaByIds(ids: string[]): Promise<Record<string, IMedia>> {
     const filteredIds = new Set(ids.filter((id) => !!id));
 
-    if (filteredIds.size === 0) return { data: {}, error: null };
+    if (filteredIds.size === 0) return {};
 
-    const { data: res } = await findAllWithPagination(
+    const res = await findAllWithPagination(
       Media,
       { id: Array.from(filteredIds) },
       { limit: filteredIds.size }
@@ -382,32 +372,34 @@ class MediaService {
 
       await setMediaBulkCache(Object.values(mediaWithUrls));
 
-      return { data: mediaWithUrls, error: null };
+      return mediaWithUrls;
     }
-    return { data: {}, error: null };
+    return {};
   }
 
   async getEventMediaJunctionRow(eventId: string, mediaId: string) {
-    const { data: event } = await findById(Event, eventId);
+    const event = await findById(Event, eventId);
     const exists = (event[0]?.media || []).includes(mediaId);
-    return { data: exists ? { eventId, mediaId } : null, error: null };
+    return exists ? { eventId, mediaId } : null;
   }
 
   async createEventMediaJunctionRow(eventId: string, mediaId: string) {
-    const { data: event } = await findById(Event, eventId);
+    const event = await findById(Event, eventId);
     const mediaSet = new Set((event?.media || []) as unknown as string[]);
     mediaSet.add(mediaId);
-    return updateRecord(Event, eventId, {
+    const data = await updateRecord(Event, { id: eventId }, {
       media: Array.from(mediaSet) as any,
     });
+    return data;
   }
 
   async deleteEventMediaJunctionRow(eventId: string, mediaId: string) {
-    const { data: event } = await findById(Event, eventId);
+    const event = await findById(Event, eventId);
     const media = (event[0]?.media || []) as string[];
-    return updateRecord(Event, eventId, {
+    const data = await updateRecord(Event, { id: eventId }, {
       media: media.filter((m) => m !== mediaId) as any,
     });
+    return data;
   }
 }
 

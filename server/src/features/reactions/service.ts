@@ -35,44 +35,45 @@ class ReactionService {
   async create<U extends Partial<Omit<IReaction, "id" | "updatedAt">>>(
     data: U
   ) {
-    return validateReactionCreate(data, (validData) =>
+    const res = await validateReactionCreate(data, (validData) =>
       createRecord(Reaction, validData)
     );
+    return res;
   }
 
   async update<U extends Partial<IReaction>>(id: string, data: U) {
-    return validateReactionUpdate(data, (validData) =>
-      updateRecord(Reaction, id, validData)
+    const res = await validateReactionUpdate(data, (validData) =>
+      updateRecord(Reaction, { id }, validData)
     );
+    return res;
   }
 
   delete(id: string, skipGet = false) {
-    return deleteRecord(Reaction, id, skipGet);
+    return deleteRecord(Reaction, { id }, skipGet);
   }
 
   async getReactions(contentId: string, userId?: string) {
     const where: any = { contentId };
     if (userId) where.userId = userId;
-    const { data, error } = await findAllWithPagination(Reaction, where, {
+    const { data } = await findAllWithPagination(Reaction, where, {
       limit: 1000,
     });
-    if (!isEmpty(data.items)) {
-      const populatedData = await this.userService.getAndPopulateUserProfiles({
-        data: data.items,
+    let reactions = data.items || [];
+    if (!isEmpty(reactions)) {
+      reactions = await this.userService.getAndPopulateUserProfiles({
+        data: reactions,
         searchKey: "userId",
         populateKey: "user",
       });
-
-      return { data: populatedData, error: null };
     }
-    return { data: data.items || [], error };
+    return reactions;
   }
 
   async deleteByQuery(where: Partial<IReaction>) {
     const matchingRows = await Reaction.findAll({ where });
     const deletedRow = await Reaction.destroy({ where });
     logger.debug(`Deleted reaction rows: ${deletedRow}`);
-    return { data: matchingRows, error: null };
+    return matchingRows;
   }
 }
 

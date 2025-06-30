@@ -2,6 +2,7 @@ import { FindOptions, Model, ModelStatic, Op, Transaction } from "sequelize";
 import { IPaginationParams } from "@/definitions/types";
 import { getDBConnection } from "@connections/db";
 import logger from "@logger";
+import { NotFoundError } from "@exceptions";
 
 export interface PaginatedResult<T> {
   items: T[];
@@ -13,7 +14,7 @@ export async function findAllWithPagination<T extends Model>(
   pagination: Partial<IPaginationParams> = {},
   select?: string,
   modifyOptions?: (opts: FindOptions) => FindOptions
-): Promise<{ data: PaginatedResult<T>; error: any }> {
+): Promise<PaginatedResult<T>> {
   const {
     limit = 10,
     page = 1,
@@ -85,59 +86,60 @@ export async function findAllWithPagination<T extends Model>(
       : null;
   }
 
-  return {
-    data: { items, pagination: paginationResult },
-    error: null,
-  };
+  return { items, pagination: paginationResult };
 }
 
 export async function findById<T extends Model>(
   model: ModelStatic<T>,
   id: string
-): Promise<{ data: T | null; error: any }> {
+): Promise<T | null> {
   const res = await model.findByPk(id, { raw: true });
-  return { data: res as any, error: null };
+  return (res as any) || null;
 }
 
 export async function createRecord<T extends Model>(
   model: ModelStatic<T>,
   data: Partial<T>
-): Promise<{ data: T | null; error: any }> {
+): Promise<T> {
   const row = await model.create(data as any);
-  return { data: row.toJSON() as T, error: null };
+  return row.toJSON() as T;
 }
 
 export async function updateRecord<T extends Model>(
   model: ModelStatic<T>,
-  id: string,
+  where: Record<string, any>,
   data: Partial<T>
-): Promise<{ data: T | null; error: any }> {
-  const [, updatedResult] = await model.update(data as any, {
-    where: { id: id as any },
+): Promise<T> {
+  const [count, updatedResult] = await model.update(data as any, {
+    where: { ...where },
     returning: true,
   });
 
-  if (updatedResult.length > 1) {
-    logger.warn(`Found records ${updatedResult.length} matching id:${id}`);
+  if (count === 0) {
+    throw new NotFoundError(`${model.name} not found`);
   }
 
-  return { data: updatedResult[0], error: null };
+  if (count > 1) {
+    logger.warn(`Found records ${count} matching ${JSON.stringify(where)}`);
+  }
+
+  return updatedResult[0];
 }
 
 export async function deleteRecord<T extends Model>(
   model: ModelStatic<T>,
-  id: string,
+  where: Record<string, any>,
   skipGet = false
-): Promise<{ data: T | null | number; error: any }> {
+): Promise<T | number> {
   if (skipGet) {
-    const result = await model.destroy({ where: { id: id as any } });
-    return { data: result, error: null };
+    const result = await model.destroy({ where });
+    if (!result) throw new NotFoundError(`${model.name} not found`);
+    return result;
   }
-  const row = await model.findByPk(id);
-  if (!row) return { data: null, error: null };
+  const row = await model.findOne({ where });
+  if (!row) throw new NotFoundError(`${model.name} not found`);
   await (row as any).destroy();
-
-  return { data: row.toJSON() as any, error: null };
+  return row.toJSON() as any;
 }
 
 export async function runTransaction<T>(cb: (t: Transaction) => Promise<T>) {

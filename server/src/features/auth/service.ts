@@ -54,7 +54,7 @@ class Auth {
       },
     });
     if (error) throw error;
-    return { data };
+    return data;
   };
 
   signInWithEmail = async (email: string, password: string) => {
@@ -63,7 +63,7 @@ class Auth {
       password,
     });
     if (error) throw error;
-    return { data };
+    return data;
   };
 
   sendResetPasswordEmail = async (email: string, redirectTo: string) => {
@@ -93,7 +93,7 @@ class Auth {
       refresh_token: refreshToken,
     });
     if (error) throw error;
-    return { data };
+    return data;
   };
 
   createPlatformUser = async ({
@@ -116,10 +116,7 @@ class Auth {
     });
 
     if (!existingUser) {
-      const { data: userData, error: userError } =
-        await this.userService.getUserByEmail(user.email);
-
-      if (userError) throw new Error(userError.message);
+      const userData = await this.userService.getUserByEmail(user.email);
       existingUser = userData;
     }
 
@@ -164,11 +161,8 @@ class Auth {
         },
       };
 
-      const { data: newUser, error: newUserError } =
-        await this.userService.create(newUserData);
-
-      if (newUserError) throw new Error(newUserError.message);
-      existingUser = newUser?.[0];
+      const newUser = await this.userService.create(newUserData);
+      existingUser = (newUser as any)?.[0] ?? newUser;
     }
     existingUser = getSafeUser(existingUser);
     await setUserCache(existingUser.id, existingUser);

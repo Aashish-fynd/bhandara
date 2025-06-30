@@ -64,10 +64,11 @@ class UserService {
   @MethodCacheSync<IBaseUser>()
   async create(
     data: Partial<IBaseUser>
-  ): Promise<{ data: IBaseUser | null; error: any }> {
-    return validateUserCreate(data, (data) =>
+  ): Promise<IBaseUser | null> {
+    const res = await validateUserCreate(data, (data) =>
       createRecord(User, { ...data, mediaId: data.mediaId as string })
     );
+    return res;
   }
 
   async update(
@@ -79,8 +80,8 @@ class UserService {
       }
     >
   ) {
-    return validateUserUpdate(data, async (validData) => {
-      const { data: userData } = await this._getByIdNoCache(id);
+    const updated = await validateUserUpdate(data, async (validData) => {
+      const userData = await this._getByIdNoCache(id);
 
       if (isEmpty(userData)) throw new NotFoundError("User not found");
 
@@ -117,15 +118,13 @@ class UserService {
 
       const isUsernameChanged = username && username !== userData.username;
       if (isUsernameChanged) {
-        const { data: usernameData, error: usernameError } =
-          await this.getUserByUsername(username);
-        if (usernameError) throw new BadRequestError(usernameError.message);
+      const usernameData = await this.getUserByUsername(username);
         if (!isEmpty(usernameData.items))
           throw new BadRequestError("Username already exists");
       }
 
       const promises: Promise<any>[] = [
-        updateRecord(User, id, {
+        updateRecord(User, { id }, {
           ...rest,
           meta: newMeta,
           username,
@@ -139,33 +138,28 @@ class UserService {
 
       const results = await Promise.all(promises);
 
-      const updatedUser = results[0].data[0].dataValues as IBaseUser;
+      const updatedUser = (results[0] as any).dataValues ?? results[0];
 
       await this.deleteCache(id);
 
       if (rest.mediaId) {
-        updatedUser.media = results[1].data;
+        updatedUser.media = results[1];
       }
-
-      return {
-        data: updatedUser,
-        error: results[0]?.error || results[1]?.error,
-      };
+      return updatedUser;
     });
+    return updated;
   }
 
   @MethodCacheSync<IBaseUser>({})
-  async getById(id: string): Promise<{ data: IBaseUser; error: any }> {
-    const { data, error } = await findById(User, id);
-    if (error) throw error;
+  async getById(id: string): Promise<IBaseUser | null> {
+    const data = await findById(User, id);
+    if (!data) return null;
     if (data.mediaId) {
-      const { data: mediaData, error: mediaError } =
-        await this.mediaService.getById(data.mediaId as string);
-      if (mediaError) throw mediaError;
-      data.media = mediaData;
+      const media = await this.mediaService.getById(data.mediaId as string);
+      (data as any).media = media;
     }
 
-    return { data, error: null };
+    return data;
   }
 
   @MethodCacheSync<IBaseUser>({
@@ -173,9 +167,9 @@ class UserService {
     cacheSetter: setUserCacheByEmail,
   })
   async getUserByEmail(email: string) {
-    const { data } = await findAllWithPagination(User, { email }, { limit: 1 });
-    if (data.items.length === 0) return { data: null, error: null };
-    return { data: data.items[0], error: null };
+    const data = await findAllWithPagination(User, { email }, { limit: 1 });
+    if (data.items.length === 0) return null;
+    return data.items[0];
   }
 
   @MethodCacheSync<IBaseUser>({
@@ -190,7 +184,7 @@ class UserService {
     cacheDeleter: deleteAllUserCache,
   })
   delete(id: string) {
-    return deleteRecord(User, id);
+    return deleteRecord(User, { id });
   }
 
   @MethodCacheSync<ITag[]>({
@@ -200,24 +194,21 @@ class UserService {
   })
   async getUserInterests(id: string) {
     const user = await this.getById(id);
-    if (isEmpty(user)) throw new NotFoundError("User not found");
+    if (!user) throw new NotFoundError("User not found");
 
-    const { interests } = user.data.meta;
+    const { interests } = user.meta;
 
-    if (isEmpty(interests)) return { data: [], error: null };
+    if (isEmpty(interests)) return [];
 
     const tags = await this.tagService.getAll({ id: interests });
 
-    return { data: tags.data.items, error: tags.error };
+    return tags.items;
   }
 
   async getUserProfiles(
     ids: string[],
     transformerFunction?: (user: IBaseUser) => Record<string, any>
-  ): Promise<{
-    data: Record<string, IBaseUser>;
-    error: any;
-  }> {
+  ): Promise<Record<string, IBaseUser>> {
     let fetchedUsers = await bulkGetUserCache(ids);
 
     if (fetchedUsers.length !== ids.length) {
@@ -229,14 +220,12 @@ class UserService {
 
       const toFetchIds = Array.from(usersToFetch);
 
-      const { data: users, error: usersError } = await this.getAll(
+      const { items: users } = await this.getAll(
         { id: toFetchIds },
         { limit: toFetchIds.length }
       );
-
-      if (usersError) throw usersError;
-      await bulkSetUserCache(users.items);
-      fetchedUsers = [...fetchedUsers, ...users.items];
+      await bulkSetUserCache(users);
+      fetchedUsers = [...fetchedUsers, ...users];
     }
 
     const mediaIds = fetchedUsers.reduce((acc, user) => {
@@ -244,7 +233,7 @@ class UserService {
       return acc;
     }, [] as string[]);
 
-    const { data: mediaData } = await this.mediaService.getMediaByIds(mediaIds);
+    const mediaData = await this.mediaService.getMediaByIds(mediaIds);
 
     const safeUsers = fetchedUsers.reduce((acc, user) => {
       acc[user.id] = getSafeUser(
@@ -259,7 +248,7 @@ class UserService {
       return acc;
     }, {} as Record<string, IBaseUser>);
 
-    return { data: safeUsers, error: null };
+    return safeUsers;
   }
 
   /**
@@ -281,11 +270,7 @@ class UserService {
     transformerFunction?: (user: IBaseUser) => Record<string, any>;
   }): Promise<Array<T>> {
     const ids = data.map((item) => item[searchKey]);
-    const { data: users, error: usersError } = await this.getUserProfiles(
-      ids,
-      transformerFunction
-    );
-    if (usersError) throw usersError;
+    const users = await this.getUserProfiles(ids, transformerFunction);
 
     return data.map((item) => {
       const user = users[item[searchKey]];
