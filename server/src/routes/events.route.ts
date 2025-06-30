@@ -44,12 +44,23 @@ import {
 } from "@features/events/controller";
 const router = Router();
 
+router.use([sessionParser, userParser]);
+
 /**
  * @openapi
  * /events:
  *   get:
  *     tags: [Events]
  *     summary: List events
+ *     responses:
+ *       200:
+ *         description: List of events
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Event'
  *   post:
  *     tags: [Events]
  *     summary: Create event
@@ -59,9 +70,14 @@ const router = Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/Event'
+ *     responses:
+ *       201:
+ *         description: Created event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
  */
-router.use([sessionParser, userParser]);
-
 router.route("/").get(asyncHandler(getEvents)).post(asyncHandler(createEvent));
 
 router
@@ -78,6 +94,13 @@ router
    *         required: true
    *         schema:
    *           type: string
+   *     responses:
+   *       200:
+   *         description: Event data
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Event'
    *   put:
    *     tags: [Events]
    *     summary: Update event
@@ -87,9 +110,23 @@ router
    *         application/json:
    *           schema:
    *             $ref: '#/components/schemas/Event'
+   *     responses:
+   *       200:
+   *         description: Updated event
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Event'
    *   delete:
    *     tags: [Events]
    *     summary: Delete event
+   *     responses:
+   *       200:
+   *         description: Deleted event
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Event'
    */
   .get([validateParams(["eventId"])], asyncHandler(getEventById))
   .put([validateParams(["eventId"])], asyncHandler(updateEvent))
@@ -98,7 +135,7 @@ router
 /**
  * @openapi
  * /events/{eventId}/tags/{tagId}/associate:
- *   post:
+ *   patch:
  *     tags: [Events]
  *     summary: Associate tag to event
  *     parameters:
@@ -115,8 +152,12 @@ router
  *     responses:
  *       201:
  *         description: Tag associated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tag'
  */
-router.post(
+router.patch(
   "/:eventId/tags/:tagId/associate",
   [validateParams(["eventId", "tagId"])],
   asyncHandler(createEventTag)
@@ -197,6 +238,7 @@ router.get(
  *         description: Verification result
  */
 router.post("/:eventId/verify", asyncHandler(verifyEvent));
+
 /**
  * @openapi
  * /events/{eventId}/{action}:
@@ -228,7 +270,7 @@ router.get(
 /**
  * @openapi
  * /events/{eventId}/media/{mediaId}/associate:
- *   get:
+ *   patch:
  *     tags: [Events]
  *     summary: Associate media with event
  *     parameters:
@@ -245,8 +287,12 @@ router.get(
  *     responses:
  *       200:
  *         description: Media associated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
  */
-router.get(
+router.patch(
   "/:eventId/media/:mediaId/associate",
   [validateParams(["eventId", "mediaId"])],
   asyncHandler(associateEventMedia)
