@@ -54,3 +54,13 @@ export const getUserEvents = async (
   );
   return res.data;
 };
+
+export const verifyEvent = async (
+  eventId: string,
+  currentCoordinates: { latitude: number; longitude: number }
+): Promise<IBaseResponse<boolean>> => {
+  const res = await axiosClient.post(`/events/${eventId}/verify`, {
+    currentCoordinates
+  });
+  return res.data;
+};
