@@ -13,6 +13,11 @@ import {
   IReaction,
 } from "@definitions/types";
 
+/**
+ * Sequelize model representing an event. Complex fields like location and
+ * participants are stored as JSONB columns.
+ */
+
 // Create a type that makes timestamp fields optional for model attributes
 type EventAttributes = Omit<IEvent, "createdAt" | "updatedAt" | "deletedAt">;
 
