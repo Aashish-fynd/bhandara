@@ -9,6 +9,7 @@ import {
   updateRecord,
 } from "@utils/dbUtils";
 import SupabaseService from "@supabase";
+import CloudinaryService from "@/cloudinary";
 import { validateMediaCreate, validateMediaUpdate } from "./validation";
 import { MEDIA_BUCKET_CONFIG } from "./constants";
 import { Media } from "./model";
@@ -36,6 +37,7 @@ class MediaService {
   private readonly setCache = setMediaCache;
   private readonly deleteCache = deleteMediaCache;
   private readonly _supabaseService = new SupabaseService();
+  private readonly _cloudinaryService = new CloudinaryService();
 
   async _getByIdNoCache(id: string) {
     return findById(Media, id);
@@ -54,7 +56,11 @@ class MediaService {
     );
 
     const publicUrlPromises = (data?.items || []).map(async (item) => {
-      const publicUrl = await this.getPublicUrl(item.url, item.storage.bucket);
+      const publicUrl = await this.getPublicUrl(
+        item.url,
+        item.storage.bucket,
+        item.storage.provider
+      );
       return {
         ...item,
         publicUrl: publicUrl.signedUrl,
@@ -72,17 +78,62 @@ class MediaService {
     bucket,
     file,
     mimeType,
+    provider = EMediaProvider.Supabase,
     options,
   }: {
     file: string;
     path: string;
     bucket: string;
     mimeType: string;
+    provider?: EMediaProvider;
     options?: Record<string, any>;
   }) {
     return validateMediaCreate(
-      { path, bucket, file, mimeType, options },
+      { path, bucket, mimeType, options, provider },
       async () => {
+        if (provider === EMediaProvider.Cloudinary) {
+          const { data, error } = await this._cloudinaryService.uploadFile({
+            bucket,
+            base64FileData: file,
+            mimeType,
+            path: getUniqueFilename(path),
+            options,
+          });
+
+          if (error) {
+            return { error };
+          }
+
+          const { public_id, asset_id, secure_url, url, ...rest } = data;
+
+          let { name: fileName, ...restOptions } = options || {};
+
+          fileName ??= public_id.split("/").pop() || "";
+
+          const creation = await this.create({
+            id: asset_id,
+            url: public_id,
+            storage: {
+              metadata: rest,
+              provider: EMediaProvider.Cloudinary,
+              bucket,
+            },
+            metadata: { ...data, ...restOptions?.metadata },
+            mimeType,
+            name: fileName,
+            ...restOptions,
+          });
+
+          if (creation.data) {
+            (creation.data as any).publicUrl = secure_url;
+            (creation.data as any).publicUrlExpiresAt = new Date(
+              Date.now() + 3600 * 24 * 1000
+            );
+          }
+
+          return creation;
+        }
+
         const { data, error } = await this._supabaseService.uploadFile({
           bucket,
           base64FileData: file,
@@ -119,7 +170,17 @@ class MediaService {
     );
   }
 
-  async deleteFile(bucket: string, path: string) {
+  async deleteFile(
+    bucket: string,
+    path: string,
+    provider: EMediaProvider = EMediaProvider.Supabase
+  ) {
+    if (provider === EMediaProvider.Cloudinary) {
+      const { error } = await this._cloudinaryService.deleteFile(path);
+      if (error) throw error;
+      return { path, deleted: true };
+    }
+
     const { error } = await this._supabaseService.deleteFile({
       bucket,
       paths: [path],
@@ -143,8 +204,13 @@ class MediaService {
     path: string;
     options: Record<string, any>;
     mimeType: string;
+    provider?: EMediaProvider;
   }) {
-    return validateMediaCreate(insertData, (validatedData) =>
+    const dataWithProvider = {
+      provider: insertData.provider || EMediaProvider.Supabase,
+      ...insertData,
+    };
+    return validateMediaCreate(dataWithProvider, (validatedData) =>
       runTransaction(async (tx) => {
         const { name: fileName, ...restOptions } = validatedData.options || {};
 
@@ -166,7 +232,7 @@ class MediaService {
           storage: {
             metadata: {},
             bucket,
-            provider: EMediaProvider.Supabase,
+            provider: dataWithProvider.provider,
           },
           metadata: { ...restOptions?.metadata },
           mimeType: insertData.mimeType,
@@ -180,10 +246,18 @@ class MediaService {
           raw: true,
         });
 
-        const signedUrl = await this._supabaseService.getSignedUrlForUpload({
-          path,
-          bucket,
-        });
+        let signedUrl: any;
+        if (dataWithProvider.provider === EMediaProvider.Cloudinary) {
+          signedUrl = this._cloudinaryService.getSignedUploadParams({
+            bucket,
+            path,
+          });
+        } else {
+          signedUrl = await this._supabaseService.getSignedUrlForUpload({
+            path,
+            bucket,
+          });
+        }
 
         delete signedUrl.data.token;
         return {
@@ -227,7 +301,11 @@ class MediaService {
   async getById(id: string): Promise<IMedia | null> {
     const res = await findById(Media, id);
     if (res) {
-      const publicUrl = await this.getPublicUrl(res.url, res.storage.bucket);
+      const publicUrl = await this.getPublicUrl(
+        res.url,
+        res.storage.bucket,
+        res.storage.provider
+      );
       (res as any).publicUrl = publicUrl.signedUrl;
       (res as any).publicUrlExpiresAt = publicUrl.expiresAt;
     }
@@ -239,7 +317,19 @@ class MediaService {
     cacheGetter: getMediaPublicUrlCache,
     customCacheKey: (path: string) => get32BitMD5Hash(path),
   })
-  async getPublicUrl(path: string, bucket: string) {
+  async getPublicUrl(
+    path: string,
+    bucket: string,
+    provider: EMediaProvider = EMediaProvider.Supabase
+  ) {
+    if (provider === EMediaProvider.Cloudinary) {
+      const { data } = await this._cloudinaryService.getPublicUrl(path);
+      return {
+        signedUrl: data.signedUrl,
+        expiresAt: new Date(Date.now() + 3600 * 24 * 1000),
+      };
+    }
+
     const publicUrl = await this._supabaseService.getPublicUrl({
       bucket,
       path,
@@ -255,8 +345,27 @@ class MediaService {
   async getBulkPublicUrls(
     paths: string[],
     bucket: string,
-    expiresIn: number = CACHE_NAMESPACE_CONFIG.Media.ttl
+    expiresIn: number = CACHE_NAMESPACE_CONFIG.Media.ttl,
+    provider: EMediaProvider = EMediaProvider.Supabase
   ) {
+    if (provider === EMediaProvider.Cloudinary) {
+      const urls = await Promise.all(
+        paths.map(async (p) => {
+          const { data } = await this._cloudinaryService.getPublicUrl(p);
+          return { path: p, signedUrl: data.signedUrl };
+        })
+      );
+      const publicUrls = urls.map((u) => ({ ...u }));
+      const publicUrlsWithExpiresAt = publicUrls.map((url) => ({
+        ...url,
+        expiresAt: new Date(Date.now() + expiresIn * 1000),
+      }));
+      return publicUrlsWithExpiresAt.reduce((acc, url) => {
+        acc[url.path] = url;
+        return acc;
+      }, {} as Record<string, { signedUrl: string; expiresAt: Date }>);
+    }
+
     const { data: publicUrls, error } =
       await this._supabaseService.getBulkPublicUrls({
         bucket,
@@ -289,7 +398,8 @@ class MediaService {
       await media.destroy({ transaction: tx });
       const deletionResult = await this.deleteFile(
         media.storage.bucket,
-        media.url
+        media.url,
+        media.storage.provider
       );
       logger.debug(`Deleted media ${id}`, { deletionResult });
       return media;
@@ -311,19 +421,26 @@ class MediaService {
       // split according to buckets
       const bucketPathsMapping = (mediaData.data as IMedia[]).reduce(
         (acc, media) => {
-          if (!acc[media.storage.bucket]) {
-            acc[media.storage.bucket] = [];
+          const key = `${media.storage.provider}:${media.storage.bucket}`;
+          if (!acc[key]) {
+            acc[key] = [];
           }
-          acc[media.storage.bucket].push(media.url);
+          acc[key].push(media.url);
           return acc;
         },
         {} as Record<string, string[]>
       );
 
       const bucketGroupedPublicUrls = await Promise.all(
-        Object.entries(bucketPathsMapping).map(([bucket, paths]) =>
-          this.getBulkPublicUrls(paths, bucket)
-        )
+        Object.entries(bucketPathsMapping).map(([key, paths]) => {
+          const [provider, bucket] = key.split(":");
+          return this.getBulkPublicUrls(
+            paths,
+            bucket,
+            CACHE_NAMESPACE_CONFIG.Media.ttl,
+            provider as EMediaProvider
+          );
+        })
       );
 
       const publicUrls = bucketGroupedPublicUrls.reduce(
