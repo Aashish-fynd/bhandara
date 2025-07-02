@@ -55,7 +55,7 @@ class ReactionService {
   async getReactions(contentId: string, userId?: string) {
     const where: any = { contentId };
     if (userId) where.userId = userId;
-    const { data } = await findAllWithPagination(Reaction, where, {
+    const data = await findAllWithPagination(Reaction, where, {
       limit: 1000,
     });
     let reactions = data.items || [];

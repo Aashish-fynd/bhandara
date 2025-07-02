@@ -136,7 +136,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
         </XStack>
 
         <XStack
-          flex={1}
+          flex={+(typeof event.capacity === "number")}
           justify={"space-between"}
         >
           {/* organizer info */}

@@ -4,16 +4,10 @@ import {
   createRecord,
   deleteRecord,
   findAllWithPagination,
-  runTransaction,
   updateRecord,
 } from "@utils/dbUtils";
 import { Op } from "sequelize";
-import {
-  EAccessLevel,
-  EEventParticipantStatus,
-  EEventStatus,
-  EThreadType,
-} from "@/definitions/enums";
+import { EEventParticipantStatus, EEventStatus } from "@/definitions/enums";
 import TagService from "../tags/service";
 import MediaService from "../media/service";
 import UserService from "../users/service";
@@ -66,14 +60,24 @@ class EventService {
 
   private async populateEvent(
     event: IEvent,
-    fields: string[]
+    populate?: boolean | string[]
   ): Promise<IEvent> {
     const promises: Record<string, Promise<any>> = {};
+    let fields: string[] = [];
+
+    if (populate) {
+      fields =
+        populate === true
+          ? this.populateFields
+          : this.populateFields.filter((f) =>
+              (populate as string[]).includes(f)
+            );
+    }
 
     fields.forEach((field) => {
       switch (field) {
         case "tags":
-          promises.tags = this.tagService.getAllEventTags(event.id);
+          promises.tags = this.tagService.getAllEventTags(null, event);
           break;
         case "media":
           promises.media = this.mediaService.getEventMedia(event.id);
@@ -108,53 +112,40 @@ class EventService {
       resolved[key] = res.status === "fulfilled" ? res.value : null;
     });
 
-    if (fields.includes("tags")) event.tags = resolved.tags?.data || [];
-    if (fields.includes("media")) event.media = resolved.media?.data || [];
-    if (fields.includes("creator"))
-      event.creator = resolved.creator?.data || null;
+    if (fields.includes("tags")) event.tags = resolved.tags || [];
+    if (fields.includes("media")) event.media = resolved.media || [];
+    if (fields.includes("creator")) event.creator = resolved.creator || null;
     if (fields.includes("participants"))
       event.participants = resolved.participants || [];
     if (fields.includes("verifiers"))
       event.verifiers = resolved.verifiers || [];
     if (fields.includes("reactions"))
-      event.reactions = resolved.reactions?.data || [];
+      event.reactions = resolved.reactions || [];
 
     return event as any;
   }
 
   @MethodCacheSync<IEvent>({})
-  async getById(id: string, populate?: boolean | string[]) {
+  async getById(id: string) {
     const data = await Event.findByPk(id, { raw: true });
     if (!data) return null;
-
-    if (populate) {
-      const fields =
-        populate === true
-          ? this.populateFields
-          : this.populateFields.filter((f) =>
-              (populate as string[]).includes(f)
-            );
-      const populated = await this.populateEvent(data as IEvent, fields);
-      return populated;
-    }
 
     return data as IEvent;
   }
 
   async getEventData(id: string) {
-    return this.getById(id, true);
+    const event = await this.getById(id);
+    return await this.populateEvent(event, true);
   }
 
   @MethodCacheSync<IEvent>({})
-  async createEvent(body: Partial<IEvent>, populate?: boolean | string[]) {
+  async createEvent(body: Partial<IEvent>) {
     if (!body.status) body.status = EEventStatus.Draft;
-    const result = await validateEventCreate(body, (data) =>
-      createRecord(Event, data as any))
+    let result = await validateEventCreate(body, (data) =>
+      createRecord(Event, data as any)
+    );
 
-    if (populate) {
-      createdEvent = await this.getById(result.id, populate);
-    }
-    return createdEvent;
+    return result;
   }
 
   @MethodCacheSync<IEvent>({})
@@ -163,18 +154,18 @@ class EventService {
     data: U,
     populate?: boolean | string[]
   ) {
-    const { data: existing } = await this.getById(id);
+    const existing = await this.getById(id);
     if (existing && existing.status === EEventStatus.Cancelled) {
-      throw new BadRequestError('Cannot update a cancelled event');
+      throw new BadRequestError("Cannot update a cancelled event");
     }
     const result = await validateEventUpdate(data, (data) =>
-      updateRecord(Event, {id}, data)
+      updateRecord(Event, { id }, data)
     );
-    let eventData = (updated as any)?.[0] ?? updated;
+    let eventData = result as any;
     if (populate && eventData) {
-      eventData = await this.getById(id, populate);
+      eventData = await this.populateEvent(eventData, populate);
     }
-    return eventData as any;
+    return eventData;
   }
 
   async getAll(
@@ -190,7 +181,7 @@ class EventService {
       await Promise.all(
         data.items.map(async (event) => {
           const mediaPromise = this.mediaService.getEventMedia(event.id, 3);
-          const tagsPromise = this.tagService.getAllEventTags(event.id);
+          const tagsPromise = this.tagService.getAllEventTags(null, event);
           const participantsPromise =
             this.userService.getAndPopulateUserProfiles({
               data: event.participants,
@@ -230,9 +221,13 @@ class EventService {
 
   @MethodCacheSync<IEvent>({})
   async cancel(id: string) {
-    const result = await updateRecord(Event, id, {
-      status: EEventStatus.Cancelled,
-    });
+    const result = await updateRecord(
+      Event,
+      { id },
+      {
+        status: EEventStatus.Cancelled,
+      }
+    );
     await this.deleteCache(id);
     return result;
   }
@@ -361,8 +356,7 @@ class EventService {
       this.mediaService.getEventMediaJunctionRow(eventId, mediaId),
     ]);
 
-    if (!event || !media)
-      throw new NotFoundError("Event or media not found");
+    if (!event || !media) throw new NotFoundError("Event or media not found");
 
     if (eventMedia)
       throw new BadRequestError("Media is already associated to this event");
@@ -375,10 +369,8 @@ class EventService {
   }
 
   async getThreads(eventId: string, pagination: IPaginationParams) {
-    const { items, pagination: threadPagination } = await this.threadService.getAll(
-      { eventId },
-      pagination
-    );
+    const { items, pagination: threadPagination } =
+      await this.threadService.getAll({ eventId }, pagination);
     let threads = items;
     if (!isEmpty(threads)) {
       await Promise.all(

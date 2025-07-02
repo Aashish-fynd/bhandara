@@ -29,12 +29,12 @@ const sessionParser = async (
   // check if session is expired if expired then refresh the token
   if (new Date(session.expiresAt) < new Date()) {
     const newSession = await authService.refreshSession(session.refreshToken);
-    session.accessToken = newSession.data.session.access_token;
-    session.refreshToken = newSession.data.session.refresh_token;
+    session.accessToken = newSession.session.access_token;
+    session.refreshToken = newSession.session.refresh_token;
     session.expiresAt = new Date(
-      new Date(0).setUTCSeconds(newSession.data.session.expires_at)
+      new Date(0).setUTCSeconds(newSession.session.expires_at)
     ).toISOString();
-    session.expiresIn = newSession.data.session.expires_in;
+    session.expiresIn = newSession.session.expires_in;
 
     const res = await updateUserSessionCache(jwtCookie, session);
     if (res !== "OK")

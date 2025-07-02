@@ -44,10 +44,7 @@ function compileSchema(schemaName: string, schema: object): ValidateFunction {
 export const validateSchema = (schemaName: string, schema: object) => {
   const validate = compileSchema(schemaName, schema);
 
-  return <T, R>(
-    data: T,
-    callback: (validData: T) => R
-  ): R | { data: null; error: any } => {
+  return <T, R>(data: T, callback: (validData: T) => R): R => {
     const isValid = validate(data);
 
     if (!isValid) {

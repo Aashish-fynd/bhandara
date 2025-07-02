@@ -55,12 +55,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const { user, session } = res.data;
       if (user && session) {
         await setAuthState(user, session);
-      } else {
-        await logout();
       }
     } catch (error) {
       console.error("Failed to check user session:", error);
-      await logout();
     } finally {
       setIsLoading(false);
     }

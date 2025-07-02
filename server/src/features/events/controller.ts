@@ -6,6 +6,7 @@ import { isEmpty } from "@utils";
 import TagService from "@features/tags/service";
 import { emitSocketEvent } from "@socket/emitter";
 import { PLATFORM_SOCKET_EVENTS } from "@constants";
+import { EEventStatus } from "@definitions/enums";
 
 const eventService = new EventService();
 const tagService = new TagService();
@@ -19,28 +20,28 @@ export const getEvents = async (
   if (createdBy) where.createdBy = createdBy;
   if (status) {
     const statuses = (status as string)
-      .split(',')
+      .split(",")
       .filter((s) => Object.values(EEventStatus).includes(s as EEventStatus));
     if (statuses.length) where.status = statuses;
   }
   const events = await eventService.getAll(where, req.pagination);
-  return res.status(200).json(events);
+  return res.status(200).json({ data: events, error: null });
 };
 
 export const getEventById = async (req: ICustomRequest, res: Response) => {
   const { eventId } = req.params;
 
-  const event = await eventService.getById(eventId, true);
+  const event = await eventService.getEventData(eventId);
 
   if (isEmpty(event)) throw new NotFoundError("Event not found");
 
-  return res.status(200).json(event);
+  return res.status(200).json({ data: event, error: null });
 };
 
 export const createEvent = async (req: ICustomRequest, res: Response) => {
-  const event = await eventService.createEvent(req.body, false);
-  emitSocketEvent(PLATFORM_SOCKET_EVENTS.EVENT_CREATED, event);
-  return res.status(201).json(event);
+  const event = await eventService.createEvent(req.body);
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.EVENT_CREATED, { data: event });
+  return res.status(201).json({ data: event, error: null });
 };
 
 export const updateEvent = async (req: ICustomRequest, res: Response) => {
@@ -49,7 +50,7 @@ export const updateEvent = async (req: ICustomRequest, res: Response) => {
     data: { id: req.params.id, ...req.body },
     error: null,
   });
-  return res.status(200).json(event);
+  return res.status(200).json({ data: event, error: null });
 };
 
 export const deleteEvent = async (req: ICustomRequest, res: Response) => {
@@ -62,21 +63,21 @@ export const deleteEvent = async (req: ICustomRequest, res: Response) => {
     error: null,
   });
 
-  return res.status(200).json(event);
+  return res.status(200).json({ data: event, error: null });
 };
 
 export const createEventTag = async (req: ICustomRequest, res: Response) => {
   const { eventId, tagId } = req.params;
 
   const tag = await tagService.associateTagToEvent(eventId, tagId);
-  return res.status(201).json(tag);
+  return res.status(201).json({ data: tag, error: null });
 };
 
 export const deleteEventTag = async (req: ICustomRequest, res: Response) => {
   const { eventId, tagId } = req.params;
 
   const tag = await tagService.dissociateTagFromEvent(eventId, tagId);
-  return res.status(200).json(tag);
+  return res.status(200).json({ data: tag, error: null });
 };
 
 export const eventJoinLeaveHandler = async (
@@ -88,7 +89,7 @@ export const eventJoinLeaveHandler = async (
     req.params.eventId,
     req.params.action as "join" | "leave"
   );
-  return res.status(200).json(event);
+  return res.status(200).json({ data: event, error: null });
 };
 
 export const verifyEvent = async (req: ICustomRequest, res: Response) => {
@@ -102,7 +103,7 @@ export const verifyEvent = async (req: ICustomRequest, res: Response) => {
     req.params.eventId,
     currentCoordinates
   );
-  return res.status(200).json(event);
+  return res.status(200).json({ data: event, error: null });
 };
 
 export const associateEventMedia = async (
@@ -112,14 +113,14 @@ export const associateEventMedia = async (
   const { eventId, mediaId } = req.params;
 
   const event = await eventService.associateMediaToEvent(eventId, mediaId);
-  return res.status(200).json(event);
+  return res.status(200).json({ data: event, error: null });
 };
 
 export const deleteEventMedia = async (req: ICustomRequest, res: Response) => {
   const { eventId, mediaId } = req.params;
 
   const event = await eventService.deleteEventMedia(eventId, mediaId);
-  return res.status(200).json(event);
+  return res.status(200).json({ data: event, error: null });
 };
 
 export const getEventThreads = async (
@@ -129,5 +130,5 @@ export const getEventThreads = async (
   const { eventId } = req.params;
   const threads = await eventService.getThreads(eventId, req.pagination);
 
-  return res.status(200).json(threads);
+  return res.status(200).json({ data: threads, error: null });
 };

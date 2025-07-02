@@ -18,10 +18,19 @@ export const DialogContent = styled(Dialog.Content, {
 });
 
 export const PopoverContent = styled(Popover.Content, {
-  enterStyle: { y: -10, opacity: 0 },
-  exitStyle: { y: -10, opacity: 0 },
-  bg: "transparent",
   elevate: true,
+  bordered: true,
+  bg: "$background",
+  self: "center",
+  rounded: "$6",
+  shadowColor: "$color11",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+  elevation: 5,
+  overflow: "hidden",
+  p: "$4",
+  gap: "$2",
   animation: [
     "quick",
     {

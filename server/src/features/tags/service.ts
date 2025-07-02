@@ -1,4 +1,4 @@
-import { IPaginationParams, ITag } from "@/definitions/types";
+import { IEvent, IPaginationParams, ITag } from "@/definitions/types";
 import {
   createRecord,
   deleteRecord,
@@ -61,10 +61,10 @@ class TagService {
     cacheSetter: setEventTagsCache,
     cacheDeleter: deleteEventTagsCache,
   })
-  async getAllEventTags(eventId: string) {
-    const event = await findById(Event, eventId);
+  async getAllEventTags(eventId?: string, event?: IEvent) {
+    const _fetchedEvent = event || (await findById(Event, eventId));
 
-    const tagIds = event?.tags || ([] as string[]);
+    const tagIds = _fetchedEvent?.tags || [];
 
     if (!tagIds.length) return [];
 
@@ -104,7 +104,11 @@ class TagService {
     if (!event) return null;
     const tags = new Set((event.tags || []) as string[]);
     tags.add(tagId);
-    const data = await updateRecord(Event, { id: eventId }, { tags: Array.from(tags) });
+    const data = await updateRecord(
+      Event,
+      { id: eventId },
+      { tags: Array.from(tags) }
+    );
     return data;
   }
 
@@ -113,9 +117,13 @@ class TagService {
     const event = await findById(Event, eventId);
     if (!event) return null;
     const tags = (event.tags || []) as string[];
-    const data = await updateRecord(Event, { id: eventId }, {
-      tags: tags.filter((t) => t !== tagId),
-    });
+    const data = await updateRecord(
+      Event,
+      { id: eventId },
+      {
+        tags: tags.filter((t) => t !== tagId),
+      }
+    );
     return data;
   }
 

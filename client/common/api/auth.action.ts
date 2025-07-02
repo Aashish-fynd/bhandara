@@ -22,7 +22,7 @@ export const loginWithEmailAndPassword = async (email: string, password: string)
 };
 
 export const logout = async () => {
-  const response = await axiosClient.post("/logout");
+  const response = await axiosClient.post("/auth/logout");
   return response.data;
 };
 

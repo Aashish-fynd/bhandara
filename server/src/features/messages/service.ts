@@ -90,26 +90,24 @@ class MessageService {
       );
 
     // Step 2: Fetch total count of parent threads for pagination metadata
-    const childMessagesPromises = (parentItems || [])?.map(
-      async (m) => {
-        const mediaIds = [...((m.content as any)?.media || [])];
+    const childMessagesPromises = (parentItems || [])?.map(async (m) => {
+      const mediaIds = [...((m.content as any)?.media || [])];
 
-        const mediaData = await this.mediaService.getMediaByIds(mediaIds);
+      const mediaData = await this.mediaService.getMediaByIds(mediaIds);
 
-        if ("media" in m.content) {
-          m.content.media = (m.content.media as string[]).map((media) => {
-            return mediaData[media];
-          });
-        }
-
-        const [children, reactions] = await Promise.all([
-          this.getChildren(m.threadId, m.id, { limit: 1 }),
-          this.reactionService.getReactions(`messages/${m.id}`),
-        ]);
-        m.reactions = reactions;
-        return children;
+      if ("media" in m.content) {
+        m.content.media = (m.content.media as string[]).map((media) => {
+          return mediaData[media];
+        });
       }
-    );
+
+      const [children, reactions] = await Promise.all([
+        this.getChildren(m.threadId, m.id, { limit: 1 }),
+        this.reactionService.getReactions(`messages/${m.id}`),
+      ]);
+      m.reactions = reactions;
+      return children;
+    });
 
     const childMessages = await Promise.all(childMessagesPromises);
 
@@ -139,7 +137,7 @@ class MessageService {
     parentId: string,
     pagination: Partial<IPaginationParams>
   ) {
-    const { data } = await findAllWithPagination(
+    const data = await findAllWithPagination(
       Message,
       { threadId, parentId },
       pagination
@@ -199,7 +197,10 @@ class MessageService {
       }
       return createRecord(Message, validData);
     });
-    let msg = (created as any)?.dataValues || (created as any)?.[0]?.dataValues || created;
+    let msg =
+      (created as any)?.dataValues ||
+      (created as any)?.[0]?.dataValues ||
+      created;
     if (populate && msg) {
       msg = await this.getById(msg.id, populate);
     }

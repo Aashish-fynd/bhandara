@@ -190,7 +190,7 @@ class MediaService {
           row: creationData as IMedia,
           ...signedUrl.data,
         };
-    })
+      })
     );
   }
 
@@ -227,10 +227,7 @@ class MediaService {
   async getById(id: string): Promise<IMedia | null> {
     const res = await findById(Media, id);
     if (res) {
-      const publicUrl = await this.getPublicUrl(
-        res.url,
-        res.storage.bucket
-      );
+      const publicUrl = await this.getPublicUrl(res.url, res.storage.bucket);
       (res as any).publicUrl = publicUrl.signedUrl;
       (res as any).publicUrlExpiresAt = publicUrl.expiresAt;
     }
@@ -333,7 +330,7 @@ class MediaService {
         (acc, bucketPublicUrls) => {
           return {
             ...acc,
-            ...bucketPublicUrls.data,
+            ...bucketPublicUrls,
           };
         },
         {} as Record<
@@ -387,18 +384,26 @@ class MediaService {
     const event = await findById(Event, eventId);
     const mediaSet = new Set((event?.media || []) as unknown as string[]);
     mediaSet.add(mediaId);
-    const data = await updateRecord(Event, { id: eventId }, {
-      media: Array.from(mediaSet) as any,
-    });
+    const data = await updateRecord(
+      Event,
+      { id: eventId },
+      {
+        media: Array.from(mediaSet) as any,
+      }
+    );
     return data;
   }
 
   async deleteEventMediaJunctionRow(eventId: string, mediaId: string) {
     const event = await findById(Event, eventId);
     const media = (event[0]?.media || []) as string[];
-    const data = await updateRecord(Event, { id: eventId }, {
-      media: media.filter((m) => m !== mediaId) as any,
-    });
+    const data = await updateRecord(
+      Event,
+      { id: eventId },
+      {
+        media: media.filter((m) => m !== mediaId) as any,
+      }
+    );
     return data;
   }
 }

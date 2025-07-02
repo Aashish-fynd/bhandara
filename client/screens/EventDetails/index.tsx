@@ -8,7 +8,7 @@ import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import { EEventType, EThreadType } from "@/definitions/enums";
 import { IAddress, IBaseThread, IBaseUser, IEvent, IMessage, IReaction } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
-import { ChevronRight, Plus, Share2, Pencil, Trash } from "@tamagui/lucide-icons";
+import { ChevronRight, Plus, Share2, Pencil, Trash, MoreVertical, Edit3, X } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { H4, H6, ScrollView, Sheet, Text, View, XStack, YStack } from "tamagui";
@@ -27,6 +27,10 @@ import MessageCard from "./MessageView/MessageCard";
 import { IMessageViewAddMessageProp, IMessageViewBaseProps } from "./MessageView";
 import MessageViewSheetContent from "./MessageViewSheetContent";
 import { OutlineButton } from "@/components/ui/Buttons";
+import PopoverMenuList from "@/components/PopoverMenuList";
+import { GestureResponderEvent } from "react-native";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
+import { useDialog } from "@/hooks/useModal";
 
 export const VerifiersListing = ({ verifiers }: { verifiers: IEvent["verifiers"] }) => {
   // sort the latest ones first
@@ -80,6 +84,29 @@ export const VerifiersListing = ({ verifiers }: { verifiers: IEvent["verifiers"]
   );
 };
 
+const tabs = [
+  {
+    label: "Edit",
+    icon: <Edit3 />
+  },
+  {
+    label: "Share",
+    icon: <Share2 />
+  },
+  {
+    label: "Cancel",
+    icon: <X />,
+    color: "$red11"
+  }
+];
+
+const groups = [
+  {
+    label: "General",
+    tabs: tabs
+  }
+];
+
 const EventDetails: React.FC = () => {
   const searchParams = useLocalSearchParams();
   const id = searchParams["id"] as string;
@@ -87,6 +114,8 @@ const EventDetails: React.FC = () => {
   const toastController = useToastController();
 
   const { data: _event, loading, setData: setEvent } = useDataLoader({ promiseFunction: fetchEventData });
+  const { open, close, RenderContent } = useDialog();
+
   const {
     data: _threads,
     loading: threadsLoading,
@@ -200,6 +229,29 @@ const EventDetails: React.FC = () => {
     });
   }, []);
 
+  const handleCancelEvent = async () => {
+    await updateEvent(id as string, { status: EEventStatus.Cancelled });
+  };
+
+  const handleMenuAction = useCallback(
+    async (action: string, e?: GestureResponderEvent) => {
+      e?.stopPropagation();
+      switch (action) {
+        case "Edit":
+          router.push(`/new-event?id=${_event?.id}`);
+          break;
+        case "Share":
+          shareLink(`${config.server.baseURL}/event/${_event?.id}`);
+          break;
+        case "Cancel":
+          await handleCancelEvent();
+          router.back();
+          break;
+      }
+    },
+    [id, router]
+  );
+
   return (
     <>
       <YStack
@@ -215,36 +267,17 @@ const EventDetails: React.FC = () => {
           {isOwner ? (
             <PopoverWrapper
               trigger={
-                <View
-                  bg={"$color4"}
-                  rounded={"$4"}
-                  items={"center"}
-                  justify={"center"}
-                  cursor={"pointer"}
-                  height={"100%"}
-                >
-                  <Share2 size={24} color={"$accent1"} />
-                </View>
+                <MoreVertical
+                  size={24}
+                  self={"flex-end"}
+                  cursor="pointer"
+                />
               }
             >
-            <PopoverContent p="$3" bg="$color3" borderWidth={1} borderColor="$borderColor">
-                <YStack gap="$2">
-                  <Text cursor="pointer" onPress={() => _event && shareLink(`${config.server.baseURL}/event/${_event.id}`)}>
-                    Share
-                  </Text>
-                  <Text cursor="pointer" onPress={() => router.push(`/event-form?id=${_event?.id}`)}>
-                    Edit
-                  </Text>
-                  <Text cursor="pointer" onPress={async () => {
-                    if (_event) {
-                      await updateEvent(_event.id, { status: EEventStatus.Cancelled });
-                      router.back();
-                    }
-                  }}>
-                    Cancel
-                  </Text>
-                </YStack>
-              </PopoverContent>
+              <PopoverMenuList
+                groups={groups}
+                handleActionClick={handleMenuAction}
+              />
             </PopoverWrapper>
           ) : (
             <View
@@ -256,7 +289,10 @@ const EventDetails: React.FC = () => {
               height={"100%"}
               onPress={() => _event && shareLink(`${config.server.baseURL}/event/${_event.id}`)}
             >
-              <Share2 size={24} color={"$accent1"} />
+              <Share2
+                size={24}
+                color={"$accent1"}
+              />
             </View>
           )}
         </BackButtonHeader>
@@ -420,6 +456,16 @@ const EventDetails: React.FC = () => {
           />
         </Sheet.Frame>
       </Sheet>
+
+      <RenderContent>
+        <ConfirmationDialog
+          title="Cancel Event"
+          description="Are you sure you want to cancel this event?"
+          onClose={() => {}}
+          onConfirm={handleCancelEvent}
+          asDanger
+        />
+      </RenderContent>
     </>
   );
 };

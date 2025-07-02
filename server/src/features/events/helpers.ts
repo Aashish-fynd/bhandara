@@ -13,9 +13,8 @@ export const getEventCache = (eventId: string) =>
 export const setEventCache = (eventId: string, event: IEvent) =>
   eventCache.setItem(`${eventId}`, event);
 
-export const deleteEventCache = (eventId: string) => {
+export const deleteEventCache = (eventId: string) =>
   eventCache.deleteItem(`${eventId}*`);
-};
 
 export const getEventUsersCache = (key: string) =>
   eventCache.getItem<Record<string, IBaseUser>>(key);

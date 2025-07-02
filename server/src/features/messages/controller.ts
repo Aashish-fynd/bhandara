@@ -1,7 +1,6 @@
 import { Response } from "express";
 import MessageService from "./service";
 import { ICustomRequest, IRequestPagination } from "@definitions/types";
-import { EQueryOperator } from "@definitions/enums";
 import { cleanQueryObject, isEmpty, pick } from "@utils";
 import { NotFoundError } from "@exceptions";
 import { emitSocketEvent } from "@socket/emitter";
@@ -22,7 +21,10 @@ export const getMessages = async (
     cleanQueryObject(_queryObject),
     req.pagination
   );
-  return res.status(200).json(messages);
+  return res.status(200).json({
+    data: messages,
+    error: null,
+  });
 };
 
 export const createMessage = async (req: ICustomRequest, res: Response) => {
@@ -37,8 +39,14 @@ export const createMessage = async (req: ICustomRequest, res: Response) => {
     ]),
     true
   );
-  emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, message);
-  return res.status(200).json(message);
+  emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, {
+    data: message,
+    error: null,
+  });
+  return res.status(200).json({
+    data: message,
+    error: null,
+  });
 };
 
 export const updateMessage = async (req: ICustomRequest, res: Response) => {
@@ -50,9 +58,12 @@ export const updateMessage = async (req: ICustomRequest, res: Response) => {
   );
   emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_UPDATED, {
     data: { id: messageId, ...req.body },
-    error: null
+    error: null,
   });
-  return res.status(200).json(message);
+  return res.status(200).json({
+    data: message,
+    error: null,
+  });
 };
 
 export const deleteMessage = async (req: ICustomRequest, res: Response) => {
@@ -60,9 +71,12 @@ export const deleteMessage = async (req: ICustomRequest, res: Response) => {
   const message = await messagesService.delete(messageId);
   emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_DELETED, {
     data: { id: messageId },
-    error: null
+    error: null,
   });
-  return res.status(200).json(message);
+  return res.status(200).json({
+    data: message,
+    error: null,
+  });
 };
 
 export const getMessageById = async (req: ICustomRequest, res: Response) => {
@@ -70,7 +84,10 @@ export const getMessageById = async (req: ICustomRequest, res: Response) => {
   const message = await messagesService.getById(messageId, true);
   if (isEmpty(message)) throw new NotFoundError("Message not found");
 
-  return res.status(200).json(message);
+  return res.status(200).json({
+    data: message,
+    error: null,
+  });
 };
 
 export const getChildMessages = async (
@@ -83,5 +100,8 @@ export const getChildMessages = async (
     parentId,
     req.pagination
   );
-  return res.status(200).json(messages);
+  return res.status(200).json({
+    data: messages,
+    error: null,
+  });
 };
