@@ -31,6 +31,12 @@ const mediaStorageSchema = {
 const mediaSchema = {
   type: "object",
   properties: {
+    provider: {
+      type: "string",
+      enum: ["local", "s3", "gcs", "cloudinary", "supabase"],
+      errorMessage:
+        "Provider must be one of 'local', 's3', 'gcs', 'cloudinary', or 'supabase'",
+    },
     path: {
       type: "string",
       errorMessage: "Upload path must be a valid string",
@@ -104,11 +110,12 @@ const mediaSchema = {
       },
     },
   },
-  required: ["path", "bucket", "mimeType", "options"],
+  required: ["provider", "path", "bucket", "mimeType", "options"],
   additionalProperties: false,
   errorMessage: {
     type: "Media data must be an object",
     required: {
+      provider: "Provider is required",
       path: "Path is required",
       bucket: "Bucket is required",
       mimeType: "MIME type is required",

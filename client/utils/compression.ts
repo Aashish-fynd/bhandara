@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 let workerClientPromise: Promise<{
   runWorker: <T>(action: string, payload: any) => Promise<T>;
 } | null> | null = null;
+
 async function getWorkerClient() {
   if (Platform.OS !== "web") return null;
   if (!workerClientPromise) {
@@ -11,6 +12,9 @@ async function getWorkerClient() {
   return workerClientPromise;
 }
 
+/**
+ * Compress a video blob in the browser to roughly the target size.
+ */
 async function compressVideoWeb(blob: Blob, targetSize: number): Promise<Blob> {
   const url = URL.createObjectURL(blob);
   const video = document.createElement("video");
@@ -47,6 +51,9 @@ export interface CompressOptions {
   height?: number;
 }
 
+/**
+ * Compress an image or video file according to the provided options.
+ */
 export async function compressFile(uri: string, options: CompressOptions = {}): Promise<CompressResult> {
   const { mimeType, percentage = 100, width, height } = options;
   const isImage = mimeType?.startsWith("image");
