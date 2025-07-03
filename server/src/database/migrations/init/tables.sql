@@ -172,27 +172,3 @@ CREATE TABLE "EventMedia" (
 COMMENT ON TABLE "EventMedia" IS 'Junction table for many-to-many relationship between Events and Media';
 COMMENT ON COLUMN "EventMedia"."eventId" IS 'ID of the event';
 COMMENT ON COLUMN "EventMedia"."mediaId" IS 'ID of the media';
-
--- Spatial index on Events.location coordinates
-CREATE INDEX IF NOT EXISTS events_location_gix ON "Events"
-USING GIST (
-  ST_SetSRID(
-    ST_MakePoint(
-      CAST("location"->'coordinates'->>'longitude' AS DOUBLE PRECISION),
-      CAST("location"->'coordinates'->>'latitude' AS DOUBLE PRECISION)
-    ),
-    4326
-  )
-);
-
--- Spatial index on Users.address coordinates
-CREATE INDEX IF NOT EXISTS users_address_gix ON "Users"
-USING GIST (
-  ST_SetSRID(
-    ST_MakePoint(
-      CAST("address"->'coordinates'->>'longitude' AS DOUBLE PRECISION),
-      CAST("address"->'coordinates'->>'latitude' AS DOUBLE PRECISION)
-    ),
-    4326
-  )
-);
