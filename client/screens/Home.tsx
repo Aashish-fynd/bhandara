@@ -18,15 +18,17 @@ import React from "react";
 import { H5, Image, ScrollView, Text, XStack, YStack } from "tamagui";
 
 import { View } from "tamagui";
+import VerifyEvent from "@/components/VerifyEvent";
 
 const EventCard = ({ event }: { event: IEvent }) => {
-  const createdBy = event.creator as IBaseUser;
+  const [localEvent, setLocalEvent] = React.useState<IEvent>(event);
+  const createdBy = localEvent.creator as IBaseUser;
   const router = useRouter();
 
-  const previewEventImage = event.media.find((media) => media.type === EMediaType.Image)?.publicUrl;
+  const previewEventImage = localEvent.media.find((media) => media.type === EMediaType.Image)?.publicUrl;
 
   const handleImagePress = () => {
-    router.push(`/event/${event.id}`);
+    router.push(`/event/${localEvent.id}`);
   };
 
   return (
@@ -68,7 +70,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
           bg={"rgba(0, 0, 0, 0.2)"}
           backdropFilter={"blur(8px)"}
         >
-          <H5>{event.name}</H5>
+            <H5>{localEvent.name}</H5>
           <XStack gap={"$4"}>
             <Badge>
               <XStack gap={"$2"}>
@@ -132,11 +134,11 @@ const EventCard = ({ event }: { event: IEvent }) => {
               transition={"color 0.2s ease-in-out"}
             />
           </View>
-          <Text fontSize={"$4"}>{event.location.street || "data not available"}</Text>
+          <Text fontSize={"$4"}>{localEvent.location.street || "data not available"}</Text>
         </XStack>
 
         <XStack
-          flex={+(typeof event.capacity === "number")}
+          flex={+(typeof localEvent.capacity === "number")}
           justify={"space-between"}
         >
           {/* organizer info */}
@@ -149,7 +151,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
           </ProfileAvatarPreview>
 
           {/* capacity info */}
-          {typeof event.capacity === "number" && (
+          {typeof localEvent.capacity === "number" && (
             <XStack
               items={"center"}
               justify={"flex-end"}
@@ -161,11 +163,11 @@ const EventCard = ({ event }: { event: IEvent }) => {
                   fontSize={"$4"}
                   fontWeight={"bold"}
                 >
-                  {event.capacity}
+                  {localEvent.capacity}
                 </Text>
               </YStack>
               <CircularFillIndicator
-                percentage={event.participants.length / event.capacity}
+                percentage={localEvent.participants.length / localEvent.capacity}
                 size={30}
               />
             </XStack>
@@ -173,7 +175,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
         </XStack>
 
         {/* verifiers */}
-        {!!event.verifiers.length && (
+        {!!localEvent.verifiers.length && (
           <YStack
             gap={"$2"}
             items={"flex-start"}
@@ -184,22 +186,22 @@ const EventCard = ({ event }: { event: IEvent }) => {
               width={"100%"}
               justify={"space-between"}
             >
-              <UserCluster users={event.verifiers.map((verifier) => verifier.user as IBaseUser)} />
+              <UserCluster users={localEvent.verifiers.map((verifier) => verifier.user as IBaseUser)} />
 
-              <OutlineButton
-                rounded={"$2"}
-                width={"auto"}
-                size={"medium"}
-                px={"$2"}
-              >
-                <Check size={16} />
-                <Text>Verify Event</Text>
-              </OutlineButton>
+              <VerifyEvent
+                event={localEvent}
+                onVerified={(v) =>
+                  setLocalEvent((prev) => ({
+                    ...prev,
+                    verifiers: [...prev.verifiers, v]
+                  }))
+                }
+              />
             </XStack>
           </YStack>
         )}
 
-        {!!event.tags.length && (
+        {!!localEvent.tags.length && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -208,7 +210,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
               gap={"$2"}
               flexWrap={"wrap"}
             >
-              {event.tags.map((tag) => (
+              {localEvent.tags.map((tag) => (
                 <CustomTooltip
                   trigger={
                     <Badge

@@ -23,6 +23,7 @@ import config from "@/config";
 import useSocketListener from "@/hooks/useSocketListener";
 import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
 import MapPreviewCard from "@/components/MapPreviewCard";
+import VerifyEvent from "@/components/VerifyEvent";
 import MessageCard from "./MessageView/MessageCard";
 import { IMessageViewAddMessageProp, IMessageViewBaseProps } from "./MessageView";
 import MessageViewSheetContent from "./MessageViewSheetContent";
@@ -324,6 +325,14 @@ const EventDetails: React.FC = () => {
                   </ProfileAvatarPreview>
                 )}
                 <MapPreviewCard {..._event.location} />
+                <VerifyEvent
+                  event={_event}
+                  onVerified={(v) =>
+                    setEvent((prev) =>
+                      prev ? { ...prev, verifiers: [...prev.verifiers, v] } : prev
+                    )
+                  }
+                />
                 <CardWrapper>
                   <H6>Tags</H6>
                   <TagListing tags={tags || []} />

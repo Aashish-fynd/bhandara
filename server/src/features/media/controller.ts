@@ -9,13 +9,14 @@ import { get32BitMD5Hash } from "@helpers";
 const mediaService = new MediaService();
 
 export const uploadFile = async (req: ICustomRequest, res: Response) => {
-  const { file, path, bucket, mimeType, format, ...rest } = req.body;
+  const { file, path, bucket, mimeType, provider, format, ...rest } = req.body;
 
   const uploadPath = `${req.user.id}/${path}`;
   const uploadRes = (await mediaService.uploadFile({
     file,
     path: uploadPath,
     bucket,
+    provider,
     mimeType,
     options: {
       uploader: req.user.id,
@@ -30,12 +31,13 @@ export const getSignedUploadUrl = async (
   req: ICustomRequest,
   res: Response
 ) => {
-  const { path, bucket, mimeType, parentPath, format, ...rest } = req.body;
+  const { path, bucket, mimeType, provider, parentPath, format, ...rest } = req.body;
 
   const uploadPath = `${parentPath || req.user.id}/${path}`;
   const insertData = {
     path: uploadPath,
     bucket,
+    provider,
     mimeType,
     options: {
       uploader: req.user.id,
@@ -51,13 +53,14 @@ export const getSignedUploadUrl = async (
 };
 
 export const createMediaData = async (req: ICustomRequest, res: Response) => {
-  const { file, path, bucket, mimeType, format, ...rest } = req.body;
+  const { file, path, bucket, mimeType, provider, format, ...rest } = req.body;
 
   const uploadPath = `${req.user.id}/${path}`;
   const { data } = await mediaService.create({
     file,
     path: uploadPath,
     bucket,
+    provider,
     mimeType,
     options: {
       uploader: req.user.id,
@@ -87,8 +90,8 @@ export const getMediaById = async (req: ICustomRequest, res: Response) => {
 };
 
 export const getMediaPublicUrl = async (req: ICustomRequest, res: Response) => {
-  const { path, bucket } = req.body;
-  const signedUrl = await mediaService.getPublicUrl(path, bucket);
+  const { path, bucket, provider } = req.body;
+  const signedUrl = await mediaService.getPublicUrl(path, bucket, provider);
   if (isEmpty(signedUrl)) throw new NotFoundError("Media not found at path");
 
   return res.status(200).json(signedUrl);

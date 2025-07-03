@@ -18,6 +18,10 @@ const sequelize = getDBConnection();
 // Create a type that makes timestamp fields optional for model attributes
 type EventAttributes = Omit<IEvent, "createdAt" | "updatedAt" | "deletedAt">;
 
+/**
+ * Sequelize model representing an event. Complex fields like location and
+ * participants are stored as JSONB columns.
+ */
 export class Event extends Model<EventAttributes, EventAttributes> {
   declare id: string;
   declare name: string;
