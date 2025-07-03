@@ -3,6 +3,8 @@ export const BASE_AVATAR_URL = "https://cdn.jsdelivr.net/gh/alohe/avatars/png/me
 export const AVATAR_BUCKET = "avatars";
 export const EVENT_MEDIA_BUCKET = "event-files";
 
+export const EVENT_VERIFY_RADIUS_M = 50;
+
 export const PLATFORM_SOCKET_EVENTS = {
   JOIN_ROOM: "join:room",
   LEAVE_ROOM: "leave:room",
