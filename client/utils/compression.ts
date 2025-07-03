@@ -1,5 +1,8 @@
 import { Platform } from "react-native";
 
+/**
+ * Compress a video blob in the browser to roughly the target size.
+ */
 async function compressVideoWeb(blob: Blob, targetSize: number): Promise<Blob> {
   const url = URL.createObjectURL(blob);
   const video = document.createElement("video");
@@ -31,10 +34,17 @@ export interface CompressResult {
 
 export interface CompressOptions {
   mimeType?: string;
-  percentage?: number; // desired size percentage of original file
+  /** Desired size percentage of the original file */
+  percentage?: number;
 }
 
-export async function compressFile(uri: string, options: CompressOptions = {}): Promise<CompressResult> {
+/**
+ * Compress an image or video file according to the provided options.
+ */
+export async function compressFile(
+  uri: string,
+  options: CompressOptions = {}
+): Promise<CompressResult> {
   const { mimeType, percentage = 100 } = options;
   const isImage = mimeType?.startsWith("image");
   const isVideo = mimeType?.startsWith("video");
