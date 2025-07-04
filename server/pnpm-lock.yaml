@@ -32,6 +32,9 @@ importers:
       bcrypt:
         specifier: ^6.0.0
         version: 6.0.0
+      cloudinary:
+        specifier: ^2.7.0
+        version: 2.7.0
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -751,6 +754,10 @@ packages:
   class-utils@0.3.6:
     resolution: {integrity: sha512-qOhPa/Fj7s6TY8H8esGu5QNpMMQxz79h+urzrNYN6mn+9BnxlDGf5QZ+XeCDsxSjPqsSR56XOZOJmpeurnLMeg==}
     engines: {node: '>=0.10.0'}
+
+  cloudinary@2.7.0:
+    resolution: {integrity: sha512-qrqDn31+qkMCzKu1GfRpzPNAO86jchcNwEHCUiqvPHNSFqu7FTNF9FuAkBUyvM1CFFgFPu64NT0DyeREwLwK0w==}
+    engines: {node: '>=9'}
 
   cluster-key-slot@1.1.2:
     resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
@@ -1768,6 +1775,14 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  q@1.5.1:
+    resolution: {integrity: sha512-kV/CThkXo6xyFEZUugw/+pIOywXcDbFYgSct5cT3gqlbkBE1SJdwy6UQoZvodiWF/ckQLZyDE/Bu1M6gVu5lVw==}
+    engines: {node: '>=0.6.0', teleport: '>=0.2.0'}
+    deprecated: |-
+      You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+
+      (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qs@6.14.0:
     resolution: {integrity: sha512-YWWTjgABSKcvs/nWBi9PycY/JiPJqOD4JA6o9Sej2AtvSGarXxKC3OQSk4pAarbdQlKAh5D4FCQkJNkW+GAn3w==}
@@ -2909,6 +2924,11 @@ snapshots:
       isobject: 3.0.1
       static-extend: 0.1.2
 
+  cloudinary@2.7.0:
+    dependencies:
+      lodash: 4.17.21
+      q: 1.5.1
+
   cluster-key-slot@1.1.2: {}
 
   collection-visit@1.0.0:
@@ -3982,6 +4002,8 @@ snapshots:
   pstree.remy@1.1.8: {}
 
   punycode@2.3.1: {}
+
+  q@1.5.1: {}
 
   qs@6.14.0:
     dependencies:

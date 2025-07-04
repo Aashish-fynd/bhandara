@@ -19,7 +19,6 @@ import {
   googleCallback,
   sessionsList,
   deleteSession,
-  signInWithGoogleIdToken,
   signUp,
   signInWithIdToken,
 } from "@features/auth/controller";

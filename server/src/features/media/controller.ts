@@ -1,10 +1,10 @@
 import { ICustomRequest } from "@definitions/types";
 import { Response } from "express";
 import MediaService from "./service";
-import { getUniqueFilename } from "./utils";
-import { NotFoundError } from "@exceptions";
+import { BadRequestError, NotFoundError } from "@exceptions";
 import { isEmpty, pick } from "@utils";
-import { get32BitMD5Hash } from "@helpers";
+import { EMediaProvider } from "@definitions/enums";
+import logger from "@logger";
 
 const mediaService = new MediaService();
 
@@ -31,7 +31,9 @@ export const getSignedUploadUrl = async (
   req: ICustomRequest,
   res: Response
 ) => {
-  const { path, bucket, mimeType, provider, parentPath, format, ...rest } = req.body;
+  let { path, bucket, mimeType, provider, parentPath, format, ...rest } =
+    req.body;
+  provider ??= EMediaProvider.Supabase;
 
   const uploadPath = `${parentPath || req.user.id}/${path}`;
   const insertData = {
@@ -56,7 +58,7 @@ export const createMediaData = async (req: ICustomRequest, res: Response) => {
   const { file, path, bucket, mimeType, provider, format, ...rest } = req.body;
 
   const uploadPath = `${req.user.id}/${path}`;
-  const { data } = await mediaService.create({
+  const data = await mediaService.create({
     file,
     path: uploadPath,
     bucket,
@@ -82,7 +84,7 @@ export const deleteFile = async (req: ICustomRequest, res: Response) => {
 
 export const getMediaById = async (req: ICustomRequest, res: Response) => {
   const { mediaId } = req.params;
-  const { data } = await mediaService.getById(mediaId);
+  const data = await mediaService.getById(mediaId);
 
   if (isEmpty(data)) throw new NotFoundError("Media not found");
 
@@ -111,7 +113,7 @@ export const updateMedia = async (req: ICustomRequest, res: Response) => {
 
   if (isEmpty(existingMedia)) throw new NotFoundError("Media not found");
 
-  const { data } = await mediaService.update(mediaId, updateData);
+  const data = await mediaService.update(mediaId, updateData);
 
   return res.status(200).json({ data });
 };
@@ -128,4 +130,20 @@ export const getMediaPublicUrls = async (
     throw new NotFoundError("Media(s) not found at path");
 
   return res.status(200).json(signedUrls);
+};
+
+export const onUploadComplete = async (req: ICustomRequest, res: Response) => {
+  const { context, secure_url, public_id, asset_id } = req.body;
+  const { custom: { rid } = {} } = context;
+
+  if (!rid) throw new BadRequestError(`Missing context id`);
+
+  const updatedMedia = await mediaService.update(rid, {
+    url: public_id,
+    metadata: { publicUrl: secure_url, asset_id },
+  });
+
+  logger.debug(`Updated media ${updatedMedia.id}`);
+
+  return res.status(200).json({ success: true });
 };

@@ -9,7 +9,7 @@ import {
   updateRecord,
 } from "@utils/dbUtils";
 import SupabaseService from "@supabase";
-import CloudinaryService from "@/cloudinary";
+import CloudinaryService from "@ccloudinary";
 import { validateMediaCreate, validateMediaUpdate } from "./validation";
 import { MEDIA_BUCKET_CONFIG } from "./constants";
 import { Media } from "./model";
@@ -124,9 +124,9 @@ class MediaService {
             ...restOptions,
           });
 
-          if (creation.data) {
-            (creation.data as any).publicUrl = secure_url;
-            (creation.data as any).publicUrlExpiresAt = new Date(
+          if (creation) {
+            (creation as any).publicUrl = secure_url;
+            (creation as any).publicUrlExpiresAt = new Date(
               Date.now() + 3600 * 24 * 1000
             );
           }
@@ -251,6 +251,8 @@ class MediaService {
           signedUrl = this._cloudinaryService.getSignedUploadParams({
             bucket,
             path,
+            resourceType: restOptions.type,
+            rid: creationData.id,
           });
         } else {
           signedUrl = await this._supabaseService.getSignedUrlForUpload({
@@ -259,10 +261,10 @@ class MediaService {
           });
         }
 
-        delete signedUrl.data.token;
+        delete signedUrl.token;
         return {
           row: creationData as IMedia,
-          ...signedUrl.data,
+          ...signedUrl,
         };
       })
     );
@@ -323,10 +325,10 @@ class MediaService {
     provider: EMediaProvider = EMediaProvider.Supabase
   ) {
     if (provider === EMediaProvider.Cloudinary) {
-      const { data } = await this._cloudinaryService.getPublicUrl(path);
+      const signedUrl = this._cloudinaryService.getPublicUrl(path);
       return {
-        signedUrl: data.signedUrl,
-        expiresAt: new Date(Date.now() + 3600 * 24 * 1000),
+        signedUrl,
+        expiresAt: -1,
       };
     }
 
@@ -349,21 +351,15 @@ class MediaService {
     provider: EMediaProvider = EMediaProvider.Supabase
   ) {
     if (provider === EMediaProvider.Cloudinary) {
-      const urls = await Promise.all(
-        paths.map(async (p) => {
-          const { data } = await this._cloudinaryService.getPublicUrl(p);
-          return { path: p, signedUrl: data.signedUrl };
-        })
-      );
-      const publicUrls = urls.map((u) => ({ ...u }));
-      const publicUrlsWithExpiresAt = publicUrls.map((url) => ({
-        ...url,
-        expiresAt: new Date(Date.now() + expiresIn * 1000),
-      }));
-      return publicUrlsWithExpiresAt.reduce((acc, url) => {
+      const urls = paths.map((p) => {
+        const signedUrl = this._cloudinaryService.getPublicUrl(p);
+        return { path: p, signedUrl, expiresAt: -1 };
+      });
+
+      return urls.reduce((acc, url) => {
         acc[url.path] = url;
         return acc;
-      }, {} as Record<string, { signedUrl: string; expiresAt: Date }>);
+      }, {} as Record<string, { signedUrl: string; expiresAt: Date | number }>);
     }
 
     const { data: publicUrls, error } =
