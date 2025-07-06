@@ -6,14 +6,12 @@ import {
   getPublicUploadSignedURL,
   updateMedia,
 } from "../api/media.action";
+import axiosClient from "../api/base";
 
 import { isEmpty } from "@/utils";
 import { EMediaType } from "@/definitions/enums";
 import { IMedia } from "@/definitions/types";
-import {
-  generateImageVariants,
-  generateVideoThumbnails,
-} from "@/utils/compression";
+import { generateImageVariants } from "@/utils/compression";
 
 export interface IAttachedFile extends Omit<IPickerAsset, "uri"> {
   error?: string;
@@ -90,26 +88,10 @@ export const uploadFile = async (
 
     const baseName = result.url.split("/").pop() || "";
 
-    if (type === EMediaType.VIDEO) {
-      generateVideoThumbnails(uri)
-        .then(async (thumbs) => {
-          await Promise.all(
-            thumbs.map(async (t) => {
-              const signed = await getPublicUploadSignedURL(
-                `${baseName}${t.suffix}.jpg`,
-                opts.pPath
-              );
-              await axios.put(signed.signedUrl, t.blob, {
-                headers: { "Content-Type": t.blob.type },
-              });
-            })
-          );
-          await updateMedia(result.id, {
-            thumbnail: `${opts.pPath}/${baseName}@2x.jpg`,
-          });
-        })
-        .catch((err) => console.error(err));
-    }
+    // notify server for further processing
+    axiosClient
+      .post('/webhooks/on-upload-complete', { id: result.id })
+      .catch(() => {});
 
     if (type === EMediaType.IMAGE) {
       generateImageVariants(uri, mimeType)
