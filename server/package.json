@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc --project tsconfig.json && tscpaths -p tsconfig.build.json -s ./ -o ./dist",
     "dev": "nodemon --watch src --ext ts --exec \"tsx -r tsconfig-paths/register\" src/index.ts",
-    "seed": "tsx -r tsconfig-paths/register src/misc/seeder.ts"
+    "seed": "tsx -r tsconfig-paths/register src/misc/seeder.ts",
+    "video-worker": "tsx -r tsconfig-paths/register src/workers/video.ts"
   },
   "dependencies": {
     "@supabase/postgrest-js": "^1.19.4",

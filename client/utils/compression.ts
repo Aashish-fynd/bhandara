@@ -58,8 +58,7 @@ export interface CompressOptions {
 export async function compressFile(uri: string, options: CompressOptions = {}): Promise<CompressResult> {
   const { mimeType, percentage = 100, width, height } = options;
   const isImage = mimeType?.startsWith("image");
-  const isVideo = mimeType?.startsWith("video");
-  if (!isImage && !isVideo) {
+  if (!isImage) {
     const blob = Platform.OS === "web" ? await fetch(uri).then((r) => r.blob()) : undefined;
     return { uri, blob, size: blob?.size };
   }
@@ -105,72 +104,11 @@ export async function compressFile(uri: string, options: CompressOptions = {}): 
     }
   }
 
-  if (isVideo) {
-    if (Platform.OS === "web") {
-      const blob = await fetch(uri).then((r) => r.blob());
-      const target = blob.size * (percentage / 100);
-      const compressed = await compressVideoWeb(blob, target);
-      return { uri: URL.createObjectURL(compressed), blob: compressed, size: compressed.size };
-    }
-
-    const { Video } = await require("react-native-compressor" as any);
-    const compressedUri: string = await Video.compress(uri, {
-      compressionMethod: "auto",
-      quality: percentage
-    });
-    try {
-      const b = await fetch(compressedUri).then((r) => r.blob());
-      return { uri: compressedUri, size: b.size };
-    } catch {
-      return { uri: compressedUri };
-    }
-  }
-
   return { uri };
 }
 
 export interface VariantResult extends CompressResult {
   suffix: string;
-}
-
-export async function generateVideoThumbnails(uri: string): Promise<VariantResult[]> {
-  if (Platform.OS === "web") {
-    const worker = await getWorkerClient();
-    if (worker) {
-      const thumbnail = await generateThumbnailFromVideo(uri);
-      const small = await worker.runWorker<CompressResult>("compressImage", { uri: thumbnail, width: 260 });
-      const medium = await worker.runWorker<CompressResult>("compressImage", { uri: thumbnail, width: 480 });
-      const large = await worker.runWorker<CompressResult>("compressImage", { uri: thumbnail });
-      const results = [
-        { ...small, suffix: "@1x" },
-        { ...medium, suffix: "@2x" },
-        { ...large, suffix: "@3x" }
-      ];
-      return results as VariantResult[];
-    }
-  }
-
-  const { default: VideoThumbnails } = await require("expo-video-thumbnails");
-  const base = await VideoThumbnails.getThumbnailAsync(uri, { time: 1000 });
-  uri = base.uri;
-
-  const small = await compressFile(uri, { mimeType: "image/jpeg", width: 260 });
-  const medium = await compressFile(uri, { mimeType: "image/jpeg", width: 480 });
-  const large = await compressFile(uri, { mimeType: "image/jpeg" });
-
-  const results = [
-    { ...small, suffix: "@1x" },
-    { ...medium, suffix: "@2x" },
-    { ...large, suffix: "@3x" }
-  ];
-
-  for (const r of results) {
-    if (!r.blob) {
-      r.blob = await fetch(r.uri).then((resp) => resp.blob());
-    }
-  }
-
-  return results;
 }
 
 export async function generateImageVariants(uri: string, mimeType: string | null): Promise<VariantResult[]> {
