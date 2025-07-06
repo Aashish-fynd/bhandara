@@ -4,7 +4,7 @@ import {
   IPickerAsset,
   uploadPickerAsset,
   getPublicUploadSignedURL,
-  updateMedia,
+  updateMedia
 } from "../api/media.action";
 import axiosClient from "../api/base";
 
@@ -12,6 +12,7 @@ import { isEmpty } from "@/utils";
 import { EMediaType } from "@/definitions/enums";
 import { IMedia } from "@/definitions/types";
 import { generateImageVariants } from "@/utils/compression";
+
 
 export interface IAttachedFile extends Omit<IPickerAsset, "uri"> {
   error?: string;
@@ -30,6 +31,8 @@ export const uploadFile = async (
 ) => {
   const { uri, mimeType = "", name = "", size = 0 } = file;
   const type = (mimeType?.split("/")[0] || "") as EMediaType;
+
+  console.log("uri", uri);
 
   // Create a retryCallback function
   const retryCallback = () => {
@@ -88,28 +91,23 @@ export const uploadFile = async (
 
     const baseName = result.url.split("/").pop() || "";
 
-    // notify server for further processing
-    axiosClient
-      .post('/webhooks/on-upload-complete', { id: result.id })
-      .catch(() => {});
-
-    if (type === EMediaType.IMAGE) {
+    if (type === EMediaType.Image) {
       generateImageVariants(uri, mimeType)
         .then(async (variants) => {
           await Promise.all(
             variants.map(async (v) => {
-              const signed = await getPublicUploadSignedURL(
-                `${baseName}${v.suffix}.jpg`,
-                opts.pPath
-              );
+              const signed = await getPublicUploadSignedURL(`${baseName}${v.suffix}.jpg`, opts.pPath);
               await axios.put(signed.signedUrl, v.blob, {
-                headers: { "Content-Type": v.blob.type },
+                headers: { "Content-Type": v.blob?.type }
               });
             })
           );
         })
         .catch((err) => console.error(err));
     }
+    axiosClient
+      .post('/webhooks/on-upload-complete', { id: result.id })
+      .catch(() => {});
 
     // Update with 100% when complete
     setAttachedFiles((prev) =>
@@ -180,7 +178,10 @@ export const processPickedFiles = async ({
 
   // Wait for all uploads to complete
   const results = await Promise.allSettled(promises);
-  const successCountFiles = results.filter((result) => result.status === "fulfilled").map((result) => result.value);
+  const successCountFiles = results
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => result.value)
+    .filter(Boolean);
 
   const successCount = successCountFiles.length;
 

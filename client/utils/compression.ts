@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { generateThumbnailFromVideo } from "./media.util";
 
 let workerClientPromise: Promise<{
   runWorker: <T>(action: string, payload: any) => Promise<T>;
@@ -66,10 +67,10 @@ export async function compressFile(uri: string, options: CompressOptions = {}): 
     if (Platform.OS === "web") {
       const worker = await getWorkerClient();
       if (worker) {
-        const res = await worker.runWorker<CompressResult>('compressImage', {
+        const res = await worker.runWorker<CompressResult>("compressImage", {
           uri,
           width: width || height,
-          percentage,
+          percentage
         });
         return res;
       }
@@ -79,12 +80,12 @@ export async function compressFile(uri: string, options: CompressOptions = {}): 
       const compressed = await imageCompression(blob, {
         maxSizeMB,
         maxWidthOrHeight: width || height || 1280,
-        useWebWorker: true,
+        useWebWorker: true
       });
       return {
         uri: URL.createObjectURL(compressed),
         blob: compressed,
-        size: compressed.size,
+        size: compressed.size
       };
     } else {
       const { Image } = await require("react-native-compressor" as any);
@@ -110,14 +111,7 @@ export interface VariantResult extends CompressResult {
   suffix: string;
 }
 
-export async function generateVideoThumbnails(uri: string): Promise<VariantResult[]> {
-  return [];
-}
-
-export async function generateImageVariants(
-  uri: string,
-  mimeType: string | null
-): Promise<VariantResult[]> {
+export async function generateImageVariants(uri: string, mimeType: string | null): Promise<VariantResult[]> {
   if (Platform.OS === "web") {
     const worker = await getWorkerClient();
     if (worker) {
@@ -131,7 +125,7 @@ export async function generateImageVariants(
 
   const results = [
     { ...low, suffix: "@1x" },
-    { ...high, suffix: "@2x" },
+    { ...high, suffix: "@2x" }
   ];
 
   for (const r of results) {

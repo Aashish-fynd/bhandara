@@ -2,7 +2,7 @@ export const MEDIA_TABLE_NAME = "Media";
 export const MEDIA_EVENT_JUNCTION_TABLE_NAME = "EventMedia";
 export const MEDIA_PROFILES_BUCKET_NAME = "avatars";
 export const MEDIA_FILE_BUCKET_NAME = "event-files";
-export const MEDIA_PUBLIC_BUCKET_NAME = "public";
+export const MEDIA_PUBLIC_BUCKET_NAME = "thumbnails";
 
 export const MEDIA_BUCKET_CONFIG = {
   [MEDIA_FILE_BUCKET_NAME]: {
