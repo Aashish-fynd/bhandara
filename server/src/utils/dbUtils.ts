@@ -1,8 +1,5 @@
-import { FindOptions, Model, ModelStatic, Op, Transaction } from "sequelize";
+import { FindOptions, Model, ModelStatic, Op } from "sequelize";
 import { IPaginationParams } from "@/definitions/types";
-import { getDBConnection } from "@connections/db";
-import logger from "@logger";
-import { NotFoundError } from "@exceptions";
 
 export interface PaginatedResult<T> {
   items: T[];
@@ -90,67 +87,4 @@ export async function findAllWithPagination<T extends Model>(
   }
 
   return { items, pagination: paginationResult };
-}
-
-/** Find a record by its primary key. */
-export async function findById<T extends Model>(
-  model: ModelStatic<T>,
-  id: string
-): Promise<T | null> {
-  const res = await model.findByPk(id, { raw: true });
-  return (res as T) || null;
-}
-
-/** Create a single record and return the plain object. */
-export async function createRecord<T extends Model>(
-  model: ModelStatic<T>,
-  data: Partial<T>
-): Promise<T> {
-  const row = await model.create(data as any);
-  return row.toJSON() as T;
-}
-
-/** Update matching records and return the first updated row. */
-export async function updateRecord<T extends Model>(
-  model: ModelStatic<T>,
-  where: Record<string, any>,
-  data: Partial<T>
-): Promise<T> {
-  const [count, updatedResult] = await model.update(data as any, {
-    where: { ...(where as any) },
-    returning: true,
-  });
-
-  if (count === 0) {
-    throw new NotFoundError(`${model.name} not found`);
-  }
-
-  if (count > 1) {
-    logger.warn(`Found records ${count} matching ${JSON.stringify(where)}`);
-  }
-
-  return updatedResult[0];
-}
-
-/** Delete matching records and optionally return the deleted row. */
-export async function deleteRecord<T extends Model>(
-  model: ModelStatic<T>,
-  where: Record<string, any>,
-  skipGet = false
-): Promise<T | number> {
-  if (skipGet) {
-    const result = await model.destroy({ where });
-    if (!result) throw new NotFoundError(`${model.name} not found`);
-    return result;
-  }
-  const row = await model.findOne({ where });
-  if (!row) throw new NotFoundError(`${model.name} not found`);
-  await (row as any).destroy();
-  return row.toJSON() as any;
-}
-
-/** Run a callback within a database transaction. */
-export async function runTransaction<T>(cb: (t: Transaction) => Promise<T>) {
-  const sequelize = getDBConnection();
-  return sequelize.transaction(cb);
 }

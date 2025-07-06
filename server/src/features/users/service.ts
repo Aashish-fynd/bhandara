@@ -4,13 +4,7 @@ import {
   IPaginationParams,
   ITag,
 } from "@/definitions/types";
-import {
-  createRecord,
-  deleteRecord,
-  findAllWithPagination,
-  findById,
-  updateRecord,
-} from "@utils/dbUtils";
+import { findAllWithPagination } from "@utils/dbUtils";
 import { validateUserCreate, validateUserUpdate } from "./validation";
 import { User } from "./model";
 import {
@@ -50,7 +44,8 @@ class UserService {
   }
 
   async _getByIdNoCache(id: string) {
-    return findById(User, id);
+    const res = await User.findByPk(id, { raw: true });
+    return res as any;
   }
 
   async getAll(
@@ -65,9 +60,10 @@ class UserService {
   async create(
     data: Partial<IBaseUser>
   ): Promise<IBaseUser | null> {
-    const res = await validateUserCreate(data, (data) =>
-      createRecord(User, { ...data, mediaId: data.mediaId as string })
-    );
+    const res = await validateUserCreate(data, async (d) => {
+      const row = await User.create({ ...d, mediaId: d.mediaId as string } as any);
+      return row.toJSON() as any;
+    });
     return res;
   }
 
@@ -124,12 +120,19 @@ class UserService {
       }
 
       const promises: Promise<any>[] = [
-        updateRecord(User, { id }, {
-          ...rest,
-          meta: newMeta,
-          username,
-          mediaId: rest.mediaId as string,
-        }),
+        (async () => {
+          const [count, rows] = await User.update(
+            {
+              ...rest,
+              meta: newMeta,
+              username,
+              mediaId: rest.mediaId as string,
+            } as any,
+            { where: { id }, returning: true }
+          );
+          if (count === 0) throw new NotFoundError("User not found");
+          return rows[0];
+        })(),
       ];
 
       if (rest.mediaId) {
@@ -138,7 +141,7 @@ class UserService {
 
       const results = await Promise.all(promises);
 
-      const updatedUser = results[0].dataValues as IBaseUser;
+      const updatedUser = (results[0] as any) as IBaseUser;
 
       await this.deleteCache(id);
 
@@ -152,7 +155,7 @@ class UserService {
 
   @MethodCacheSync<IBaseUser>({})
   async getById(id: string): Promise<IBaseUser | null> {
-    const data = await findById(User, id);
+    const data = (await User.findByPk(id, { raw: true })) as IBaseUser | null;
     if (!data) return null;
     if (data.mediaId) {
       const media = await this.mediaService.getById(data.mediaId as string);
@@ -184,7 +187,12 @@ class UserService {
     cacheDeleter: deleteAllUserCache,
   })
   delete(id: string) {
-    return deleteRecord(User, { id });
+    return (async () => {
+      const row = await User.findByPk(id);
+      if (!row) return null;
+      await row.destroy();
+      return row.toJSON() as any;
+    })();
   }
 
   @MethodCacheSync<ITag[]>({

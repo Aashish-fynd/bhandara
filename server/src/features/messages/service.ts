@@ -3,13 +3,7 @@ import {
   IMessageContent,
   IPaginationParams,
 } from "@/definitions/types";
-import {
-  createRecord,
-  deleteRecord,
-  findAllWithPagination,
-  findById,
-  updateRecord,
-} from "@utils/dbUtils";
+import { findAllWithPagination } from "@utils/dbUtils";
 import { validateMessageCreate, validateMessageUpdate } from "./validation";
 import { Message } from "./model";
 import MediaService from "@features/media/service";
@@ -195,7 +189,8 @@ class MessageService {
             "Nested messages beyond one level are not allowed"
           );
       }
-      return createRecord(Message, validData);
+      const row = await Message.create(validData as any);
+      return row.toJSON() as any;
     });
     let msg =
       (created as any)?.dataValues ||
@@ -221,7 +216,12 @@ class MessageService {
             "Nested messages beyond one level are not allowed"
           );
       }
-      return updateRecord(Message, { id }, validData);
+      const [count, rows] = await Message.update(validData as any, {
+        where: { id },
+        returning: true,
+      });
+      if (count === 0) throw new Error("Message not found");
+      return rows[0];
     });
     let msg = (updated as any)?.[0] ?? updated;
     if (populate && msg) {
@@ -231,7 +231,7 @@ class MessageService {
   }
 
   async getById(id: string, populate?: boolean | string[]) {
-    const data = await findById(Message, id);
+    const data = (await Message.findByPk(id, { raw: true })) as IMessage | null;
     if (populate && data) {
       const fields =
         populate === true
@@ -246,7 +246,10 @@ class MessageService {
   }
 
   async delete(id: string) {
-    return deleteRecord(Message, { id });
+    const row = await Message.findByPk(id);
+    if (!row) return null;
+    await row.destroy();
+    return row.toJSON() as any;
   }
 }
 
