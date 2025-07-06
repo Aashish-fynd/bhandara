@@ -23,7 +23,7 @@ const userParser = async (
   let user = await getUserCache(req.session.user.id);
 
   if (!user) {
-    const { data } = await userService.getById(req.session.user.id);
+    const data = await userService.getById(req.session.user.id);
     if (isEmpty(data)) throw new NotFoundError("User not found");
     await setUserCache(req.session.user.id, data);
     user = data;

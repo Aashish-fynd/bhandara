@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 
+
 /** Request device location permissions and return the current position. */
 export async function askForLocation(
   onLocationGetSuccess?: (location: Location.LocationObject) => Promise<void> | void,

@@ -1,5 +1,9 @@
-import { v2 as cloudinary, UploadApiResponse, UploadApiOptions } from 'cloudinary';
-import config from '@/config';
+import {
+  v2 as cloudinary,
+  UploadApiResponse,
+  UploadApiOptions,
+} from "cloudinary";
+import config from "@/config";
 
 cloudinary.config({
   cloud_name: config.cloudinary.cloudName,
@@ -9,6 +13,9 @@ cloudinary.config({
 });
 
 class CloudinaryService {
+  private readonly baseFolderPath = `Bhandara/`;
+  private readonly uploadPreset = config.cloudinary.uploadPreset;
+
   async uploadFile({
     bucket,
     path,
@@ -27,7 +34,7 @@ class CloudinaryService {
       const res = await cloudinary.uploader.upload(fileData, {
         folder: bucket,
         public_id: path,
-        resource_type: 'auto',
+        resource_type: "image",
         ...options,
       });
       return { data: res, error: null };
@@ -38,7 +45,9 @@ class CloudinaryService {
 
   async deleteFile(publicId: string) {
     try {
-      const res = await cloudinary.uploader.destroy(publicId, { invalidate: true });
+      const res = await cloudinary.uploader.destroy(publicId, {
+        invalidate: true,
+      });
       return { data: res, error: null };
     } catch (error) {
       return { data: null as any, error };
@@ -46,35 +55,45 @@ class CloudinaryService {
   }
 
   getPublicUrl(publicId: string, options: Record<string, any> = {}) {
-    const url = cloudinary.url(publicId, { secure: true, ...options });
-    return { data: { signedUrl: url }, error: null };
+    return cloudinary.url(publicId, { secure: true, ...options });
   }
 
-  getSignedUploadParams({ bucket, path }: { bucket: string; path: string }) {
+  getSignedUploadParams({
+    bucket,
+    path,
+    resourceType,
+    rid,
+  }: {
+    bucket: string;
+    path: string;
+    resourceType: string;
+    rid: string;
+  }) {
     const timestamp = Math.floor(Date.now() / 1000);
     const paramsToSign: Record<string, any> = {
       timestamp,
-      folder: bucket,
+      folder: `${this.baseFolderPath}${bucket}`,
       public_id: path,
+      upload_preset: "bhandara",
+      context: `rid=${rid}`,
     };
     const signature = cloudinary.utils.api_sign_request(
       paramsToSign,
       config.cloudinary.apiSecret
     );
 
-    const url = `https://api.cloudinary.com/v1_1/${config.cloudinary.cloudName}/auto/upload`;
+    const url = `https://api.cloudinary.com/v1_1/${config.cloudinary.cloudName}/${resourceType}/upload`;
+
+    const params = new URLSearchParams({
+      ...paramsToSign,
+      signature,
+      // Cloudinary API key is not a secret and is safe to expose
+      // in client side direct upload parameters
+      api_key: config.cloudinary.apiKey,
+    });
     return {
-      data: {
-        url,
-        params: {
-          ...paramsToSign,
-          signature,
-          // Cloudinary API key is not a secret and is safe to expose
-          // in client side direct upload parameters
-          api_key: config.cloudinary.apiKey,
-        },
-      },
-      error: null,
+      signedURL: `${url}?${params.toString()}`,
+      path: paramsToSign?.public_id,
     };
   }
 }

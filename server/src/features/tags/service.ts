@@ -53,18 +53,17 @@ class TagService {
        WHERE t."deletedAt" IS NULL AND t."parentId" IS NULL
        GROUP BY t."id";`
     );
-    return results as any;
+    return results as ITag[];
   }
 
   @MethodCacheSync<ITag>({
     cacheGetter: getEventTagsCache,
     cacheSetter: setEventTagsCache,
     cacheDeleter: deleteEventTagsCache,
+    customCacheKey: (event: IEvent) => event.id,
   })
-  async getAllEventTags(eventId?: string, event?: IEvent) {
-    const _fetchedEvent = event || (await findById(Event, eventId));
-
-    const tagIds = _fetchedEvent?.tags || [];
+  async getAllEventTags(event?: IEvent) {
+    const tagIds = event?.tags || [];
 
     if (!tagIds.length) return [];
 

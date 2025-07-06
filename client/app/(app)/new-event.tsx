@@ -37,7 +37,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import InterestsDialog from "@/components/InterestsDialog";
 import { createEvent } from "@/common/api/events.action";
 import { EVENT_MEDIA_BUCKET } from "@/constants/global";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { getNavState } from "@/lib/navigationStore";
 
 interface IFormData {
@@ -115,6 +115,7 @@ const NewEvent = () => {
   const { user } = useAuth();
   const currentSelectedMediaRef = useRef<string | undefined>();
   const params = useLocalSearchParams();
+  const router = useRouter();
 
   const {
     control,
@@ -267,6 +268,9 @@ const NewEvent = () => {
 
   const handleEventCreate = async (validatedData: IFormData) => {
     try {
+      if (!selectedTags.length) {
+        return setError("tags", { message: "Please add tag(s)." });
+      }
       const startTime = selectedScheduleRef.current?.[0];
       let eventStatus = EEventStatus.Cancelled;
       const today = new Date();
@@ -282,7 +286,7 @@ const NewEvent = () => {
         },
         capacity: validatedData.capacity ? validatedData.num_capacity : undefined,
         createdBy: user?.id,
-        medias: previewableMedias.map((i) => i.id),
+        media: previewableMedias.map((i) => i.id),
         tags: selectedTags.map((i) => i.id),
         name: validatedData.name,
         description: validatedData.description,
@@ -291,8 +295,11 @@ const NewEvent = () => {
         status: eventStatus
       };
 
-      const { error } = await createEvent(payload);
+      const { data, error } = await createEvent(payload);
+
       if (error) throw error;
+      if (data?.id) router.push(`/event/${data?.id}`);
+      else router.navigate("/home");
     } catch (error: any) {
       toastController.show(error?.message || "Unable to create event");
     }
@@ -611,9 +618,7 @@ const NewEvent = () => {
         </YStack>
 
         <FilledButton
-          onPress={handleSubmit(handleEventCreate, () => {
-            if (!selectedTags.length) setError("tags", { message: "Please add tag(s)." });
-          })}
+          onPress={handleSubmit(handleEventCreate)}
           disabled={!!Object.keys(errors).length}
         >
           Create Event
@@ -621,21 +626,16 @@ const NewEvent = () => {
       </YStack>
 
       <RenderDateSelectionContent>
-        <CardWrapper
-          minW={300}
-          maxW={500}
-        >
-          <DateRangePicker
-            initialDates={selectedScheduleRef.current}
-            onSubmit={(...data) => {
-              closeDateSelection();
-              setValue("schedule", `${formatDateWithTimeString(data[0])} - ${formatDateWithTimeString(data[1])}`);
-              selectedScheduleRef.current = data;
-              clearErrors("schedule");
-            }}
-            onClose={closeDateSelection}
-          />
-        </CardWrapper>
+        <DateRangePicker
+          initialDates={selectedScheduleRef.current}
+          onSubmit={(...data) => {
+            closeDateSelection();
+            setValue("schedule", `${formatDateWithTimeString(data[0])} - ${formatDateWithTimeString(data[1])}`);
+            selectedScheduleRef.current = data;
+            clearErrors("schedule");
+          }}
+          onClose={closeDateSelection}
+        />
       </RenderDateSelectionContent>
 
       <RenderMediaPreviewContent>

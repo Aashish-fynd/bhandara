@@ -30,7 +30,7 @@ export class Media extends Model<MediaAttributes, MediaAttributes> {
   declare access: EAccessLevel;
   declare metadata: Record<string, any>;
   declare publicUrl?: string;
-  declare publicUrlExpiresAt?: Date;
+  declare publicUrlExpiresAt?: IMedia["publicUrlExpiresAt"];
   declare path?: string;
   declare createdAt: Date;
   declare updatedAt: Date;

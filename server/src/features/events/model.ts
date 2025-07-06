@@ -38,6 +38,7 @@ export class Event extends Model<EventAttributes, EventAttributes> {
   declare createdAt: Date;
   declare updatedAt: Date;
   declare deletedAt?: Date;
+  declare timings: IEvent["timings"];
 
   declare creator?: IBaseUser;
   declare reactions?: IReaction[];
@@ -104,6 +105,10 @@ Event.init(
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: [],
+    },
+    timings: {
+      type: DataTypes.JSONB,
+      allowNull: false,
     },
   },
   {

@@ -33,8 +33,6 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({
   const containerRef = useRef<RNView>(null);
   const [layout, setLayout] = useState({ width: 0, height: 0, x: 0, y: 0 });
 
-  console.log("layout", layout);
-
   // Update zoom level from parent
   useEffect(() => {
     Animated.spring(scaleAnim, {

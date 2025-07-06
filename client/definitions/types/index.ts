@@ -97,7 +97,6 @@ export interface IEvent extends ITimeStamp {
   location: IAddress; // JSONB field
   participants: IParticipant[]; // JSONB field
   verifiers: { user: string | IBaseUser; verifiedAt: Date | string }[]; // Array of verifier IDs
-  threadId: string; // References "Thread" table
   type: EEventType;
   createdBy: string; // References "User" table
   creator: IBaseUser;
@@ -105,6 +104,7 @@ export interface IEvent extends ITimeStamp {
   capacity: number;
   tags: ITag[]; // Array of tag IDs
   media: IMedia[]; // Array of media IDs
+  timings: { start: Date; end: Date };
 }
 
 // Tag Interface

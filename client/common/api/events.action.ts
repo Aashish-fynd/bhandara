@@ -14,7 +14,7 @@ export const getAllEvents = async (): Promise<{
 export const getEventById = async (
   id: string
 ): Promise<{
-  data: IEvent & { threads: { qna: string; discussion: string } };
+  data: IEvent;
   error: any;
 }> => {
   const response = await axiosClient.get(`/events/${id}`);
@@ -33,10 +33,7 @@ export const createEvent = async (data: Record<string, any>): Promise<IBaseRespo
   return createResponse.data;
 };
 
-export const updateEvent = async (
-  id: string,
-  data: Record<string, any>
-): Promise<IBaseResponse<IEvent>> => {
+export const updateEvent = async (id: string, data: Record<string, any>): Promise<IBaseResponse<IEvent>> => {
   const res = await axiosClient.put(`/events/${id}`, data);
   return res.data;
 };
@@ -49,9 +46,7 @@ export const cancelEvent = async (id: string): Promise<IBaseResponse<IEvent>> =>
 export const getUserEvents = async (
   userId: string
 ): Promise<{ data: { items: IEvent[]; pagination: IPaginationParams }; error: any }> => {
-  const res = await axiosClient.get(
-    `/events?createdBy=${userId}&status=draft,upcoming,ongoing,completed,cancelled`
-  );
+  const res = await axiosClient.get(`/events?createdBy=${userId}&status=draft,upcoming,ongoing,completed,cancelled`);
   return res.data;
 };
 

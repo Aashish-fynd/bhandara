@@ -5,7 +5,7 @@ import InterestSelection from "@/screens/OnBoarding/InterestSelection";
 import { isEmpty } from "@/utils";
 import { useToastController } from "@tamagui/toast";
 import React, { useRef, useState } from "react";
-import { H5, XStack } from "tamagui";
+import { H5, View, XStack } from "tamagui";
 import { FilledButton, OutlineButton } from "./ui/Buttons";
 import { SpinningLoader } from "./ui/Loaders";
 import { CardWrapper } from "./ui/common-styles";
@@ -53,7 +53,7 @@ const InterestsDialog = ({
   };
 
   return (
-    <CardWrapper maxW={500}>
+    <View maxW={500}>
       <H5>{title}</H5>
       <InterestSelection
         cb={(tags) => {
@@ -87,7 +87,7 @@ const InterestsDialog = ({
           Update
         </FilledButton>
       </XStack>
-    </CardWrapper>
+    </View>
   );
 };
 

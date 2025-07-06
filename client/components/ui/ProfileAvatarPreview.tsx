@@ -18,6 +18,7 @@ const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNo
     <CardWrapper
       width={"auto"}
       p={0}
+      minW={250}
     >
       <XStack
         gap="$3"
@@ -121,8 +122,9 @@ const ProfileAvatarPreview = ({
   >
     <PopoverContent
       z={1000}
+      borderWidth={0}
       p={0}
-      rounded={"unset"}
+      rounded={"$6"}
     >
       <Theme name={"dark"}>
         <Preview user={user}>{extraMeta}</Preview>

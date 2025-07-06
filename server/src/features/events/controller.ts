@@ -45,9 +45,14 @@ export const createEvent = async (req: ICustomRequest, res: Response) => {
 };
 
 export const updateEvent = async (req: ICustomRequest, res: Response) => {
-  const event = await eventService.update(req.params.id, req.body, true);
+  const event = await eventService.getById(req.params.eventId);
+  const updatedEvent = await eventService.update({
+    existing: event,
+    data: req.body,
+    populate: true,
+  });
   emitSocketEvent(PLATFORM_SOCKET_EVENTS.EVENT_UPDATED, {
-    data: { id: req.params.id, ...req.body },
+    data: { id: req.params.id, ...updatedEvent },
     error: null,
   });
   return res.status(200).json({ data: event, error: null });

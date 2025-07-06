@@ -77,10 +77,10 @@ class EventService {
     fields.forEach((field) => {
       switch (field) {
         case "tags":
-          promises.tags = this.tagService.getAllEventTags(null, event);
+          promises.tags = this.tagService.getAllEventTags(event);
           break;
         case "media":
-          promises.media = this.mediaService.getEventMedia(event.id);
+          promises.media = this.mediaService.getEventMedia(event);
           break;
         case "creator":
           promises.creator = this.userService.getById(event.createdBy);
@@ -148,18 +148,23 @@ class EventService {
     return result;
   }
 
-  @MethodCacheSync<IEvent>({})
-  async update<U extends Partial<IEvent>>(
-    id: string,
-    data: U,
-    populate?: boolean | string[]
-  ) {
-    const existing = await this.getById(id);
+  @MethodCacheSync<IEvent>({
+    customCacheKey: ({ existing }) => existing.id,
+  })
+  async update<U extends Partial<IEvent>>({
+    existing,
+    data,
+    populate,
+  }: {
+    existing: IEvent;
+    data: U;
+    populate?: boolean | string[];
+  }) {
     if (existing && existing.status === EEventStatus.Cancelled) {
       throw new BadRequestError("Cannot update a cancelled event");
     }
     const result = await validateEventUpdate(data, (data) =>
-      updateRecord(Event, { id }, data)
+      updateRecord(Event, { id: existing.id }, data)
     );
     let eventData = result as any;
     if (populate && eventData) {
@@ -180,8 +185,8 @@ class EventService {
     if (data.items) {
       await Promise.all(
         data.items.map(async (event) => {
-          const mediaPromise = this.mediaService.getEventMedia(event.id, 3);
-          const tagsPromise = this.tagService.getAllEventTags(null, event);
+          const mediaPromise = this.mediaService.getEventMedia(event, 3);
+          const tagsPromise = this.tagService.getAllEventTags(event);
           const participantsPromise =
             this.userService.getAndPopulateUserProfiles({
               data: event.participants,
@@ -270,7 +275,7 @@ class EventService {
     const data = await this.getById(eventId);
     const { latitude, longitude } = currentCoordinates;
     const { latitude: eventLatitude, longitude: eventLongitude } =
-      data.location.coordinates;
+      data.location;
     const distance = getDistanceInMeters(
       latitude,
       longitude,
@@ -299,7 +304,7 @@ class EventService {
       throw new BadRequestError("You are already a verifier");
     }
 
-    await this.update(eventId, updateData);
+    await this.update({ existing: data, data: updateData });
     return true;
   }
 
@@ -345,7 +350,7 @@ class EventService {
     } else {
       throw new BadRequestError("Invalid action");
     }
-    await this.update(eventId, updateData);
+    await this.update({ existing: event, data: updateData });
     return `Successfully ${action === "join" ? "joined" : "left"} the event`;
   }
 

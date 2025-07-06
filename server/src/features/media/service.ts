@@ -1,15 +1,14 @@
-import { IMedia, IPaginationParams } from "@/definitions/types";
+import { IEvent, IMedia, IPaginationParams } from "@/definitions/types";
 import { EMediaProvider } from "@/definitions/enums";
 import {
   createRecord,
-  deleteRecord,
   findAllWithPagination,
   findById,
   runTransaction,
   updateRecord,
 } from "@utils/dbUtils";
 import SupabaseService from "@supabase";
-import CloudinaryService from "@/cloudinary";
+import CloudinaryService from "@ccloudinary";
 import { validateMediaCreate, validateMediaUpdate } from "./validation";
 import { MEDIA_BUCKET_CONFIG, MEDIA_PUBLIC_BUCKET_NAME } from "./constants";
 import { Media } from "./model";
@@ -17,19 +16,17 @@ import { Event } from "../events/model";
 import { isEmpty, omit } from "@utils";
 import { MethodCacheSync } from "@decorators";
 import {
+  deleteEventMediaCache,
   deleteMediaCache,
+  getEventMediaCache,
+  setEventMediaCache,
   setMediaCache,
-  setMediaPublicUrlCache,
   updateMediaCache,
-  getMediaPublicUrlCache,
-  setMediaBulkCache,
 } from "./helpers";
 import { getMediaCache } from "./helpers";
-import { get32BitMD5Hash } from "@helpers";
 import logger from "@logger";
 import { getUniqueFilename as getUniqueFilename } from "./utils";
 import { BadRequestError } from "@exceptions";
-import CustomError from "@exceptions/CustomError";
 import { CACHE_NAMESPACE_CONFIG } from "@constants";
 
 class MediaService {
@@ -43,34 +40,22 @@ class MediaService {
     return findById(Media, id);
   }
 
-  @MethodCacheSync<IMedia>()
-  async getEventMedia(eventId: string, limit: number | null = null) {
-    const events = await findById(Event, eventId);
-    const mediaIds = (events[0]?.media || []) as string[];
+  @MethodCacheSync<IMedia>({
+    customCacheKey: (event: IEvent, limit: number | null = null) =>
+      event.id + (limit ? `:${limit}` : ""),
+    cacheSetter: setEventMediaCache,
+    cacheDeleter: deleteEventMediaCache,
+    cacheGetter: getEventMediaCache,
+  })
+  async getEventMedia(event: IEvent, limit: number | null = null) {
+    const mediaIds = event?.media || [];
     if (!mediaIds.length) return [];
 
-    const data = await findAllWithPagination(
-      Media,
-      { id: mediaIds },
-      { limit: limit ?? mediaIds.length }
+    const data = await this.getMediaByIds(
+      mediaIds.slice(0, limit || mediaIds.length) as unknown as string[]
     );
 
-    const publicUrlPromises = (data?.items || []).map(async (item) => {
-      const publicUrl = await this.getPublicUrl(
-        item.url,
-        item.storage.bucket,
-        item.storage.provider
-      );
-      return {
-        ...item,
-        publicUrl: publicUrl.signedUrl,
-        publicUrlExpiresAt: publicUrl.expiresAt,
-      };
-    });
-
-    const publicUrls = await Promise.all(publicUrlPromises);
-
-    return publicUrls;
+    return Object.values(data);
   }
 
   async uploadFile({
@@ -124,9 +109,9 @@ class MediaService {
             ...restOptions,
           });
 
-          if (creation.data) {
-            (creation.data as any).publicUrl = secure_url;
-            (creation.data as any).publicUrlExpiresAt = new Date(
+          if (creation) {
+            (creation as any).publicUrl = secure_url;
+            (creation as any).publicUrlExpiresAt = new Date(
               Date.now() + 3600 * 24 * 1000
             );
           }
@@ -251,18 +236,21 @@ class MediaService {
           signedUrl = this._cloudinaryService.getSignedUploadParams({
             bucket,
             path,
+            resourceType: restOptions.type,
+            rid: creationData.id,
           });
         } else {
-          signedUrl = await this._supabaseService.getSignedUrlForUpload({
+          const res = await this._supabaseService.getSignedUrlForUpload({
             path,
             bucket,
           });
+          signedUrl = res.data;
         }
 
-        delete signedUrl.data.token;
+        delete signedUrl.token;
         return {
           row: creationData as IMedia,
-          ...signedUrl.data,
+          ...signedUrl,
         };
       })
     );
@@ -326,21 +314,16 @@ class MediaService {
     return res;
   }
 
-  @MethodCacheSync<string>({
-    cacheSetter: setMediaPublicUrlCache,
-    cacheGetter: getMediaPublicUrlCache,
-    customCacheKey: (path: string) => get32BitMD5Hash(path),
-  })
   async getPublicUrl(
     path: string,
     bucket: string,
     provider: EMediaProvider = EMediaProvider.Supabase
   ) {
     if (provider === EMediaProvider.Cloudinary) {
-      const { data } = await this._cloudinaryService.getPublicUrl(path);
+      const signedUrl = this._cloudinaryService.getPublicUrl(path);
       return {
-        signedUrl: data.signedUrl,
-        expiresAt: new Date(Date.now() + 3600 * 24 * 1000),
+        signedUrl,
+        expiresAt: -1,
       };
     }
 
@@ -363,21 +346,15 @@ class MediaService {
     provider: EMediaProvider = EMediaProvider.Supabase
   ) {
     if (provider === EMediaProvider.Cloudinary) {
-      const urls = await Promise.all(
-        paths.map(async (p) => {
-          const { data } = await this._cloudinaryService.getPublicUrl(p);
-          return { path: p, signedUrl: data.signedUrl };
-        })
-      );
-      const publicUrls = urls.map((u) => ({ ...u }));
-      const publicUrlsWithExpiresAt = publicUrls.map((url) => ({
-        ...url,
-        expiresAt: new Date(Date.now() + expiresIn * 1000),
-      }));
-      return publicUrlsWithExpiresAt.reduce((acc, url) => {
+      const urls = paths.map((p) => {
+        const signedUrl = this._cloudinaryService.getPublicUrl(p);
+        return { path: p, signedUrl, expiresAt: -1 };
+      });
+
+      return urls.reduce((acc, url) => {
         acc[url.path] = url;
         return acc;
-      }, {} as Record<string, { signedUrl: string; expiresAt: Date }>);
+      }, {} as Record<string, { signedUrl: string; expiresAt: Date | number }>);
     }
 
     const { data: publicUrls, error } =
@@ -498,7 +475,8 @@ class MediaService {
         {}
       );
 
-      await setMediaBulkCache(Object.values(mediaWithUrls));
+      // TODO: Need to be validated if this is required
+      // await setMediaBulkCache(Object.values(mediaWithUrls));
 
       return mediaWithUrls;
     }

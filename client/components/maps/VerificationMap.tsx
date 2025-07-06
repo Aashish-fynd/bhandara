@@ -10,11 +10,7 @@ const styles = StyleSheet.create({
   map: { flex: 1, width: "100%", height: "100%" }
 });
 
-function generateCircleCoords(
-  center: [number, number],
-  radius: number,
-  points = 64
-) {
+function generateCircleCoords(center: [number, number], radius: number, points = 64) {
   const [lng, lat] = center;
   const coords = [] as [number, number][];
   const distanceX = (radius / 111320) * Math.cos((lat * Math.PI) / 180);
@@ -30,12 +26,17 @@ function generateCircleCoords(
 
 export default function VerificationMap({
   eventCoords,
+  eventName,
+  userCoords,
   radius,
   onUserLocationChange
 }: {
   eventCoords: [number, number];
+  eventName: string;
+  userCoords: [number, number];
   radius: number;
   onUserLocationChange: (coords: [number, number]) => void;
+  zoomLevel?: number;
 }) {
   const circle = {
     type: "Feature",
@@ -52,16 +53,34 @@ export default function VerificationMap({
   };
 
   return (
-    <MapView style={styles.map} compassEnabled zoomEnabled>
-      <Camera ref={cameraRef} centerCoordinate={eventCoords} zoomLevel={17} />
-      <UserLocation visible showsUserHeadingIndicator onUpdate={handleUserLocation} />
-      <ShapeSource id="verify-circle" shape={circle}>
+    <MapView
+      style={styles.map}
+      compassEnabled
+      zoomEnabled
+    >
+      <Camera
+        ref={cameraRef}
+        centerCoordinate={eventCoords}
+        zoomLevel={17}
+      />
+      <UserLocation
+        visible
+        showsUserHeadingIndicator
+        onUpdate={handleUserLocation}
+      />
+      <ShapeSource
+        id="verify-circle"
+        shape={circle}
+      >
         <FillLayer
           id="verify-fill"
           style={{ fillColor: "rgba(0,122,255,0.2)", fillOutlineColor: "rgba(0,122,255,0.5)" }}
         />
       </ShapeSource>
-      <PointAnnotation id="event-location" coordinate={eventCoords} />
+      <PointAnnotation
+        id="event-location"
+        coordinate={eventCoords}
+      />
     </MapView>
   );
 }

@@ -1,26 +1,16 @@
 import CustomAvatar from "@/components/CustomAvatar";
-import { CardWrapper, CircleBgWrapper } from "@/components/ui/common-styles";
+import { CardWrapper } from "@/components/ui/common-styles";
 import { EMediaType } from "@/definitions/enums";
 import { IBaseUser, IMedia } from "@/definitions/types";
 import { formatTimeAgo } from "@/utils/date.utils";
-import {
-  ChevronLeft,
-  ChevronRight,
-  CloudDownload,
-  ExternalLink,
-  Minus,
-  Plus,
-  RefreshCcw,
-  RefreshCw,
-  RotateCw,
-  X
-} from "@tamagui/lucide-icons";
-import React, { useRef, useState } from "react";
-import { AnimatePresence, Image, Slider, styled, Text, View, XStack, YStack } from "tamagui";
-import Video, { VideoRef } from "react-native-video";
-import { ZoomableImage } from "./ZoomableImage";
+import { CloudDownload, ExternalLink, Minus, Plus, RotateCw, X } from "@tamagui/lucide-icons";
+import React, { useState } from "react";
+import { Slider, styled, Text, XStack, YStack } from "tamagui";
 import { useAuth } from "@/contexts/AuthContext";
 import { isEmpty } from "@/utils";
+import Carousel from "@/components/Carousel";
+import { ZoomableImage } from "./ZoomableImage";
+import Video from "react-native-video";
 
 interface Props {
   medias: (IMedia & { user?: IBaseUser })[];
@@ -36,31 +26,6 @@ const IconWrapperCard = styled(CardWrapper, {
   flexDirection: "row"
 });
 
-const GalleryItem = styled(View, {
-  width: 500,
-  height: 300,
-  position: "absolute",
-  overflow: "hidden",
-  z: 1,
-  x: 0,
-  opacity: 1,
-  variants: {
-    going: {
-      ":number": (going) => ({
-        enterStyle: {
-          x: going > 0 ? 500 : -500,
-          opacity: 0
-        },
-        exitStyle: {
-          zIndex: 0,
-          x: going < 0 ? 500 : -500,
-          opacity: 0
-        }
-      })
-    }
-  } as const
-});
-
 const STEP_VALUE = 20;
 
 const wrap = (min: number, max: number, v: number) => {
@@ -70,29 +35,15 @@ const wrap = (min: number, max: number, v: number) => {
 
 const AssetPreviewDialog = ({ medias, currentSelectedMediaId, close }: Props) => {
   const { user: currentAuthenticatedUser } = useAuth();
-  const [[mediaIndex, going], setMediaIndex] = useState(() => {
-    const index = medias.findIndex((f) => f.id === currentSelectedMediaId);
-    if (index !== -1) return [index, 0];
-    else return [0, 0];
-  });
-
-  const currentSelectedMedia = medias[mediaIndex];
-
-  const videoRef = useRef<VideoRef>(null);
-
+  const [currentSelectedMedia, setCurrentSelectedMedia] = useState(
+    () => medias.find((media) => media.id === currentSelectedMediaId) || medias[0]
+  );
   const timeAgo = formatTimeAgo(currentSelectedMedia.createdAt);
   const [zoomValue, setZoomValue] = useState(0);
   const mediaUser = currentSelectedMedia.user;
 
-  const paginate = (going: number) => {
-    setMediaIndex([mediaIndex + going, going]);
-  };
-
-  const isLeftButtonDisabled = mediaIndex === 0;
-  const isRightButtonDisabled = mediaIndex === medias.length - 1;
-
   return (
-    <YStack gap={"$4"}>
+    <>
       <XStack
         gap={"$2"}
         flex={1}
@@ -129,79 +80,35 @@ const AssetPreviewDialog = ({ medias, currentSelectedMediaId, close }: Props) =>
           onPress={close}
         />
       </XStack>
-      <View
-        position="relative"
-        height={300}
-        width={500}
-        group
-      >
-        <AnimatePresence
-          initial={false}
-          custom={{ going }}
-        >
-          <GalleryItem
-            key={mediaIndex}
-            animation="quicker"
-            going={going}
-          >
-            {currentSelectedMedia.type === EMediaType.Image && (
+      <Carousel
+        medias={medias}
+        currentSelectedMediaId={currentSelectedMediaId || ""}
+        onMediaChange={(media) => {
+          setCurrentSelectedMedia(media);
+        }}
+        renderMedia={(media) => {
+          if (media.type === EMediaType.Image) {
+            return (
               <ZoomableImage
-                uri={currentSelectedMedia?.publicUrl || ""}
+                uri={media.publicUrl || ""}
                 containerStyle={{ width: 500, height: 300, rounded: "$2" }}
                 scale={zoomValue / 10 === 0 ? 1 : zoomValue / 10}
               />
-            )}
-            {currentSelectedMedia.type === EMediaType.Video && (
+            );
+          }
+          if (media.type === EMediaType.Video) {
+            return (
               <Video
-                // Can be a URL or a local file.
-                source={{ uri: currentSelectedMedia?.publicUrl }}
-                // Store reference
-                ref={videoRef}
-                style={{
-                  width: 500,
-                  position: "relative",
-                  height: 300
-                }}
+                source={{ uri: media.publicUrl }}
+                style={{ width: 500, height: 300 }}
                 controls
                 paused
               />
-            )}
-          </GalleryItem>
-        </AnimatePresence>
-
-        {/* navigation button */}
-        <CircleBgWrapper
-          bg={"$accent11"}
-          p={"$2"}
-          t={300 / 2 - 19} // button wrapper size 38/2 = 19
-          l={0}
-          position="absolute"
-          hoverStyle={{ x: -5, bg: "$accent10" }}
-          $group-hover={{ display: isLeftButtonDisabled ? "none" : "flex" }}
-          animation={"medium"}
-          cursor={"pointer"}
-          onPress={() => paginate(-1)}
-          z={10}
-        >
-          <ChevronLeft />
-        </CircleBgWrapper>
-        <CircleBgWrapper
-          bg={"$accent11"}
-          p={"$2"}
-          t={300 / 2 - 19}
-          r={0}
-          position="absolute"
-          hoverStyle={{ x: 5, bg: "$accent10" }}
-          $group-hover={{ display: isRightButtonDisabled ? "none" : "flex" }}
-          animation={"medium"}
-          cursor={"pointer"}
-          onPress={() => paginate(1)}
-          z={10}
-        >
-          <ChevronRight />
-        </CircleBgWrapper>
-      </View>
-
+            );
+          }
+          return null;
+        }}
+      />
       {currentSelectedMedia.type === EMediaType.Image && (
         <XStack
           gap={"$2"}
@@ -286,7 +193,7 @@ const AssetPreviewDialog = ({ medias, currentSelectedMediaId, close }: Props) =>
           </XStack>
         </XStack>
       )}
-    </YStack>
+    </>
   );
 };
 

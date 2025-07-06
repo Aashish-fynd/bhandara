@@ -6,7 +6,8 @@ import { Fragment } from "react";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "@tamagui/lucide-icons";
 import CustomTooltip from "../CustomTooltip";
-import { Badge, CardWrapper } from "./common-styles";
+import { CardWrapper } from "./common-styles";
+import { Badge } from "./Badge";
 
 export const TagPreviewTooltip = ({ tag }: { tag: ITag }) => {
   return (
@@ -244,12 +245,7 @@ export const TagListing = ({ tags }: { tags: ITag[] }) => {
         <CustomTooltip
           trigger={
             <Badge cursor="pointer">
-              <Text
-                fontSize={"$3"}
-                color={"$color2"}
-              >
-                {tag.name}
-              </Text>
+              <Badge.Text fontSize={"$3"}>{tag.name}</Badge.Text>
             </Badge>
           }
           key={tag.id}

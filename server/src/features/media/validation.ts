@@ -154,6 +154,10 @@ const updateSchema = {
       type: ["string", "null"],
       errorMessage: "Name must be a string or null",
     },
+    url: {
+      type: ["string", "null"],
+      errorMessage: "URL must be a string or null",
+    },
   },
   additionalProperties: false,
   errorMessage: {

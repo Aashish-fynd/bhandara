@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Badge, CardWrapper } from "../ui/common-styles";
+import { CardWrapper } from "../ui/common-styles";
 import { XStack, ScrollView, View, YStack, Text } from "tamagui";
 import { Plus, RotateCw, SendHorizontal, X } from "@tamagui/lucide-icons";
 import { FilledButton, OutlineButton } from "../ui/Buttons";
@@ -14,6 +14,7 @@ import { CircularProgressLoader, SpinningLoader } from "../ui/Loaders";
 import CustomTooltip from "../CustomTooltip";
 import { EMediaType } from "@/definitions/enums";
 import { IAttachedFile } from "@/common/utils/file.utils";
+import { Badge } from "../ui/Badge";
 
 interface IProps {
   context: Record<string, any>;
@@ -67,28 +68,28 @@ const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
   const checkNativeClipboard = async () => {
     try {
       // Check if clipboard has an image
-      const hasImage = await Clipboard.hasImageAsync();
-      if (hasImage) {
-        const imageData = await Clipboard.getImageAsync({ format: "jpeg" });
-        if (imageData?.data) {
-          // Get filename from URI
-          const uriParts = imageData.uri.split("/");
-          const name = uriParts[uriParts.length - 1] || "clipboard-image.jpg";
+      // const hasImage = await Clipboard.hasImageAsync();
+      // if (hasImage) {
+      //   const imageData = await Clipboard.getImageAsync({ format: "jpeg" });
+      //   if (imageData?.data) {
+      //     // Get filename from URI
+      //     const uriParts = imageData.uri.split("/");
+      //     const name = uriParts[uriParts.length - 1] || "clipboard-image.jpg";
 
-          setAttachedFiles((prev) => [
-            ...prev,
-            {
-              name,
-              type: "image/jpeg", // Assume jpeg for simplicity
-              size: 0, // Size not available
-              data: imageData.base64 || "",
-              uri: imageData.uri
-            }
-          ]);
+      //     setAttachedFiles((prev) => [
+      //       ...prev,
+      //       {
+      //         name,
+      //         type: "image/jpeg", // Assume jpeg for simplicity
+      //         size: 0, // Size not available
+      //         data: imageData.base64 || "",
+      //         uri: imageData.uri
+      //       }
+      //     ]);
 
-          return true;
-        }
-      }
+      //     return true;
+      //   }
+      // }
       return false;
     } catch (error) {
       console.error("Error checking clipboard for images", error);
@@ -329,12 +330,7 @@ const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
                 }
               >
                 <Badge>
-                  <Text
-                    fontSize={"$2"}
-                    color={"$color1"}
-                  >
-                    Max 3 files supported
-                  </Text>
+                  <Badge.Text fontSize={"$2"}>Max 3 files supported</Badge.Text>
                 </Badge>
               </CustomTooltip>
             ) : (

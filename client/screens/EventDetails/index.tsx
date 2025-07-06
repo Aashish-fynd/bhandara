@@ -1,18 +1,18 @@
-import React, { memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 
 import { getEventById, getEventThreads } from "@/common/api/events.action";
 import { BackButtonHeader, IdentityCard, TagListing, UserCluster } from "@/components/ui/common-components";
-import { Badge, CardWrapper, CircleBgWrapper, PopoverContent } from "@/components/ui/common-styles";
+import { CardWrapper, CircleBgWrapper, PopoverContent } from "@/components/ui/common-styles";
 import { SpinningLoader } from "@/components/ui/Loaders";
 import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
-import { EEventType, EThreadType } from "@/definitions/enums";
-import { IAddress, IBaseThread, IBaseUser, IEvent, IMessage, IReaction } from "@/definitions/types";
+import { EEventType, EMediaType } from "@/definitions/enums";
+import { IBaseThread, IBaseUser, IEvent } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
-import { ChevronRight, Plus, Share2, Pencil, Trash, MoreVertical, Edit3, X } from "@tamagui/lucide-icons";
+import { ChevronRight, Plus, Share2, MoreVertical, Edit3, X, Calendar } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { H4, H6, ScrollView, Sheet, Text, View, XStack, YStack } from "tamagui";
-import { formatDateWithTimeString } from "@/utils/date.utils";
+import { formatDateRange, formatDateWithTimeString } from "@/utils/date.utils";
 import { omit, shareLink } from "@/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateEvent } from "@/common/api/events.action";
@@ -27,11 +27,15 @@ import VerifyEvent from "@/components/VerifyEvent";
 import MessageCard from "./MessageView/MessageCard";
 import { IMessageViewAddMessageProp, IMessageViewBaseProps } from "./MessageView";
 import MessageViewSheetContent from "./MessageViewSheetContent";
-import { OutlineButton } from "@/components/ui/Buttons";
+import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
 import PopoverMenuList from "@/components/PopoverMenuList";
 import { GestureResponderEvent } from "react-native";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { useDialog } from "@/hooks/useModal";
+import { Badge } from "@/components/ui/Badge";
+import Carousel from "@/components/Carousel";
+import { ZoomableImage } from "./ZoomableImage";
+import Video from "react-native-video";
 
 export const VerifiersListing = ({ verifiers }: { verifiers: IEvent["verifiers"] }) => {
   // sort the latest ones first
@@ -232,26 +236,30 @@ const EventDetails: React.FC = () => {
 
   const handleCancelEvent = async () => {
     await updateEvent(id as string, { status: EEventStatus.Cancelled });
+    router.back();
   };
 
-  const handleMenuAction = useCallback(
-    async (action: string, e?: GestureResponderEvent) => {
-      e?.stopPropagation();
-      switch (action) {
-        case "Edit":
-          router.push(`/new-event?id=${_event?.id}`);
-          break;
-        case "Share":
-          shareLink(`${config.server.baseURL}/event/${_event?.id}`);
-          break;
-        case "Cancel":
-          await handleCancelEvent();
-          router.back();
-          break;
-      }
-    },
-    [id, router]
-  );
+  const handleMenuAction = async (action: string, e?: GestureResponderEvent) => {
+    console.log({ action });
+    e?.stopPropagation();
+    switch (action) {
+      case "edit":
+        router.push(`/new-event?id=${_event?.id}`);
+        break;
+      case "share":
+        shareLink(`${config.server.baseURL}/event/${_event?.id}`);
+        break;
+      case "cancel":
+        open();
+        break;
+    }
+  };
+
+  const formattedTiming = formatDateRange(_event?.timings?.start!, _event?.timings?.end);
+  const isVerified = _event?.verifiers.some((v) => {
+    const id = typeof v.user === "string" ? v.user : v.user.id;
+    return id === user?.id;
+  });
 
   return (
     <>
@@ -313,7 +321,38 @@ const EventDetails: React.FC = () => {
                 flex={1}
                 $gtMd={{ maxW: 600 }}
               >
-                <H4>{_event.name}</H4>
+                <View px={"$2"}>
+                  {!!_event?.media?.length && (
+                    <Carousel
+                      medias={_event.media}
+                      renderMedia={(media) => {
+                        if (media?.type === EMediaType.Image) {
+                          return (
+                            <ZoomableImage
+                              uri={media?.publicUrl || ""}
+                              containerStyle={{ width: "100%", height: 300, rounded: "$2" }}
+                              scale={1}
+                            />
+                          );
+                        }
+                        if (media?.type === EMediaType.Video) {
+                          return (
+                            <Video
+                              source={{ uri: media?.publicUrl }}
+                              style={{ height: 300 }}
+                              controls
+                              paused
+                              audioOutput="speaker"
+                            />
+                          );
+                        }
+                        return null;
+                      }}
+                      styles={{ width: "100%", justify: "center" }}
+                    />
+                  )}
+                </View>
+
                 {createdBy && (
                   <ProfileAvatarPreview user={createdBy}>
                     <IdentityCard
@@ -325,14 +364,22 @@ const EventDetails: React.FC = () => {
                   </ProfileAvatarPreview>
                 )}
                 <MapPreviewCard {..._event.location} />
-                <VerifyEvent
-                  event={_event}
-                  onVerified={(v) =>
-                    setEvent((prev) =>
-                      prev ? { ...prev, verifiers: [...prev.verifiers, v] } : prev
-                    )
-                  }
-                />
+                <CardWrapper
+                  flexDirection="row"
+                  items={"center"}
+                  size={"medium"}
+                >
+                  <CircleBgWrapper
+                    size={"$3"}
+                    bg={"$color10"}
+                  >
+                    <Calendar size={16} />
+                  </CircleBgWrapper>
+                  <YStack>
+                    <Text fontSize={"$4"}>{formattedTiming.dateRange}</Text>
+                    <Text fontSize={"$2"}>{formattedTiming.timeRange}</Text>
+                  </YStack>
+                </CardWrapper>
                 <CardWrapper>
                   <H6>Tags</H6>
                   <TagListing tags={tags || []} />
@@ -348,12 +395,9 @@ const EventDetails: React.FC = () => {
                       <H6>Attendees</H6>
                       {_event?.capacity && (
                         <Badge outline-success={true}>
-                          <Text
-                            fontSize={"$2"}
-                            color={"$green11"}
-                          >
+                          <Badge.Text fontSize={"$2"}>
                             {participants.length}/{_event.capacity}
-                          </Text>
+                          </Badge.Text>
                         </Badge>
                       )}
                     </XStack>
@@ -428,6 +472,40 @@ const EventDetails: React.FC = () => {
             )
           )}
         </ScrollView>
+
+        {_event && (
+          <XStack
+            gap={"$4"}
+            flex={1}
+            maxH={32}
+            height={32}
+            shrink={0}
+          >
+            {!isVerified && (
+              <VerifyEvent
+                event={_event}
+                onVerified={(v) => setEvent((prev) => (prev ? { ...prev, verifiers: [...prev.verifiers, v] } : prev))}
+                buttonStyles={{
+                  flex: 1,
+                  width: "50%",
+                  py: "$2"
+                }}
+              />
+            )}
+            <FilledButton
+              flex={1}
+              width={"50%"}
+              py={"$1"}
+            >
+              <Text
+                fontSize={"$3"}
+                color={"$color1"}
+              >
+                Join
+              </Text>
+            </FilledButton>
+          </XStack>
+        )}
       </YStack>
 
       <Sheet
@@ -470,7 +548,7 @@ const EventDetails: React.FC = () => {
         <ConfirmationDialog
           title="Cancel Event"
           description="Are you sure you want to cancel this event?"
-          onClose={() => {}}
+          onClose={close}
           onConfirm={handleCancelEvent}
           asDanger
         />

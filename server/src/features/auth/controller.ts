@@ -27,7 +27,7 @@ const login = async (req: Request, res: Response) => {
     throw new BadRequestError("Username and password are required");
   }
 
-  const { data: existingUser } = await userService.getUserByEmail(email);
+  const existingUser = await userService.getUserByEmail(email);
 
   if (!existingUser)
     throw new NotFoundError(`User not found with email: ${email}`);
@@ -92,7 +92,7 @@ const session = (req: ICustomRequest, res: Response) => {
 
 const googleAuth = async (req: Request, res: Response) => {
   const origin = `${req.protocol}://${req.get("host")}`;
-  const redirectUrl = `${origin}/auth/google/callback`;
+  const redirectUrl = `${origin}/api/auth/google/callback`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -186,7 +186,7 @@ export const deleteSession = async (req: ICustomRequest, res: Response) => {
 
 export const signUp = async (req: Request, res: Response) => {
   const { email, password, location, name } = req.body;
-  const { data: existingUser } = await userService.getUserByEmail(email);
+  const existingUser = await userService.getUserByEmail(email);
 
   if (!isEmpty(existingUser))
     throw new BadRequestError(`User already exists with email: ${email}`);

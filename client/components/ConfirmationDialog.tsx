@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Dialog } from "tamagui";
 import { FilledButton, OutlineButton } from "./ui/Buttons";
 import { SpinningLoader } from "./ui/Loaders";
+import { DialogContent, DialogTitle } from "./ui/common-styles";
 
 const ConfirmationDialog = ({
   title,
@@ -30,7 +31,7 @@ const ConfirmationDialog = ({
 
   return (
     <>
-      <Dialog.Title>{title}</Dialog.Title>
+      <DialogTitle>{title}</DialogTitle>
       <Dialog.Description>{description}</Dialog.Description>
 
       <XStack
