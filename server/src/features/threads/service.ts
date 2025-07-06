@@ -2,13 +2,7 @@ import { validateThreadCreate, validateThreadUpdate } from "./validation";
 import { Thread } from "./model";
 
 import { IPaginationParams, IMessage } from "@/definitions/types";
-import {
-  createRecord,
-  deleteRecord,
-  findAllWithPagination,
-  findById,
-  updateRecord,
-} from "@utils/dbUtils";
+import { findAllWithPagination } from "@utils/dbUtils";
 import { MethodCacheSync } from "@decorators";
 import { getThreadCache, setThreadCache, deleteThreadCache } from "./helpers";
 import { IBaseThread } from "@definitions/types";
@@ -57,7 +51,8 @@ class ThreadsService {
   }
 
   async _getByIdNoCache(id: string) {
-    return findById(Thread, id);
+    const res = await Thread.findByPk(id, { raw: true });
+    return res as any;
   }
 
   @MethodCacheSync<IBaseThread>({})
@@ -74,7 +69,8 @@ class ThreadsService {
             "Nested threads beyond one level are not allowed"
           );
       }
-      return createRecord(Thread, validData);
+      const row = await Thread.create(validData as any);
+      return row.toJSON() as any;
     });
     let thread = (created as any)?.dataValues || (created as any)?.[0]?.dataValues || created;
     if (populate && thread) {
@@ -85,7 +81,8 @@ class ThreadsService {
 
   @MethodCacheSync({})
   async getById(id: string) {
-    return findById(Thread, id);
+    const res = await Thread.findByPk(id, { raw: true });
+    return res as any;
   }
 
   @MethodCacheSync<IBaseThread>({})
@@ -103,7 +100,12 @@ class ThreadsService {
             "Nested threads beyond one level are not allowed"
           );
       }
-      return updateRecord(Thread, { id }, validData);
+      const [count, rows] = await Thread.update(validData as any, {
+        where: { id },
+        returning: true,
+      });
+      if (count === 0) throw new Error("Thread not found");
+      return rows[0];
     });
     let thread = (updated as any)?.[0] ?? updated;
     if (populate && thread) {
@@ -120,8 +122,11 @@ class ThreadsService {
     return findAllWithPagination(Thread, where, pagination, select);
   }
 
-  delete(id: string) {
-    return deleteRecord(Thread, { id });
+  async delete(id: string) {
+    const row = await Thread.findByPk(id);
+    if (!row) return null;
+    await row.destroy();
+    return row.toJSON() as any;
   }
 }
 

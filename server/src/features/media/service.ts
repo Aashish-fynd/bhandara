@@ -1,12 +1,6 @@
 import { IEvent, IMedia, IPaginationParams } from "@/definitions/types";
 import { EMediaProvider } from "@/definitions/enums";
-import {
-  createRecord,
-  findAllWithPagination,
-  findById,
-  runTransaction,
-  updateRecord,
-} from "@utils/dbUtils";
+import { findAllWithPagination } from "@utils/dbUtils";
 import SupabaseService from "@supabase";
 import CloudinaryService from "@ccloudinary";
 import { validateMediaCreate, validateMediaUpdate } from "./validation";
@@ -37,7 +31,8 @@ class MediaService {
   private readonly _cloudinaryService = new CloudinaryService();
 
   async _getByIdNoCache(id: string) {
-    return findById(Media, id);
+    const res = await Media.findByPk(id, { raw: true });
+    return res as any;
   }
 
   @MethodCacheSync<IMedia>({
@@ -178,9 +173,14 @@ class MediaService {
     cacheSetterWithExistingTTL: updateMediaCache,
   })
   async update<U extends Partial<IMedia>>(id: string, data: U) {
-    const res = await validateMediaUpdate(data, (validatedData) =>
-      updateRecord(Media, { id }, validatedData)
-    );
+    const res = await validateMediaUpdate(data, async (validatedData) => {
+      const [count, rows] = await Media.update(validatedData as any, {
+        where: { id },
+        returning: true,
+      });
+      if (count === 0) throw new Error("Media not found");
+      return rows[0];
+    });
     return res;
   }
 
@@ -196,7 +196,7 @@ class MediaService {
       ...insertData,
     };
     return validateMediaCreate(dataWithProvider, (validatedData) =>
-      runTransaction(async (tx) => {
+      Media.sequelize!.transaction(async (tx) => {
         const { name: fileName, ...restOptions } = validatedData.options || {};
 
         const bucket = validatedData.bucket;
@@ -291,17 +291,17 @@ class MediaService {
   async create<U extends Partial<Omit<IMedia, "id" | "updatedAt">>>(data: U) {
     const res = await validateMediaCreate(data, (validatedData) => {
       const { path, ...rest } = validatedData;
-      return createRecord(Media, {
+      return Media.create({
         ...rest,
         path: getUniqueFilename(path),
-      });
+      } as any);
     });
     return res;
   }
 
   @MethodCacheSync<IMedia>()
   async getById(id: string): Promise<IMedia | null> {
-    const res = await findById(Media, id);
+    const res = (await Media.findByPk(id, { raw: true })) as IMedia | null;
     if (res) {
       const publicUrl = await this.getPublicUrl(
         res.url,
@@ -383,7 +383,7 @@ class MediaService {
 
   @MethodCacheSync<IMedia>({})
   async delete(id: string) {
-    return runTransaction(async (tx) => {
+    return Media.sequelize!.transaction(async (tx) => {
       const media = await Media.findByPk(id, { transaction: tx });
       if (!media) return null;
       await media.destroy({ transaction: tx });
@@ -484,36 +484,30 @@ class MediaService {
   }
 
   async getEventMediaJunctionRow(eventId: string, mediaId: string) {
-    const event = await findById(Event, eventId);
-    const exists = (event[0]?.media || []).includes(mediaId);
+    const event = (await Event.findByPk(eventId, { raw: true })) as any;
+    const exists = (event?.media || []).includes(mediaId);
     return exists ? { eventId, mediaId } : null;
   }
 
   async createEventMediaJunctionRow(eventId: string, mediaId: string) {
-    const event = await findById(Event, eventId);
-    const mediaSet = new Set((event?.media || []) as unknown as string[]);
+    const event = (await Event.findByPk(eventId, { raw: true })) as any;
+    const mediaSet = new Set((event?.media || []) as string[]);
     mediaSet.add(mediaId);
-    const data = await updateRecord(
-      Event,
-      { id: eventId },
-      {
-        media: Array.from(mediaSet) as any,
-      }
+    const [, rows] = await Event.update(
+      { media: Array.from(mediaSet) as any } as any,
+      { where: { id: eventId }, returning: true }
     );
-    return data;
+    return rows[0];
   }
 
   async deleteEventMediaJunctionRow(eventId: string, mediaId: string) {
-    const event = await findById(Event, eventId);
-    const media = (event[0]?.media || []) as string[];
-    const data = await updateRecord(
-      Event,
-      { id: eventId },
-      {
-        media: media.filter((m) => m !== mediaId) as any,
-      }
+    const event = (await Event.findByPk(eventId, { raw: true })) as any;
+    const media = (event?.media || []) as string[];
+    const [, rows] = await Event.update(
+      { media: media.filter((m) => m !== mediaId) as any } as any,
+      { where: { id: eventId }, returning: true }
     );
-    return data;
+    return rows[0];
   }
 }
 
