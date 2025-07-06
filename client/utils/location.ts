@@ -1,5 +1,7 @@
 import * as Location from "expo-location";
 
+
+/** Request device location permissions and return the current position. */
 export async function askForLocation(
   onLocationGetSuccess?: (location: Location.LocationObject) => Promise<void> | void,
   onLocationGetFailed?: (resp: Location.LocationPermissionResponse) => void
@@ -25,6 +27,9 @@ interface CoordPoint {
   latitude: number;
 }
 
+/**
+ * Calculate the distance between two coordinate points in meters.
+ */
 export function haversineDistanceInM(start: CoordPoint, end: CoordPoint): number {
   const toRad = (x: number) => (x * Math.PI) / 180;
 
