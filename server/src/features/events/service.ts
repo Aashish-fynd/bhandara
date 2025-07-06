@@ -1,11 +1,6 @@
 import { IBaseUser, IEvent, IPaginationParams } from "@/definitions/types";
 import ThreadsService from "../threads/service";
-import {
-  createRecord,
-  deleteRecord,
-  findAllWithPagination,
-  updateRecord,
-} from "@utils/dbUtils";
+import { findAllWithPagination } from "@utils/dbUtils";
 import { Op } from "sequelize";
 import { EEventParticipantStatus, EEventStatus } from "@/definitions/enums";
 import TagService from "../tags/service";
@@ -141,9 +136,10 @@ class EventService {
   @MethodCacheSync<IEvent>({})
   async createEvent(body: Partial<IEvent>) {
     if (!body.status) body.status = EEventStatus.Draft;
-    let result = await validateEventCreate(body, (data) =>
-      createRecord(Event, data as any)
-    );
+    let result = await validateEventCreate(body, async (data) => {
+      const row = await Event.create(data as any);
+      return row.toJSON() as any;
+    });
 
     return result;
   }
@@ -163,9 +159,14 @@ class EventService {
     if (existing && existing.status === EEventStatus.Cancelled) {
       throw new BadRequestError("Cannot update a cancelled event");
     }
-    const result = await validateEventUpdate(data, (data) =>
-      updateRecord(Event, { id: existing.id }, data)
-    );
+    const result = await validateEventUpdate(data, async (d) => {
+      const [count, rows] = await Event.update(d as any, {
+        where: { id: existing.id },
+        returning: true,
+      });
+      if (count === 0) throw new Error("Event not found");
+      return rows[0];
+    });
     let eventData = result as any;
     if (populate && eventData) {
       eventData = await this.populateEvent(eventData, populate);
@@ -226,20 +227,23 @@ class EventService {
 
   @MethodCacheSync<IEvent>({})
   async cancel(id: string) {
-    const result = await updateRecord(
-      Event,
-      { id },
-      {
-        status: EEventStatus.Cancelled,
-      }
+    const [count, rows] = await Event.update(
+      { status: EEventStatus.Cancelled } as any,
+      { where: { id }, returning: true }
     );
+    const result = rows[0];
     await this.deleteCache(id);
     return result;
   }
 
   @MethodCacheSync<IEvent>({})
   delete(id: string) {
-    return deleteRecord(Event, { id });
+    return (async () => {
+      const row = await Event.findByPk(id);
+      if (!row) return null;
+      await row.destroy();
+      return row.toJSON() as any;
+    })();
   }
 
   @MethodCacheSync<Record<string, IBaseUser>>({

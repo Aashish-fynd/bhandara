@@ -1,11 +1,5 @@
 import { IReaction, IPaginationParams } from "@/definitions/types";
-import {
-  createRecord,
-  deleteRecord,
-  findAllWithPagination,
-  findById,
-  updateRecord,
-} from "@utils/dbUtils";
+import { findAllWithPagination } from "@utils/dbUtils";
 import { Reaction } from "./model";
 import { validateReactionCreate, validateReactionUpdate } from "./validation";
 
@@ -21,7 +15,8 @@ class ReactionService {
   }
 
   async getById(id: string) {
-    return findById(Reaction, id);
+    const res = await Reaction.findByPk(id, { raw: true });
+    return res as any;
   }
 
   async getAll(
@@ -35,21 +30,36 @@ class ReactionService {
   async create<U extends Partial<Omit<IReaction, "id" | "updatedAt">>>(
     data: U
   ) {
-    const res = await validateReactionCreate(data, (validData) =>
-      createRecord(Reaction, validData)
-    );
+    const res = await validateReactionCreate(data, async (validData) => {
+      const row = await Reaction.create(validData as any);
+      return row.toJSON() as any;
+    });
     return res;
   }
 
   async update<U extends Partial<IReaction>>(id: string, data: U) {
-    const res = await validateReactionUpdate(data, (validData) =>
-      updateRecord(Reaction, { id }, validData)
-    );
+    const res = await validateReactionUpdate(data, async (validData) => {
+      const [count, rows] = await Reaction.update(validData as any, {
+        where: { id },
+        returning: true,
+      });
+      if (count === 0) throw new Error("Reaction not found");
+      return rows[0];
+    });
     return res;
   }
 
   delete(id: string, skipGet = false) {
-    return deleteRecord(Reaction, { id }, skipGet);
+    return (async () => {
+      if (skipGet) {
+        const result = await Reaction.destroy({ where: { id } });
+        return result;
+      }
+      const row = await Reaction.findByPk(id);
+      if (!row) return null;
+      await row.destroy();
+      return row.toJSON() as any;
+    })();
   }
 
   async getReactions(contentId: string, userId?: string) {
