@@ -5,6 +5,7 @@ import { BadRequestError, NotFoundError } from "@exceptions";
 import { isEmpty, pick } from "@utils";
 import { EMediaProvider } from "@definitions/enums";
 import logger from "@logger";
+import { addVideoJob } from "@/queues/video";
 
 const mediaService = new MediaService();
 
@@ -148,8 +149,19 @@ export const getMediaPublicUrls = async (
 };
 
 export const onUploadComplete = async (req: ICustomRequest, res: Response) => {
-  const { context, secure_url, public_id, asset_id } = req.body;
-  const { custom: { rid } = {} } = context;
+  const { id, mediaId, context, secure_url, public_id, asset_id } = req.body;
+
+  const queuedId = id || mediaId;
+  if (queuedId) {
+    const media = await mediaService.getById(queuedId);
+    if (!media) throw new NotFoundError('Media not found');
+    if (media.mimeType?.startsWith('video')) {
+      await addVideoJob(media.id);
+    }
+    return res.status(200).json({ queued: true });
+  }
+
+  const { custom: { rid } = {} } = context || {};
 
   if (!rid) throw new BadRequestError(`Missing context id`);
 
