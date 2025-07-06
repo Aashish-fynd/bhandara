@@ -1,4 +1,3 @@
-import { EVENT_MEDIA_BUCKET } from "@/constants/global";
 import { getMediaPublicURLs, IPickerAsset, uploadPickerAsset } from "../api/media.action";
 import { isEmpty } from "@/utils";
 import { EMediaType } from "@/definitions/enums";

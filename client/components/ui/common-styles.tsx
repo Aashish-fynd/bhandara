@@ -1,11 +1,19 @@
-import { Card, Dialog, Popover, styled, View, YStack } from "tamagui";
+import { Card, Dialog, Popover, styled, View, YStack, createStyledContext, Text } from "tamagui";
 
 export const DialogContent = styled(Dialog.Content, {
   bordered: true,
   elevate: true,
+  elevation: "$5",
+  shadowColor: "$color11",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+  rounded: "$4",
+  display: "flex",
+  gap: "$4",
   animateOnly: ["transform", "opacity"],
   animation: [
-    "quick",
+    "quicker",
     {
       opacity: {
         overshootClamping: true
@@ -14,7 +22,13 @@ export const DialogContent = styled(Dialog.Content, {
   ],
   enterStyle: { x: 0, y: 20, opacity: 0 },
   exitStyle: { x: 0, y: 10, opacity: 0, scale: 0.95 },
-  z: 200
+  z: 9999
+});
+
+export const DialogTitle = styled(Dialog.Title, {
+  fontSize: "$6",
+  display: "flex",
+  items: "center"
 });
 
 export const PopoverContent = styled(Popover.Content, {
@@ -39,52 +53,6 @@ export const PopoverContent = styled(Popover.Content, {
       }
     }
   ]
-});
-
-export const Badge = styled(YStack, {
-  bg: "$color12",
-  rounded: "$2",
-  px: "$2",
-  py: "$1",
-  style: {
-    color: "$color1"
-  },
-  borderWidth: 1,
-  borderColor: "$color12",
-  height: "min-content",
-
-  variants: {
-    outline: {
-      true: {
-        borderColor: "$color8",
-        bg: "$background"
-      }
-    },
-    success: {
-      true: {
-        bg: "$green11",
-        borderColor: "$green1"
-      }
-    },
-    danger: {
-      true: {
-        bg: "$red11",
-        borderColor: "$red1"
-      }
-    },
-    "outline-success": {
-      true: {
-        bg: "$green7",
-        borderColor: "$green11"
-      }
-    },
-    "outline-danger": {
-      true: {
-        bg: "$red3",
-        borderColor: "$red8"
-      }
-    }
-  } as const
 });
 
 export const CardWrapper = styled(Card, {

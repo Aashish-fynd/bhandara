@@ -1,6 +1,9 @@
 import { useState, useMemo } from "react";
-import { Adapt, Sheet } from "tamagui";
+import { Adapt, AnimatePresence, DialogContentProps, Sheet, Unspaced } from "tamagui";
 import { Dialog } from "tamagui";
+import { DialogContent as StandardDialogContent } from "@/components/ui/common-styles";
+import { X } from "@tamagui/lucide-icons";
+import { OutlineButton } from "@/components/ui/Buttons";
 
 interface UseDialogProps {
   disableAdapt?: boolean;
@@ -23,7 +26,11 @@ const createDialogContent = (
   disableAdapt: boolean,
   hideOnOutsideClick: boolean
 ) => {
-  const DialogContent: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  const DialogContent: React.FC<{
+    children: React.ReactNode;
+    styles?: DialogContentProps;
+    showCloseButton?: boolean;
+  }> = ({ children, styles, showCloseButton = true }) => (
     <Dialog
       modal
       open={isOpen}
@@ -63,7 +70,7 @@ const createDialogContent = (
           bg="$shadow6"
           animateOnly={["transform", "opacity"]}
           animation={[
-            "quick",
+            "quicker",
             {
               opacity: {
                 overshootClamping: true
@@ -77,15 +84,32 @@ const createDialogContent = (
               close();
             }
           }}
-          z={199}
+          z={9999}
         />
-        <Dialog.Content
-          elevate
-          elevation={"$4"}
-          shadowColor={"$shadow1"}
+        <StandardDialogContent
+          minW={400}
+          key="content"
+          {...styles}
+          position="relative"
         >
           {children}
-        </Dialog.Content>
+
+          {showCloseButton && (
+            <Unspaced>
+              <Dialog.Close asChild>
+                <OutlineButton
+                  p={"$2"}
+                  t={"$4"}
+                  r={"$4"}
+                  position="absolute"
+                  rounded={"$2"}
+                  onPress={close}
+                  iconAfter={<X />}
+                />
+              </Dialog.Close>
+            </Unspaced>
+          )}
+        </StandardDialogContent>
       </Dialog.Portal>
     </Dialog>
   );

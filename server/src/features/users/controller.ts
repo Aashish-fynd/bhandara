@@ -29,7 +29,10 @@ export const getAllUser = async (
     query = [{ column: "email", operator: EQueryOperator.Eq, value: email }];
   }
 
-  const { items, pagination: dataPagination } = await userService.getAll({ query }, req.pagination);
+  const { items, pagination: dataPagination } = await userService.getAll(
+    { query },
+    req.pagination
+  );
 
   const safeUsers = items?.map((user) => getSafeUser(user));
   return res.status(200).json({
@@ -37,7 +40,6 @@ export const getAllUser = async (
       items: safeUsers,
       pagination: dataPagination,
     },
-    error: null,
   });
 };
 
@@ -45,20 +47,20 @@ export const getUserById = async (req: ICustomRequest, res: Response) => {
   const { id } = req.params;
   const data = await userService.getById(id);
   if (isEmpty(data)) throw new NotFoundError("User not found");
-  return res.status(200).json({ data: getSafeUser(data), error: null });
+  return res.status(200).json({ data: getSafeUser(data) });
 };
 
 export const deleteUser = async (req: ICustomRequest, res: Response) => {
   const { id } = req.params;
-  const data = await userService.delete(id);
-  return res.status(200).json({ data: getSafeUser(data), error: null });
+  const data = (await userService.delete(id)) as IBaseUser;
+  return res.status(200).json({ data: getSafeUser(data) });
 };
 
 export const updateUser = async (req: ICustomRequest, res: Response) => {
   const { id } = req.params;
   const updateBody = omit(req.body, ["password", "email"]);
   const data = await userService.update(id, updateBody);
-  return res.status(200).json({ data: getSafeUser(data), error: null });
+  return res.status(200).json({ data: getSafeUser(data) });
 };
 
 export const getUserByQuery = async (req: ICustomRequest, res: Response) => {
@@ -78,11 +80,11 @@ export const getUserByQuery = async (req: ICustomRequest, res: Response) => {
 
   if (isEmpty(data)) throw new NotFoundError("User not found");
 
-  return res.status(200).json({ data: getSafeUser(data), error: null });
+  return res.status(200).json({ data: getSafeUser(data) });
 };
 
 export const getUserInterests = async (req: ICustomRequest, res: Response) => {
   const { id } = req.params;
   const data = await userService.getUserInterests(id);
-  return res.status(200).json({ data, error: null });
+  return res.status(200).json({ data });
 };

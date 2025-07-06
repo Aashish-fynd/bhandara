@@ -2,7 +2,6 @@ import { getAllEvents } from "@/common/api/events.action";
 import CustomTooltip from "@/components/CustomTooltip";
 import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
 import { CircularFillIndicator, IdentityCard, TagPreviewTooltip, UserCluster } from "@/components/ui/common-components";
-import { Badge } from "@/components/ui/common-styles";
 import { SpinningLoader } from "@/components/ui/Loaders";
 import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import images from "@/constants/images";
@@ -19,6 +18,7 @@ import { H5, Image, ScrollView, Text, XStack, YStack } from "tamagui";
 
 import { View } from "tamagui";
 import VerifyEvent from "@/components/VerifyEvent";
+import { Badge } from "@/components/ui/Badge";
 
 const EventCard = ({ event }: { event: IEvent }) => {
   const [localEvent, setLocalEvent] = React.useState<IEvent>(event);
@@ -70,7 +70,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
           bg={"rgba(0, 0, 0, 0.2)"}
           backdropFilter={"blur(8px)"}
         >
-            <H5>{localEvent.name}</H5>
+          <H5>{localEvent.name}</H5>
           <XStack gap={"$4"}>
             <Badge>
               <XStack gap={"$2"}>
@@ -90,12 +90,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
                   size={16}
                   color={"$color1"}
                 />
-                <Text
-                  fontSize={"$3"}
-                  color={"$color1"}
-                >
-                  {/* {event.timing.startTime} - {event.timing.endTime} */}
-                </Text>
+                <Badge.Text fontSize={"$3"}>{/* {event.timing.startTime} - {event.timing.endTime} */}</Badge.Text>
               </XStack>
             </Badge>
           </XStack>
@@ -175,31 +170,39 @@ const EventCard = ({ event }: { event: IEvent }) => {
         </XStack>
 
         {/* verifiers */}
-        {!!localEvent.verifiers.length && (
-          <YStack
+        <YStack
+          gap={"$2"}
+          items={"flex-start"}
+        >
+          <Text fontSize={"$3"}>Verifiers</Text>
+          <XStack
             gap={"$2"}
-            items={"flex-start"}
+            width={"100%"}
+            justify={"space-between"}
+            items={"center"}
           >
-            <Text fontSize={"$3"}>Verifiers</Text>
-            <XStack
-              gap={"$2"}
-              width={"100%"}
-              justify={"space-between"}
-            >
+            {!!localEvent.verifiers.length ? (
               <UserCluster users={localEvent.verifiers.map((verifier) => verifier.user as IBaseUser)} />
+            ) : (
+              <Text
+                fontSize={"$2"}
+                color={"$color11"}
+              >
+                No verifiers yet
+              </Text>
+            )}
 
-              <VerifyEvent
-                event={localEvent}
-                onVerified={(v) =>
-                  setLocalEvent((prev) => ({
-                    ...prev,
-                    verifiers: [...prev.verifiers, v]
-                  }))
-                }
-              />
-            </XStack>
-          </YStack>
-        )}
+            <VerifyEvent
+              event={localEvent}
+              onVerified={(v) =>
+                setLocalEvent((prev) => ({
+                  ...prev,
+                  verifiers: [...prev.verifiers, v]
+                }))
+              }
+            />
+          </XStack>
+        </YStack>
 
         {!!localEvent.tags.length && (
           <ScrollView
@@ -217,12 +220,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
                       key={tag.id}
                       cursor="pointer"
                     >
-                      <Text
-                        fontSize={"$3"}
-                        color={"$color4"}
-                      >
-                        {tag.name}
-                      </Text>
+                      <Badge.Text fontSize={"$3"}>{tag.name}</Badge.Text>
                     </Badge>
                   }
                   tooltipConfig={{ offset: 20 }}

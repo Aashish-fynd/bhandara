@@ -16,8 +16,8 @@ const MapViewComponent = ({
 }) => {
   const mapRef = useRef<mapboxgl.Map>();
   const mapContainerRef = useRef<any>();
-  const currentLocationRef = useRef<[number, number] | undefined>(initialLocation);
   const markerRef = useRef<mapboxgl.Marker>();
+  const currentLocationRef = useRef<[number, number] | undefined>(initialLocation);
 
   const _flyTo = (lngLat: [number, number]) => {
     if (!mapRef.current) return;

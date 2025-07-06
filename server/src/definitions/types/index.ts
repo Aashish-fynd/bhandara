@@ -74,8 +74,8 @@ export interface IBaseThread extends ITimeStamp {
 // Location Interface
 export interface ILocation {
   address: string;
-  coordinates?: { latitude: number; longitude: number }; // Optional geolocation
-  venueName?: string; // Optional venue name
+  latitude?: number;
+  longitude?: number;
 }
 
 // Event Participant Interface
@@ -100,6 +100,7 @@ export interface IEvent extends ITimeStamp {
   tags: ITag[] | string[]; // Array of tag IDs
   media: IMedia[]; // Array of media IDs
   reactions?: IReaction[];
+  timings: { start: Date; end: Date };
 }
 
 export interface IVerifier {
@@ -132,7 +133,7 @@ export interface IMedia extends ITimeStamp {
   type: EMediaType;
   url: string;
   publicUrl?: string;
-  publicUrlExpiresAt?: Date;
+  publicUrlExpiresAt?: Date | number;
   caption?: string | null;
   thumbnail?: string | null;
   size?: number | null;

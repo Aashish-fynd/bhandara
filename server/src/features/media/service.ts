@@ -1,8 +1,7 @@
-import { IMedia, IPaginationParams } from "@/definitions/types";
+import { IEvent, IMedia, IPaginationParams } from "@/definitions/types";
 import { EMediaProvider } from "@/definitions/enums";
 import {
   createRecord,
-  deleteRecord,
   findAllWithPagination,
   findById,
   runTransaction,
@@ -17,19 +16,17 @@ import { Event } from "../events/model";
 import { isEmpty, omit } from "@utils";
 import { MethodCacheSync } from "@decorators";
 import {
+  deleteEventMediaCache,
   deleteMediaCache,
+  getEventMediaCache,
+  setEventMediaCache,
   setMediaCache,
-  setMediaPublicUrlCache,
   updateMediaCache,
-  getMediaPublicUrlCache,
-  setMediaBulkCache,
 } from "./helpers";
 import { getMediaCache } from "./helpers";
-import { get32BitMD5Hash } from "@helpers";
 import logger from "@logger";
 import { getUniqueFilename as getUniqueFilename } from "./utils";
 import { BadRequestError } from "@exceptions";
-import CustomError from "@exceptions/CustomError";
 import { CACHE_NAMESPACE_CONFIG } from "@constants";
 
 class MediaService {
@@ -43,34 +40,22 @@ class MediaService {
     return findById(Media, id);
   }
 
-  @MethodCacheSync<IMedia>()
-  async getEventMedia(eventId: string, limit: number | null = null) {
-    const events = await findById(Event, eventId);
-    const mediaIds = (events[0]?.media || []) as string[];
+  @MethodCacheSync<IMedia>({
+    customCacheKey: (event: IEvent, limit: number | null = null) =>
+      event.id + (limit ? `:${limit}` : ""),
+    cacheSetter: setEventMediaCache,
+    cacheDeleter: deleteEventMediaCache,
+    cacheGetter: getEventMediaCache,
+  })
+  async getEventMedia(event: IEvent, limit: number | null = null) {
+    const mediaIds = event?.media || [];
     if (!mediaIds.length) return [];
 
-    const data = await findAllWithPagination(
-      Media,
-      { id: mediaIds },
-      { limit: limit ?? mediaIds.length }
+    const data = await this.getMediaByIds(
+      mediaIds.slice(0, limit || mediaIds.length) as unknown as string[]
     );
 
-    const publicUrlPromises = (data?.items || []).map(async (item) => {
-      const publicUrl = await this.getPublicUrl(
-        item.url,
-        item.storage.bucket,
-        item.storage.provider
-      );
-      return {
-        ...item,
-        publicUrl: publicUrl.signedUrl,
-        publicUrlExpiresAt: publicUrl.expiresAt,
-      };
-    });
-
-    const publicUrls = await Promise.all(publicUrlPromises);
-
-    return publicUrls;
+    return Object.values(data);
   }
 
   async uploadFile({
@@ -255,10 +240,11 @@ class MediaService {
             rid: creationData.id,
           });
         } else {
-          signedUrl = await this._supabaseService.getSignedUrlForUpload({
+          const res = await this._supabaseService.getSignedUrlForUpload({
             path,
             bucket,
           });
+          signedUrl = res.data;
         }
 
         delete signedUrl.token;
@@ -314,11 +300,6 @@ class MediaService {
     return res;
   }
 
-  @MethodCacheSync<string>({
-    cacheSetter: setMediaPublicUrlCache,
-    cacheGetter: getMediaPublicUrlCache,
-    customCacheKey: (path: string) => get32BitMD5Hash(path),
-  })
   async getPublicUrl(
     path: string,
     bucket: string,
@@ -480,7 +461,8 @@ class MediaService {
         {}
       );
 
-      await setMediaBulkCache(Object.values(mediaWithUrls));
+      // TODO: Need to be validated if this is required
+      // await setMediaBulkCache(Object.values(mediaWithUrls));
 
       return mediaWithUrls;
     }

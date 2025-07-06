@@ -40,10 +40,7 @@ const extractError = (result: any) => {
   return null;
 };
 
-const checkAndThrowRLSError = <T>(
-  result: any,
-  existingData: T | null
-) => {
+const checkAndThrowRLSError = <T>(result: any, existingData: T | null) => {
   const data = extractData<T>(result);
   const error = extractError(result);
   if (!error && !data && !isEmpty(existingData)) {
@@ -67,7 +64,9 @@ const checkAndThrowRLSError = <T>(
  * }
  * ```
  */
-function MethodCacheSync<T = any>(options?: CacheDecoratorOptions<T>) {
+function MethodCacheSync<T = any>(
+  options?: CacheDecoratorOptions<T>
+): Function {
   return function <M extends (...args: any[]) => Promise<any>>(
     target: Object,
     propertyKey: string,

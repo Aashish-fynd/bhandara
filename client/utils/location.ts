@@ -1,4 +1,5 @@
 import * as Location from "expo-location";
+
 export async function askForLocation(
   onLocationGetSuccess?: (location: Location.LocationObject) => Promise<void> | void,
   onLocationGetFailed?: (resp: Location.LocationPermissionResponse) => void

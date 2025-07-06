@@ -129,7 +129,7 @@ export const getMediaPublicUrls = async (
   if (isEmpty(signedUrls))
     throw new NotFoundError("Media(s) not found at path");
 
-  return res.status(200).json(signedUrls);
+  return res.status(200).json({ data: signedUrls });
 };
 
 export const onUploadComplete = async (req: ICustomRequest, res: Response) => {

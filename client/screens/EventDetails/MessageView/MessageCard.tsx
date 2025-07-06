@@ -1,6 +1,6 @@
 import CustomAvatar from "@/components/CustomAvatar";
 import { UserCluster } from "@/components/ui/common-components";
-import { CardWrapper, DialogContent } from "@/components/ui/common-styles";
+import { CardWrapper } from "@/components/ui/common-styles";
 import { useAuth } from "@/contexts/AuthContext";
 import { IBaseUser, IMedia, IMessage, IReaction } from "@/definitions/types";
 import { useRef, useState } from "react";

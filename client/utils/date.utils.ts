@@ -67,3 +67,33 @@ export const formatTimeAgo = (date: string | Date): string => {
 
   return `${seconds} seconds ago`;
 };
+
+export const formatDateRange = (startIso: Date, endIso?: Date) => {
+  if (!startIso) return { full: "TBA", dateRange: "TBA", timeRange: "" };
+
+  const start = new Date(startIso);
+  const end = endIso ? new Date(endIso) : null;
+
+  const dateOptions = { year: "numeric", month: "long", day: "numeric" };
+  const timeOptions = { hour: "numeric", minute: "2-digit", hour12: true };
+
+  const startDate = start.toLocaleDateString("en-US", dateOptions as any);
+  const startTime = start.toLocaleTimeString("en-US", timeOptions as any);
+
+  if (!end) {
+    return {
+      full: `${startDate} at ${startTime}`,
+      dateRange: startDate,
+      timeRange: startTime
+    };
+  }
+
+  const endDate = end.toLocaleDateString("en-US", dateOptions as any);
+  const endTime = end.toLocaleTimeString("en-US", timeOptions as any);
+
+  return {
+    full: `${startDate} at ${startTime} → ${endDate} at ${endTime}`,
+    dateRange: `${startDate} - ${endDate}`,
+    timeRange: `${startTime} - ${endTime}`
+  };
+};

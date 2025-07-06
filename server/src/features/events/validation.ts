@@ -5,6 +5,7 @@ import {
   EEventStatus,
   EEventType,
 } from "@definitions/enums";
+import { BadRequestError } from "@exceptions";
 
 const locationSchema = {
   type: "object",
@@ -97,15 +98,22 @@ const eventSchema = {
         start: {
           type: "string",
           format: "date-time",
-          errorMessage: "Start time is required",
+          errorMessage: "Start time must be a valid date-time",
         },
         end: {
           type: "string",
           format: "date-time",
-          errorMessage: "End time is required",
+          errorMessage: "End time must be a valid date-time",
         },
       },
       required: ["end", "start"],
+      errorMessage: {
+        type: "Timings must be an object",
+        required: {
+          start: "Start time is required",
+          end: "End time is required",
+        },
+      },
     },
     type: {
       type: "string",
@@ -131,7 +139,7 @@ const eventSchema = {
       minimum: 50,
       errorMessage: "Capacity must be a non-negative integer",
     },
-    medias: {
+    media: {
       type: ["array", "null"],
       items: { type: "string", format: "uuid" },
       uniqueItems: true,
@@ -139,6 +147,7 @@ const eventSchema = {
     tags: {
       type: ["array"],
       items: { type: "string", format: "uuid" },
+      minItems: 1,
       uniqueItems: true,
     },
   },
@@ -219,9 +228,58 @@ const validateEventCreate = validateSchema(
   eventSchema
 );
 
+// Custom timing validation function
+const validateTimings = (timings: any) => {
+  if (!timings || !timings.start || !timings.end) {
+    throw new BadRequestError("Start time and end time are required");
+  }
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const startTime = new Date(timings.start);
+  const endTime = new Date(timings.end);
+
+  // Check if start time is in the future
+  if (startTime <= now) {
+    throw new BadRequestError("Start time must be in the future");
+  }
+
+  // Check if end time is in the future
+  if (endTime <= now) {
+    throw new BadRequestError("End time must be in the future");
+  }
+
+  // Check if end time is after start time
+  if (endTime <= startTime) {
+    throw new BadRequestError("End time must be after start time");
+  }
+};
+
+// Enhanced validation function that includes timing validation
+const validateEventCreateWithTiming = <T, R>(
+  data: T,
+  callback: (validData: T) => R
+): R => {
+  // First run the schema validation
+  const result = validateEventCreate(data, (validData) => {
+    // Add custom timing validation
+    const eventData = validData as any;
+    if (eventData.timings) {
+      validateTimings(eventData.timings);
+    }
+    return callback(validData);
+  });
+
+  return result;
+};
+
 const validateEventUpdate = validateSchema(
   `${EVENT_TABLE_NAME}_UPDATE`,
   eventUpdateSchema
 );
 
-export { validateEventCreate, validateEventUpdate };
+export {
+  validateEventCreateWithTiming as validateEventCreate,
+  validateEventUpdate,
+};
