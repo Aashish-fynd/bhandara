@@ -28,15 +28,20 @@ export const uploadPickerAsset = async (
   const { uri, mimeType, name, size: fileSize, type } = asset;
 
   const parsedName = (customName || name).replace(`.${type}`, "");
+  if (fileSize > config.maxSize) throw new Error("File size exceeds bucket limit");
 
   onProgress?.(10);
+  let progress = 10;
+  const mockProgressInterval = setInterval(() => {
+    onProgress?.(++progress);
+  }, 500);
   const compressed = await compressFile(uri, { mimeType: mimeType || undefined, percentage: compressionPercentage });
-  onProgress?.(30);
+  clearInterval(mockProgressInterval);
+
+  onProgress?.(Math.max(progress, 30));
   const newSize = compressed.size ?? fileSize;
 
-  if (newSize > config.maxSize) {
-    throw new Error("File size exceeds bucket limit");
-  }
+  if (newSize > config.maxSize) throw new Error("File size exceeds bucket limit");
 
   const response = await axiosClient.post("/media/get-signed-upload-url", {
     path: name,
@@ -96,15 +101,12 @@ export const getMediaPublicURLs = async (mediaIds: string[]): Promise<IBaseRespo
 export const getPublicUploadSignedURL = async (path: string, parentPath?: string) => {
   const response = await axiosClient.post("/media/get-public-upload-url", {
     path,
-    parentPath,
+    parentPath
   });
   return response.data.data;
 };
 
-export const updateMedia = async (
-  id: string,
-  data: Partial<IMedia>
-): Promise<IBaseResponse<IMedia>> => {
+export const updateMedia = async (id: string, data: Partial<IMedia>): Promise<IBaseResponse<IMedia>> => {
   const response = await axiosClient.patch(`/media/${id}`, data);
   return response.data;
 };

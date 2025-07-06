@@ -4,16 +4,14 @@ import {
   IPickerAsset,
   uploadPickerAsset,
   getPublicUploadSignedURL,
-  updateMedia,
+  updateMedia
 } from "../api/media.action";
 
 import { isEmpty } from "@/utils";
 import { EMediaType } from "@/definitions/enums";
 import { IMedia } from "@/definitions/types";
-import {
-  generateImageVariants,
-  generateVideoThumbnails,
-} from "@/utils/compression";
+import { generateImageVariants, generateVideoThumbnails } from "@/utils/compression";
+import axios from "axios";
 
 export interface IAttachedFile extends Omit<IPickerAsset, "uri"> {
   error?: string;
@@ -32,6 +30,8 @@ export const uploadFile = async (
 ) => {
   const { uri, mimeType = "", name = "", size = 0 } = file;
   const type = (mimeType?.split("/")[0] || "") as EMediaType;
+
+  console.log("uri", uri);
 
   // Create a retryCallback function
   const retryCallback = () => {
@@ -90,38 +90,32 @@ export const uploadFile = async (
 
     const baseName = result.url.split("/").pop() || "";
 
-    if (type === EMediaType.VIDEO) {
+    if (type === EMediaType.Video) {
       generateVideoThumbnails(uri)
         .then(async (thumbs) => {
           await Promise.all(
             thumbs.map(async (t) => {
-              const signed = await getPublicUploadSignedURL(
-                `${baseName}${t.suffix}.jpg`,
-                opts.pPath
-              );
+              const signed = await getPublicUploadSignedURL(`${baseName}${t.suffix}.jpg`, opts.pPath);
               await axios.put(signed.signedUrl, t.blob, {
-                headers: { "Content-Type": t.blob.type },
+                headers: { "Content-Type": t.blob?.type }
               });
             })
           );
           await updateMedia(result.id, {
-            thumbnail: `${opts.pPath}/${baseName}@2x.jpg`,
+            thumbnail: `${opts.pPath}/${baseName}@2x.jpg`
           });
         })
         .catch((err) => console.error(err));
     }
 
-    if (type === EMediaType.IMAGE) {
+    if (type === EMediaType.Image) {
       generateImageVariants(uri, mimeType)
         .then(async (variants) => {
           await Promise.all(
             variants.map(async (v) => {
-              const signed = await getPublicUploadSignedURL(
-                `${baseName}${v.suffix}.jpg`,
-                opts.pPath
-              );
+              const signed = await getPublicUploadSignedURL(`${baseName}${v.suffix}.jpg`, opts.pPath);
               await axios.put(signed.signedUrl, v.blob, {
-                headers: { "Content-Type": v.blob.type },
+                headers: { "Content-Type": v.blob?.type }
               });
             })
           );
@@ -198,7 +192,10 @@ export const processPickedFiles = async ({
 
   // Wait for all uploads to complete
   const results = await Promise.allSettled(promises);
-  const successCountFiles = results.filter((result) => result.status === "fulfilled").map((result) => result.value);
+  const successCountFiles = results
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => result.value)
+    .filter(Boolean);
 
   const successCount = successCountFiles.length;
 

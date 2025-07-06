@@ -73,6 +73,12 @@ Media.init(
     sequelize: getDBConnection(),
     timestamps: true,
     paranoid: true,
+    indexes: [
+      {
+        name: "idx_media_url",
+        fields: ["url"],
+      },
+    ],
   }
 );
 

@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { generateThumbnailFromVideo } from "./media.util";
 
 let workerClientPromise: Promise<{
   runWorker: <T>(action: string, payload: any) => Promise<T>;
@@ -67,10 +68,10 @@ export async function compressFile(uri: string, options: CompressOptions = {}): 
     if (Platform.OS === "web") {
       const worker = await getWorkerClient();
       if (worker) {
-        const res = await worker.runWorker<CompressResult>('compressImage', {
+        const res = await worker.runWorker<CompressResult>("compressImage", {
           uri,
           width: width || height,
-          percentage,
+          percentage
         });
         return res;
       }
@@ -80,12 +81,12 @@ export async function compressFile(uri: string, options: CompressOptions = {}): 
       const compressed = await imageCompression(blob, {
         maxSizeMB,
         maxWidthOrHeight: width || height || 1280,
-        useWebWorker: true,
+        useWebWorker: true
       });
       return {
         uri: URL.createObjectURL(compressed),
         blob: compressed,
-        size: compressed.size,
+        size: compressed.size
       };
     } else {
       const { Image } = await require("react-native-compressor" as any);
@@ -133,31 +134,34 @@ export interface VariantResult extends CompressResult {
 }
 
 export async function generateVideoThumbnails(uri: string): Promise<VariantResult[]> {
-  const { default: VideoThumbnails } = await require("expo-video-thumbnails");
-  const base = await VideoThumbnails.getThumbnailAsync(uri, { time: 1000 });
   if (Platform.OS === "web") {
     const worker = await getWorkerClient();
     if (worker) {
-      const small = await worker.runWorker<CompressResult>('compressImage', { uri: base.uri, width: 260 });
-      const medium = await worker.runWorker<CompressResult>('compressImage', { uri: base.uri, width: 480 });
-      const large = await worker.runWorker<CompressResult>('compressImage', { uri: base.uri });
+      const thumbnail = await generateThumbnailFromVideo(uri);
+      const small = await worker.runWorker<CompressResult>("compressImage", { uri: thumbnail, width: 260 });
+      const medium = await worker.runWorker<CompressResult>("compressImage", { uri: thumbnail, width: 480 });
+      const large = await worker.runWorker<CompressResult>("compressImage", { uri: thumbnail });
       const results = [
         { ...small, suffix: "@1x" },
         { ...medium, suffix: "@2x" },
-        { ...large, suffix: "@3x" },
+        { ...large, suffix: "@3x" }
       ];
       return results as VariantResult[];
     }
   }
 
-  const small = await compressFile(base.uri, { mimeType: "image/jpeg", width: 260 });
-  const medium = await compressFile(base.uri, { mimeType: "image/jpeg", width: 480 });
-  const large = await compressFile(base.uri, { mimeType: "image/jpeg" });
+  const { default: VideoThumbnails } = await require("expo-video-thumbnails");
+  const base = await VideoThumbnails.getThumbnailAsync(uri, { time: 1000 });
+  uri = base.uri;
+
+  const small = await compressFile(uri, { mimeType: "image/jpeg", width: 260 });
+  const medium = await compressFile(uri, { mimeType: "image/jpeg", width: 480 });
+  const large = await compressFile(uri, { mimeType: "image/jpeg" });
 
   const results = [
     { ...small, suffix: "@1x" },
     { ...medium, suffix: "@2x" },
-    { ...large, suffix: "@3x" },
+    { ...large, suffix: "@3x" }
   ];
 
   for (const r of results) {
@@ -169,10 +173,7 @@ export async function generateVideoThumbnails(uri: string): Promise<VariantResul
   return results;
 }
 
-export async function generateImageVariants(
-  uri: string,
-  mimeType: string | null
-): Promise<VariantResult[]> {
+export async function generateImageVariants(uri: string, mimeType: string | null): Promise<VariantResult[]> {
   if (Platform.OS === "web") {
     const worker = await getWorkerClient();
     if (worker) {
@@ -186,7 +187,7 @@ export async function generateImageVariants(
 
   const results = [
     { ...low, suffix: "@1x" },
-    { ...high, suffix: "@2x" },
+    { ...high, suffix: "@2x" }
   ];
 
   for (const r of results) {
