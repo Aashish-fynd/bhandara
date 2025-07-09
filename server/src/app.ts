@@ -13,9 +13,32 @@ import {
 import appRoutes from "@routes";
 import { NotFoundError } from "@exceptions";
 import { swaggerSpec } from "@docs/swagger";
+import {
+  httpRequestCounter,
+  register,
+  responseTimeHistogram,
+} from "@config/prometheus.config";
 
 const createServer = () => {
   const app = express();
+
+  app.use((req, res, next) => {
+    const end = responseTimeHistogram.startTimer();
+    res.on("finish", () => {
+      // Record metrics
+      httpRequestCounter.inc({
+        method: req.method,
+        route: req.route ? req.route.path : req.path,
+        status: res.statusCode,
+      });
+      end({
+        method: req.method,
+        route: req.route ? req.route.path : req.path,
+        status: res.statusCode,
+      });
+    });
+    next();
+  });
 
   // cors setup to allow requests from the frontend only for now
   app.use(cors(config.corsOptions));
@@ -45,6 +68,11 @@ const createServer = () => {
       description: "Bhandara backend service",
       version: "1.0.0",
     });
+  });
+
+  app.get("/metrics", async (_, res) => {
+    res.setHeader("Content-Type", register.contentType);
+    res.send(await register.metrics());
   });
 
   app.use(requestContextMiddleware);

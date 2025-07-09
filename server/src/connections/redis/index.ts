@@ -8,6 +8,6 @@ import Redis from "ioredis";
 //   token: config.redis.token,
 // });
 
-const redis = new Redis();
+const redis = new Redis({ maxRetriesPerRequest: null });
 
 export default redis;

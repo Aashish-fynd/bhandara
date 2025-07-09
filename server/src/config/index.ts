@@ -6,7 +6,7 @@ import { DB_CONNECTION_NAMES } from "@constants";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config({ path: path.join(__dirname, ".env") });
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const config = {
   port: process.env.PORT || 3001,
@@ -60,6 +60,13 @@ const config = {
   },
   infrastructure: {
     appName: "bhandara",
+  },
+  serviceability: {
+    loki: {
+      url: process.env.LOKI_URL || "",
+      batchSize: +(process.env.LOKI_BATCH_SIZE || 2),
+      flushInterval: +(process.env.LOKI_FLUSH_INTERVAL || 1000),
+    },
   },
 };
 

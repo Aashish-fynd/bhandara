@@ -68,86 +68,28 @@ class MediaService {
     provider?: EMediaProvider;
     options?: Record<string, any>;
   }) {
-    return validateMediaCreate(
-      { path, bucket, mimeType, options, provider },
-      async () => {
-        if (provider === EMediaProvider.Cloudinary) {
-          const { data, error } = await this._cloudinaryService.uploadFile({
-            bucket,
-            base64FileData: file,
-            mimeType,
-            path: getUniqueFilename(path),
-            options,
-          });
+    if (provider === EMediaProvider.Cloudinary) {
+      const data = await this._cloudinaryService.uploadFile({
+        bucket,
+        base64FileData: file,
+        mimeType,
+        path: getUniqueFilename(path),
+        options,
+      });
 
-          if (error) {
-            return { error };
-          }
+      return data;
+    }
 
-          const { public_id, asset_id, secure_url, url, ...rest } = data;
+    const { data, error } = await this._supabaseService.uploadFile({
+      bucket,
+      base64FileData: file,
+      mimeType,
+      path: getUniqueFilename(path),
+      options,
+    });
 
-          let { name: fileName, ...restOptions } = options || {};
-
-          fileName ??= public_id.split("/").pop() || "";
-
-          const creation = await this.create({
-            id: asset_id,
-            url: public_id,
-            storage: {
-              metadata: rest,
-              provider: EMediaProvider.Cloudinary,
-              bucket,
-            },
-            metadata: { ...data, ...restOptions?.metadata },
-            mimeType,
-            name: fileName,
-            ...restOptions,
-          });
-
-          if (creation) {
-            (creation as any).publicUrl = secure_url;
-            (creation as any).publicUrlExpiresAt = new Date(
-              Date.now() + 3600 * 24 * 1000
-            );
-          }
-
-          return creation;
-        }
-
-        const { data, error } = await this._supabaseService.uploadFile({
-          bucket,
-          base64FileData: file,
-          mimeType,
-          path: getUniqueFilename(path),
-          options,
-        });
-
-        if (error) {
-          return { error };
-        }
-
-        const { fullPath, id, ...rest } = data;
-
-        let { name: fileName, ...restOptions } = options || {};
-
-        fileName ??= data?.path.split("/").pop() || "";
-
-        // create media record
-        return this.create({
-          id,
-          url: fullPath,
-          storage: {
-            metadata: rest,
-            provider: EMediaProvider.Supabase,
-            bucket,
-          },
-          metadata: { ...data, ...restOptions?.metadata },
-          mimeType,
-          name: fileName,
-          ...restOptions,
-        });
-      }
-    );
+    if (error) throw error;
+    return data;
   }
 
   async deleteFile(
@@ -256,11 +198,7 @@ class MediaService {
     );
   }
 
-  async getSignedUrlForPublicUpload({
-    path,
-  }: {
-    path: string;
-  }) {
+  async getSignedUrlForPublicUpload({ path }: { path: string }) {
     const uniquePath = getUniqueFilename(path);
     const signedUrl = await this._supabaseService.getSignedUrlForUpload({
       bucket: MEDIA_PUBLIC_BUCKET_NAME,
@@ -317,7 +255,8 @@ class MediaService {
   async getPublicUrl(
     path: string,
     bucket: string,
-    provider: EMediaProvider = EMediaProvider.Supabase
+    provider: EMediaProvider = EMediaProvider.Supabase,
+    options?: Record<string, any>
   ) {
     if (provider === EMediaProvider.Cloudinary) {
       const signedUrl = this._cloudinaryService.getPublicUrl(path);
@@ -331,6 +270,7 @@ class MediaService {
       bucket,
       path,
       expiresIn: 3600 * 24,
+      options,
     });
 
     return {

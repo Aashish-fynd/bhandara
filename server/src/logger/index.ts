@@ -2,6 +2,7 @@ import { createLogger, format, transports } from "winston";
 import "winston-daily-rotate-file";
 import config from "@/config";
 import errors = format.errors;
+import { LokiTransport } from "./LokiTransport";
 
 const env = process.env.NODE_ENV || "development";
 
@@ -49,7 +50,19 @@ const logger = createLogger({
     }),
     customFormat
   ),
-  transports: [allLogsTransport, errorLogsTransport],
+  transports: [
+    allLogsTransport,
+    errorLogsTransport,
+    // new LokiTransport({
+    //   lokiUrl: config.serviceability.loki.url,
+    //   labels: {
+    //     job: config.infrastructure.appName,
+    //     environment: env,
+    //   },
+    //   flushInterval: config.serviceability.loki.flushInterval,
+    //   maxBatchSize: config.serviceability.loki.batchSize,
+    // }),
+  ],
   exitOnError: false,
 });
 

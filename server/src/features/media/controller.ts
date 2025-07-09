@@ -149,14 +149,15 @@ export const getMediaPublicUrls = async (
 };
 
 export const onUploadComplete = async (req: ICustomRequest, res: Response) => {
-  const { id, mediaId, context, secure_url, public_id, asset_id } = req.body;
+  const { id, mediaId, context, secure_url, public_id, asset_id, eventId } =
+    req.body;
 
   const queuedId = id || mediaId;
   if (queuedId) {
     const media = await mediaService.getById(queuedId);
-    if (!media) throw new NotFoundError('Media not found');
-    if (media.mimeType?.startsWith('video')) {
-      await addVideoJob(media.id);
+    if (!media) throw new NotFoundError("Media not found");
+    if (media.mimeType?.startsWith("video")) {
+      await addVideoJob(media.id, eventId);
     }
     return res.status(200).json({ queued: true });
   }

@@ -28,19 +28,16 @@ class CloudinaryService {
     base64FileData: string;
     mimeType: string;
     options?: UploadApiOptions;
-  }): Promise<{ data: UploadApiResponse; error: any }> {
+  }): Promise<UploadApiResponse> {
     const fileData = `data:${mimeType};base64,${base64FileData}`;
-    try {
-      const res = await cloudinary.uploader.upload(fileData, {
-        folder: bucket,
-        public_id: path,
-        resource_type: "image",
-        ...options,
-      });
-      return { data: res, error: null };
-    } catch (error) {
-      return { data: null as any, error };
-    }
+
+    const res = await cloudinary.uploader.upload(fileData, {
+      folder: bucket,
+      public_id: path,
+      resource_type: "image",
+      ...options,
+    });
+    return res;
   }
 
   async deleteFile(publicId: string) {

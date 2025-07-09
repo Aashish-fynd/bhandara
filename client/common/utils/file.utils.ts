@@ -12,7 +12,7 @@ import { isEmpty } from "@/utils";
 import { EMediaType } from "@/definitions/enums";
 import { IMedia } from "@/definitions/types";
 import { generateImageVariants } from "@/utils/compression";
-
+import axios from "axios";
 
 export interface IAttachedFile extends Omit<IPickerAsset, "uri"> {
   error?: string;
@@ -105,9 +105,7 @@ export const uploadFile = async (
         })
         .catch((err) => console.error(err));
     }
-    axiosClient
-      .post('/webhooks/on-upload-complete', { id: result.id })
-      .catch(() => {});
+    axiosClient.post("/webhooks/on-upload-complete", { id: result.id, eventId: opts.pPath }).catch(() => {});
 
     // Update with 100% when complete
     setAttachedFiles((prev) =>
