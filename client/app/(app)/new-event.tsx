@@ -35,10 +35,11 @@ import { isEmpty } from "@/utils";
 import AssetPreviewDialog from "@/screens/EventDetails/AssetPreviewDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import InterestsDialog from "@/components/InterestsDialog";
-import { createEvent } from "@/common/api/events.action";
+import { createEvent, disassociateMediaFromEvent, getEventById } from "@/common/api/events.action";
 import { EVENT_MEDIA_BUCKET } from "@/constants/global";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { getNavState } from "@/lib/navigationStore";
+import { useDataLoader } from "@/hooks";
 
 interface IFormData {
   name: string;
@@ -116,6 +117,10 @@ const NewEvent = () => {
   const currentSelectedMediaRef = useRef<string | undefined>();
   const params = useLocalSearchParams();
   const router = useRouter();
+  const { loading: isEventLoading } = useDataLoader({
+    promiseFunction: handleFetchEvent,
+    enabled: !!params.id
+  });
 
   const {
     control,
@@ -128,6 +133,33 @@ const NewEvent = () => {
   } = useForm<IFormData>({ defaultValues: { num_capacity: 50 } });
 
   const allValues = watch();
+  async function handleFetchEvent() {
+    const { data, error } = await getEventById(params.id as string);
+    if (error) throw error;
+    if (data) {
+      setValue("name", data.name);
+      setValue("description", data.description);
+      setValue("location", data.location);
+      setValue("_location", data.location.address);
+      setValue(
+        "schedule",
+        `${formatDateWithTimeString(data.timings.start)} - ${formatDateWithTimeString(data.timings.end)}`
+      );
+      setValue("capacity", !!data.capacity);
+      setValue("num_capacity", data.capacity);
+      setSelectedTags(data.tags);
+      setAttachedFiles(
+        data.media.map((m) => ({
+          publicURL: m.publicUrl,
+          uploadResult: m,
+          name: m.name,
+          mimeType: m.mimeType || "",
+          size: m.size || 0,
+          type: m.type
+        }))
+      );
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -166,7 +198,9 @@ const NewEvent = () => {
       if (uploadResult) {
         attachedFiles[index].isDeleting = true;
         setAttachedFiles(attachedFiles);
-        await deleteMedia(uploadResult?.id);
+        const _params = [params.id as string, uploadResult?.id] as const;
+        const handler = params.id ? disassociateMediaFromEvent : deleteMedia;
+        await handler(..._params);
       }
       setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
     } catch (error) {
@@ -304,6 +338,8 @@ const NewEvent = () => {
       toastController.show(error?.message || "Unable to create event");
     }
   };
+
+  if (isEventLoading) return <SpinningLoader />;
 
   return (
     <>
@@ -449,7 +485,11 @@ const NewEvent = () => {
                             position="absolute"
                             disabled={file.isDeleting}
                             display={file.isDeleting ? "flex" : "none"}
-                            onPress={() => removeAttachedFile(index)}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              removeAttachedFile(index);
+                            }}
                             $group-hover={{
                               display: "flex"
                             }}

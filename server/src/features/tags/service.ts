@@ -15,6 +15,7 @@ import {
   setSubTagsCache,
   deleteSubTagsCache,
 } from "./helpers";
+import { NotFoundError } from "@exceptions";
 
 class TagService {
   private readonly getCache = getTagCache;
@@ -104,29 +105,17 @@ class TagService {
     })();
   }
 
-  @MethodCacheSync<ITag>({})
-  async associateTagToEvent(eventId: string, tagId: string) {
-    const event = (await Event.findByPk(eventId, { raw: true })) as any;
-    if (!event) return null;
+  async dissociateTag(eventId: string, tagId: string) {
+    const event = await Event.findByPk(eventId);
+    if (!event) throw new NotFoundError("Event not found");
     const tags = new Set((event.tags || []) as string[]);
-    tags.add(tagId);
-    const [, rows] = await Event.update(
-      { tags: Array.from(tags) } as any,
-      { where: { id: eventId }, returning: true }
-    );
-    return rows[0];
-  }
 
-  async dissociateTagFromEvent(eventId: string, tagId: string) {
+    if (!tags.has(tagId)) throw new NotFoundError("Tag not found");
+    tags.delete(tagId);
+
+    await event.update({ tags: Array.from(tags) });
     await deleteEventTagsCache(eventId);
-    const event = (await Event.findByPk(eventId, { raw: true })) as any;
-    if (!event) return null;
-    const tags = (event.tags || []) as string[];
-    const [, rows] = await Event.update(
-      { tags: tags.filter((t) => t !== tagId) } as any,
-      { where: { id: eventId }, returning: true }
-    );
-    return rows[0];
+    return true;
   }
 
   @MethodCacheSync<ITag>({

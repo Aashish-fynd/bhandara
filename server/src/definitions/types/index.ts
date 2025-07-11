@@ -98,7 +98,7 @@ export interface IEvent extends ITimeStamp {
   status: EEventStatus;
   capacity: number;
   tags: ITag[] | string[]; // Array of tag IDs
-  media: IMedia[]; // Array of media IDs
+  media: IMedia[] | string[]; // Array of media IDs
   reactions?: IReaction[];
   timings: { start: Date; end: Date };
 }

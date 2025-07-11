@@ -139,7 +139,12 @@ class MediaService {
     };
     return validateMediaCreate(dataWithProvider, (validatedData) =>
       Media.sequelize!.transaction(async (tx) => {
-        const { name: fileName, ...restOptions } = validatedData.options || {};
+        let {
+          name: fileName,
+          format,
+          metadata,
+          ...restOptions
+        } = validatedData.options || {};
 
         const bucket = validatedData.bucket;
 
@@ -150,8 +155,8 @@ class MediaService {
 
         const path = getUniqueFilename(validatedData.path);
 
-        omit(validatedData, ["path", "bucket", "options"]);
-        delete restOptions.path;
+        validatedData = omit(validatedData, ["path", "bucket", "options"]);
+        restOptions = omit(restOptions, ["path"]);
 
         // create media record
         const createData = {
@@ -161,7 +166,7 @@ class MediaService {
             bucket,
             provider: dataWithProvider.provider,
           },
-          metadata: { ...restOptions?.metadata },
+          metadata: { ...metadata, format },
           mimeType: insertData.mimeType,
           name: fileName,
           ...restOptions,
@@ -435,16 +440,6 @@ class MediaService {
     mediaSet.add(mediaId);
     const [, rows] = await Event.update(
       { media: Array.from(mediaSet) as any } as any,
-      { where: { id: eventId }, returning: true }
-    );
-    return rows[0];
-  }
-
-  async deleteEventMediaJunctionRow(eventId: string, mediaId: string) {
-    const event = (await Event.findByPk(eventId, { raw: true })) as any;
-    const media = (event?.media || []) as string[];
-    const [, rows] = await Event.update(
-      { media: media.filter((m) => m !== mediaId) as any } as any,
       { where: { id: eventId }, returning: true }
     );
     return rows[0];

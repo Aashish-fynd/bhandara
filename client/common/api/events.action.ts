@@ -59,3 +59,12 @@ export const verifyEvent = async (
   });
   return res.data;
 };
+
+export const disassociateMediaFromEvent = async (eventId: string, mediaId: string): Promise<IBaseResponse<boolean>> => {
+  const res = await axiosClient.delete(`/events/${eventId}/media/${mediaId}`);
+  return res.data;
+};
+export const dissociateTagFromEvent = async (eventId: string, tagId: string): Promise<IBaseResponse<boolean>> => {
+  const res = await axiosClient.delete(`/events/${eventId}/tags/${tagId}`);
+  return res.data;
+};

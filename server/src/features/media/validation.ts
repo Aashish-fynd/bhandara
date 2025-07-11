@@ -97,8 +97,12 @@ const mediaSchema = {
           minimum: 0,
           errorMessage: "Size must be a non-negative integer",
         },
+        format: {
+          type: "string",
+          errorMessage: "Format must be a string or null",
+        },
       },
-      required: ["type", "uploader", "size"],
+      required: ["type", "uploader", "size", "format"],
       additionalProperties: false,
       errorMessage: {
         required: {

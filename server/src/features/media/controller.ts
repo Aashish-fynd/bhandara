@@ -45,6 +45,7 @@ export const getSignedUploadUrl = async (
     options: {
       uploader: req.user.id,
       ...rest,
+      format,
     },
   };
 

@@ -309,6 +309,7 @@ class EventService {
     }
 
     await this.update({ existing: data, data: updateData });
+    await this.deleteCache(eventId);
     return true;
   }
 
@@ -358,23 +359,18 @@ class EventService {
     return `Successfully ${action === "join" ? "joined" : "left"} the event`;
   }
 
-  async associateMediaToEvent(eventId: string, mediaId: string) {
-    const [event, media, eventMedia] = await Promise.all([
-      this.getById(eventId),
-      this.mediaService.getById(mediaId),
-      this.mediaService.getEventMediaJunctionRow(eventId, mediaId),
-    ]);
-
-    if (!event || !media) throw new NotFoundError("Event or media not found");
-
-    if (eventMedia)
-      throw new BadRequestError("Media is already associated to this event");
-
-    return this.mediaService.createEventMediaJunctionRow(eventId, mediaId);
-  }
-
-  async deleteEventMedia(eventId: string, mediaId: string) {
-    return this.mediaService.deleteEventMediaJunctionRow(eventId, mediaId);
+  async disassociateMediaFromEvent(eventId: string, mediaId: string) {
+    const event = await this.getById(eventId);
+    if (!event) throw new NotFoundError("Event not found");
+    const media = new Set(event.media as string[]);
+    if (!media.has(mediaId)) throw new NotFoundError("Media not found");
+    media.delete(mediaId);
+    await this.update({
+      existing: event,
+      data: { media: Array.from(media) } as any,
+    });
+    await this.deleteCache(eventId);
+    return true;
   }
 
   async getThreads(eventId: string, pagination: IPaginationParams) {

@@ -33,14 +33,13 @@ import {
   getEventById,
   createEvent,
   getEvents,
-  createEventTag,
   deleteEventTag,
   eventJoinLeaveHandler,
   verifyEvent,
-  associateEventMedia,
   deleteEventMedia,
   getEventThreads,
   deleteEvent,
+  disassociateMediaFromEvent,
 } from "@features/events/controller";
 const router = Router();
 
@@ -131,37 +130,6 @@ router
   .get([validateParams(["eventId"])], asyncHandler(getEventById))
   .put([validateParams(["eventId"])], asyncHandler(updateEvent))
   .delete([validateParams(["eventId"])], asyncHandler(deleteEvent));
-
-/**
- * @openapi
- * /events/{eventId}/tags/{tagId}/associate:
- *   patch:
- *     tags: [Events]
- *     summary: Associate tag to event
- *     parameters:
- *       - in: path
- *         name: eventId
- *         required: true
- *         schema:
- *           type: string
- *       - in: path
- *         name: tagId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       201:
- *         description: Tag associated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Tag'
- */
-router.patch(
-  "/:eventId/tags/:tagId/associate",
-  [validateParams(["eventId", "tagId"])],
-  asyncHandler(createEventTag)
-);
 
 /**
  * @openapi
@@ -265,37 +233,6 @@ router.get(
   "/:eventId/:action",
   [validateParams(["eventId", "action"])],
   asyncHandler(eventJoinLeaveHandler)
-);
-
-/**
- * @openapi
- * /events/{eventId}/media/{mediaId}/associate:
- *   patch:
- *     tags: [Events]
- *     summary: Associate media with event
- *     parameters:
- *       - in: path
- *         name: eventId
- *         required: true
- *         schema:
- *           type: string
- *       - in: path
- *         name: mediaId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Media associated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Event'
- */
-router.patch(
-  "/:eventId/media/:mediaId/associate",
-  [validateParams(["eventId", "mediaId"])],
-  asyncHandler(associateEventMedia)
 );
 
 /**

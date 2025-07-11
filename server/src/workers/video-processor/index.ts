@@ -2,51 +2,48 @@ import { Job, Worker } from "bullmq";
 import redis from "@/connections/redis";
 import { VIDEO_QUEUE_NAME } from "@/queues/video";
 import MediaService from "@/features/media/service";
-
 import logger from "@/logger";
 import { spawn } from "child_process";
 import { MEDIA_PUBLIC_BUCKET_NAME } from "@features/media/constants";
 import { EMediaProvider } from "@definitions/enums";
-
-import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg";
+import crypto from "crypto";
+import fs from "fs/promises";
+import axios from "axios";
 
 const mediaService = new MediaService();
 
-const runFFmpegWithBuffer = (
-  buffer: Buffer,
+const convertToWebP = async (
+  inputPath: string,
+  outputPath: string,
   size: number,
-  format: string
+  fps = 10
 ): Promise<Buffer> => {
   return new Promise((resolve, reject) => {
-    const ffmpeg = spawn(ffmpegPath, [
-      "-f",
-      format,
-      "-analyzeduration",
-      "5000000",
-      "-probesize",
-      "5000000",
+    const ffmpeg = spawn("ffmpeg", [
       "-i",
-      "pipe:0",
+      inputPath,
       "-vf",
-      `scale=${size}:-1`,
-      "-vcodec",
-      "libwebp",
+      `scale=${size}:-1,fps=${fps}`,
+      "-pix_fmt",
+      "yuv420p",
+      "-loop",
+      "0",
       "-f",
       "webp",
-      "pipe:1",
+      outputPath,
     ]);
 
-    const chunks: Buffer[] = [];
-    ffmpeg.stdout.on("data", (chunk) => chunks.push(chunk));
-    ffmpeg.stdout.on("end", () => resolve(Buffer.concat(chunks)));
     ffmpeg.stderr.on("data", (data) => console.error(`ffmpeg stderr: ${data}`));
-    ffmpeg.on("error", reject);
-    ffmpeg.on("close", (code) => {
-      if (code !== 0) reject(new Error(`ffmpeg exited with code ${code}`));
+    ffmpeg.on("close", async (code) => {
+      if (code !== 0) return reject(new Error(`FFmpeg exited with ${code}`));
+      try {
+        const result = await fs.readFile(outputPath);
+        await fs.unlink(outputPath);
+        resolve(result);
+      } catch (e) {
+        reject(e);
+      }
     });
-
-    ffmpeg.stdin.write(buffer);
-    ffmpeg.stdin.end();
   });
 };
 
@@ -63,33 +60,38 @@ export const processor = async (job: Job) => {
       { download: true }
     );
 
-    const res = await fetch(signedUrl);
-    if (!res.ok || !res.body) throw new Error("Failed to fetch media stream");
-    const buffer = Buffer.from(await res.arrayBuffer());
-    const sizes = { "@1x": 160, "@2x": 320, "@3x": 480 };
+    const res = await axios.get(signedUrl, { responseType: "arraybuffer" });
+    if (!res.status || !res.data)
+      throw new Error("Failed to fetch media stream");
+    const buffer = Buffer.from(res.data);
 
+    const tempPath = `./tmp/${crypto.randomUUID()}.${media.metadata?.format}`;
+    await fs.writeFile(tempPath, buffer);
+
+    const sizes = { "@1x": 160, "@2x": 320, "@3x": 480 };
     const thumbBuffers: Record<string, Buffer> = {};
-    await Promise.all(
-      Object.entries(sizes).map(async ([suffix, size]) => {
-        const output = await runFFmpegWithBuffer(
-          buffer,
-          size,
-          "mp4" || media.mimeType.split("/")[1]
-        );
-        if (output.toString("base64")) {
+
+    for (const [suffix, size] of Object.entries(sizes)) {
+      const outPath = `/tmp/${crypto.randomUUID()}.webp`;
+      try {
+        const output = await convertToWebP(tempPath, outPath, size);
+        if (output.length) {
           thumbBuffers[suffix] = output;
-        } else {
-          delete sizes[suffix];
         }
-      })
-    );
+      } catch (err) {
+        console.error("WebP conversion failed", { suffix, err });
+        delete sizes[suffix];
+      }
+    }
+
+    await fs.unlink(tempPath);
 
     const uploaded = await Promise.all(
       Object.entries(thumbBuffers).map(([suffix, buffer]) =>
         mediaService.uploadFile({
           bucket: MEDIA_PUBLIC_BUCKET_NAME,
           path: `${eventId}/${mediaId}${suffix}.webp`,
-          file: buffer.toString(),
+          file: buffer.toString("base64"),
           mimeType: "image/webp",
           provider: EMediaProvider.Supabase,
           options: {},
@@ -118,6 +120,7 @@ export const processor = async (job: Job) => {
         eventId,
       },
     });
+
     logger.info("Video worker completed", { mediaId, eventId });
     return true;
   } catch (err) {
@@ -127,9 +130,3 @@ export const processor = async (job: Job) => {
 };
 
 export default new Worker(VIDEO_QUEUE_NAME, processor, { connection: redis });
-processor({
-  data: {
-    mediaId: "0197e0c9-e287-74a0-b382-c1c647fc8f28",
-    eventId: "0197db48-d421-711d-b69d-f14d41df76e1",
-  },
-} as any);

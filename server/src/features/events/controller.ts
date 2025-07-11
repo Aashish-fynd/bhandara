@@ -74,14 +74,14 @@ export const deleteEvent = async (req: ICustomRequest, res: Response) => {
 export const createEventTag = async (req: ICustomRequest, res: Response) => {
   const { eventId, tagId } = req.params;
 
-  const tag = await tagService.associateTagToEvent(eventId, tagId);
+  const tag = await tagService.dissociateTag(eventId, tagId);
   return res.status(201).json({ data: tag, error: null });
 };
 
 export const deleteEventTag = async (req: ICustomRequest, res: Response) => {
   const { eventId, tagId } = req.params;
 
-  const tag = await tagService.dissociateTagFromEvent(eventId, tagId);
+  const tag = await tagService.dissociateTag(eventId, tagId);
   return res.status(200).json({ data: tag, error: null });
 };
 
@@ -111,20 +111,20 @@ export const verifyEvent = async (req: ICustomRequest, res: Response) => {
   return res.status(200).json({ data: event, error: null });
 };
 
-export const associateEventMedia = async (
+export const disassociateMediaFromEvent = async (
   req: ICustomRequest,
   res: Response
 ) => {
   const { eventId, mediaId } = req.params;
 
-  const event = await eventService.associateMediaToEvent(eventId, mediaId);
+  const event = await eventService.disassociateMediaFromEvent(eventId, mediaId);
   return res.status(200).json({ data: event, error: null });
 };
 
 export const deleteEventMedia = async (req: ICustomRequest, res: Response) => {
   const { eventId, mediaId } = req.params;
 
-  const event = await eventService.deleteEventMedia(eventId, mediaId);
+  const event = await eventService.disassociateMediaFromEvent(eventId, mediaId);
   return res.status(200).json({ data: event, error: null });
 };
 
