@@ -8,14 +8,12 @@ import { MEDIA_BUCKET_CONFIG, MEDIA_PUBLIC_BUCKET_NAME } from "./constants";
 import { Media } from "./model";
 import { Event } from "../events/model";
 import { isEmpty, omit } from "@utils";
-import { MethodCacheSync } from "@decorators";
 import {
   deleteEventMediaCache,
   deleteMediaCache,
   getEventMediaCache,
   setEventMediaCache,
   setMediaCache,
-  updateMediaCache,
 } from "./helpers";
 import { getMediaCache } from "./helpers";
 import logger from "@logger";
@@ -35,14 +33,11 @@ class MediaService {
     return res as any;
   }
 
-  @MethodCacheSync<IMedia>({
-    customCacheKey: (event: IEvent, limit: number | null = null) =>
-      event.id + (limit ? `:${limit}` : ""),
-    cacheSetter: setEventMediaCache,
-    cacheDeleter: deleteEventMediaCache,
-    cacheGetter: getEventMediaCache,
-  })
   async getEventMedia(event: IEvent, limit: number | null = null) {
+    const key = event.id + (limit ? `:${limit}` : "");
+    const cached = await getEventMediaCache(key);
+    if (cached) return cached;
+
     const mediaIds = event?.media || [];
     if (!mediaIds.length) return [];
 
@@ -50,7 +45,9 @@ class MediaService {
       mediaIds.slice(0, limit || mediaIds.length) as unknown as string[]
     );
 
-    return Object.values(data);
+    const values = Object.values(data);
+    if (values.length > 0) await setEventMediaCache(key, values as IMedia[]);
+    return values;
   }
 
   async uploadFile({
@@ -111,18 +108,14 @@ class MediaService {
     return { path, deleted: true };
   }
 
-  @MethodCacheSync<IMedia>({
-    cacheSetterWithExistingTTL: updateMediaCache,
-  })
   async update<U extends Partial<IMedia>>(id: string, data: U) {
     const res = await validateMediaUpdate(data, async (validatedData) => {
-      const [count, rows] = await Media.update(validatedData as any, {
-        where: { id },
-        returning: true,
-      });
-      if (count === 0) throw new Error("Media not found");
-      return rows[0];
+      const row = await Media.findByPk(id);
+      if (!row) throw new Error("Media not found");
+      await row.update(validatedData as any);
+      return row.toJSON() as any;
     });
+    await this.deleteCache(id);
     return res;
   }
 
@@ -213,7 +206,6 @@ class MediaService {
     return { path: uniquePath, ...signedUrl.data };
   }
 
-  @MethodCacheSync<IMedia>()
   async uploadFileToSignedUrl({
     bucket,
     path,
@@ -230,7 +222,6 @@ class MediaService {
     });
   }
 
-  @MethodCacheSync<IMedia>()
   async create<U extends Partial<Omit<IMedia, "id" | "updatedAt">>>(data: U) {
     const res = await validateMediaCreate(data, (validatedData) => {
       const { path, ...rest } = validatedData;
@@ -239,11 +230,18 @@ class MediaService {
         path: getUniqueFilename(path),
       } as any);
     });
+    const created = res as any;
+    if (created) {
+      const row = created.dataValues ? created.dataValues : created;
+      await this.setCache(row.id, row as IMedia);
+    }
     return res;
   }
 
-  @MethodCacheSync<IMedia>()
   async getById(id: string): Promise<IMedia | null> {
+    const cached = await this.getCache(id);
+    if (cached) return cached;
+
     const res = (await Media.findByPk(id, { raw: true })) as IMedia | null;
     if (res) {
       const publicUrl = await this.getPublicUrl(
@@ -253,6 +251,7 @@ class MediaService {
       );
       (res as any).publicUrl = publicUrl.signedUrl;
       (res as any).publicUrlExpiresAt = publicUrl.expiresAt;
+      await this.setCache(id, res as any);
     }
     return res;
   }
@@ -326,7 +325,6 @@ class MediaService {
     return mediaWithPublicUrls;
   }
 
-  @MethodCacheSync<IMedia>({})
   async delete(id: string) {
     return Media.sequelize!.transaction(async (tx) => {
       const media = await Media.findByPk(id, { transaction: tx });
@@ -337,6 +335,7 @@ class MediaService {
         media.url,
         media.storage.provider
       );
+      await this.deleteCache(id);
       logger.debug(`Deleted media ${id}`, { deletionResult });
       return media;
     }) as any;

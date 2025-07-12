@@ -4,7 +4,7 @@ import {
   IPaginationParams,
   ITag,
 } from "@/definitions/types";
-import { findAllWithPagination } from "@utils/dbUtils";
+import { findAllWithPagination, PaginatedResult } from "@utils/dbUtils";
 import { validateUserCreate, validateUserUpdate } from "./validation";
 import { User } from "./model";
 import {
@@ -24,7 +24,6 @@ import {
   setUserCacheByUsername,
   setUserInterestsCache,
 } from "./helpers";
-import { MethodCacheSync } from "@decorators";
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
 import TagService from "@features/tags/service";
@@ -43,9 +42,9 @@ class UserService {
     this.mediaService = new MediaService();
   }
 
-  async _getByIdNoCache(id: string) {
+  async _getByIdNoCache(id: string): Promise<IBaseUser | null> {
     const res = await User.findByPk(id, { raw: true });
-    return res as any;
+    return res as IBaseUser | null;
   }
 
   async getAll(
@@ -56,14 +55,20 @@ class UserService {
     return findAllWithPagination(User, where, pagination, select);
   }
 
-  @MethodCacheSync<IBaseUser>()
   async create(
     data: Partial<IBaseUser>
   ): Promise<IBaseUser | null> {
     const res = await validateUserCreate(data, async (d) => {
-      const row = await User.create({ ...d, mediaId: d.mediaId as string } as any);
-      return row.toJSON() as any;
+      const row = await User.create({
+        ...d,
+        mediaId: d.mediaId as string,
+      } as Partial<IBaseUser>);
+      return row.toJSON() as IBaseUser;
     });
+    const created = res as IBaseUser;
+    if (created) {
+      await this.setCache(created.id, created);
+    }
     return res;
   }
 
@@ -79,7 +84,7 @@ class UserService {
     const updated = await validateUserUpdate(data, async (validData) => {
       const userData = await this._getByIdNoCache(id);
 
-      if (isEmpty(userData)) throw new NotFoundError("User not found");
+      if (!userData) throw new NotFoundError("User not found");
 
       const { interests, hasOnboarded, username, ...rest } = validData;
 
@@ -119,88 +124,73 @@ class UserService {
           throw new BadRequestError("Username already exists");
       }
 
-      const promises: Promise<any>[] = [
-        (async () => {
-          const [count, rows] = await User.update(
-            {
-              ...rest,
-              meta: newMeta,
-              username,
-              mediaId: rest.mediaId as string,
-            } as any,
-            { where: { id }, returning: true }
-          );
-          if (count === 0) throw new NotFoundError("User not found");
-          return rows[0];
-        })(),
-      ];
+      const row = await User.findByPk(id);
+      if (!row) throw new NotFoundError("User not found");
+      await row.update({
+        ...rest,
+        meta: newMeta,
+        username,
+        mediaId: rest.mediaId as string,
+      } as Partial<IBaseUser>);
 
+      let updatedUser = row.toJSON() as IBaseUser;
       if (rest.mediaId) {
-        promises.push(this.mediaService.getById(rest.mediaId as string));
+        updatedUser.media = await this.mediaService.getById(
+          rest.mediaId as string
+        );
       }
-
-      const results = await Promise.all(promises);
-
-      const updatedUser = (results[0] as any) as IBaseUser;
 
       await this.deleteCache(id);
-
-      if (rest.mediaId) {
-        updatedUser.media = results[1];
-      }
       return updatedUser;
     });
     return updated;
   }
 
-  @MethodCacheSync<IBaseUser>({})
   async getById(id: string): Promise<IBaseUser | null> {
+    const cached = await this.getCache(id);
+    if (cached) return cached;
+
     const data = (await User.findByPk(id, { raw: true })) as IBaseUser | null;
     if (!data) return null;
     if (data.mediaId) {
       const media = await this.mediaService.getById(data.mediaId as string);
-      (data as any).media = media;
+      (data as IBaseUser).media = media as IMedia;
     }
 
+    await this.setCache(id, data as IBaseUser);
     return data;
   }
 
-  @MethodCacheSync<IBaseUser>({
-    cacheGetter: getUserCacheByEmail,
-    cacheSetter: setUserCacheByEmail,
-  })
   async getUserByEmail(email: string) {
+    const cached = await getUserCacheByEmail(email);
+    if (cached) return cached;
     const data = await findAllWithPagination(User, { email }, { limit: 1 });
     if (data.items.length === 0) return null;
+    await setUserCacheByEmail(email, data.items[0]);
     return data.items[0];
   }
 
-  @MethodCacheSync<IBaseUser>({
-    cacheGetter: getUserCacheByUsername,
-    cacheSetter: setUserCacheByUsername,
-  })
-  getUserByUsername(username: string) {
-    return findAllWithPagination(User, { username }, { limit: 1 });
+  async getUserByUsername(username: string): Promise<PaginatedResult<IBaseUser>> {
+    const cached = await getUserCacheByUsername(username);
+    if (cached) return { items: [cached], pagination: null } as PaginatedResult<IBaseUser>;
+    const data = await findAllWithPagination(User, { username }, { limit: 1 });
+    if (!isEmpty(data.items)) {
+      await setUserCacheByUsername(username, data.items[0]);
+    }
+    return data;
   }
 
-  @MethodCacheSync<IBaseUser>({
-    cacheDeleter: deleteAllUserCache,
-  })
-  delete(id: string) {
-    return (async () => {
-      const row = await User.findByPk(id);
-      if (!row) return null;
-      await row.destroy();
-      return row.toJSON() as any;
-    })();
+  async delete(id: string): Promise<IBaseUser | null> {
+    const row = await User.findByPk(id);
+    if (!row) return null;
+    await row.destroy();
+    await deleteAllUserCache(id);
+    return row.toJSON() as IBaseUser;
   }
 
-  @MethodCacheSync<ITag[]>({
-    cacheGetter: getUserInterestsCache,
-    cacheSetter: setUserInterestsCache,
-    cacheDeleter: deleteUserInterestsCache,
-  })
   async getUserInterests(id: string) {
+    const cached = await getUserInterestsCache(id);
+    if (cached) return cached;
     const user = await this.getById(id);
     if (!user) throw new NotFoundError("User not found");
 
@@ -209,7 +199,7 @@ class UserService {
     if (isEmpty(interests)) return [];
 
     const tags = await this.tagService.getAll({ id: interests });
-
+    await setUserInterestsCache(id, tags.items as ITag[]);
     return tags.items;
   }
 

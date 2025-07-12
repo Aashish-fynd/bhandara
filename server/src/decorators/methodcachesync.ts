@@ -1,6 +1,12 @@
 import { NotFoundError, UnauthorizedError } from "@exceptions";
 import { isEmpty } from "@utils";
 
+/**
+ * @deprecated This decorator is no longer maintained. Use the
+ * cache helper methods directly within your services instead of
+ * relying on this wrapper.
+ */
+
 export type MethodType = "create" | "update" | "delete" | "get";
 
 // Base interface for cache operations

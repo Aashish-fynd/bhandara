@@ -8,7 +8,6 @@ import MediaService from "../media/service";
 import UserService from "../users/service";
 import ReactionService from "../reactions/service";
 import { validateEventCreate, validateEventUpdate } from "./validation";
-import { MethodCacheSync } from "@decorators";
 import {
   getEventCache,
   getEventUsersCache,
@@ -117,14 +116,17 @@ class EventService {
     if (fields.includes("reactions"))
       event.reactions = resolved.reactions || [];
 
-    return event as any;
+    return event;
   }
 
-  @MethodCacheSync<IEvent>({})
   async getById(id: string) {
+    const cached = await getEventCache(id);
+    if (cached) return cached;
+
     const data = await Event.findByPk(id, { raw: true });
     if (!data) return null;
 
+    await setEventCache(id, data as IEvent);
     return data as IEvent;
   }
 
@@ -133,20 +135,19 @@ class EventService {
     return await this.populateEvent(event, true);
   }
 
-  @MethodCacheSync<IEvent>({})
   async createEvent(body: Partial<IEvent>) {
     if (!body.status) body.status = EEventStatus.Draft;
-    let result = await validateEventCreate(body, async (data) => {
-      const row = await Event.create(data as any);
-      return row.toJSON() as any;
+    const result = await validateEventCreate(body, async (data) => {
+      const row = await Event.create(data as Partial<IEvent>);
+      return row.toJSON() as IEvent;
     });
-
-    return result;
+    const eventData = result as IEvent;
+    if (eventData) {
+      await setEventCache(eventData.id, eventData);
+    }
+    return eventData;
   }
 
-  @MethodCacheSync<IEvent>({
-    customCacheKey: ({ existing }) => existing.id,
-  })
   async update<U extends Partial<IEvent>>({
     existing,
     data,
@@ -160,14 +161,13 @@ class EventService {
       throw new BadRequestError("Cannot update a cancelled event");
     }
     const result = await validateEventUpdate(data, async (d) => {
-      const [count, rows] = await Event.update(d as any, {
-        where: { id: existing.id },
-        returning: true,
-      });
-      if (count === 0) throw new Error("Event not found");
-      return rows[0];
+      const row = await Event.findByPk(existing.id);
+      if (!row) throw new Error("Event not found");
+      await row.update(d as Partial<IEvent>);
+      return row.toJSON() as IEvent;
     });
-    let eventData = result as any;
+    await this.deleteCache(existing.id);
+    let eventData = result as IEvent;
     if (populate && eventData) {
       eventData = await this.populateEvent(eventData, populate);
     }
@@ -225,37 +225,31 @@ class EventService {
     return data;
   }
 
-  @MethodCacheSync<IEvent>({})
-  async cancel(id: string) {
-    const [count, rows] = await Event.update(
-      { status: EEventStatus.Cancelled } as any,
-      { where: { id }, returning: true }
-    );
-    const result = rows[0];
+  async cancel(id: string): Promise<IEvent | null> {
+    const row = await Event.findByPk(id);
+    if (!row) return null;
+    await row.update({ status: EEventStatus.Cancelled } as Partial<IEvent>);
     await this.deleteCache(id);
-    return result;
+    return row.toJSON() as IEvent;
   }
 
-  @MethodCacheSync<IEvent>({})
-  delete(id: string) {
-    return (async () => {
-      const row = await Event.findByPk(id);
-      if (!row) return null;
-      await row.destroy();
-      return row.toJSON() as any;
-    })();
+  async delete(id: string): Promise<IEvent | null> {
+    const row = await Event.findByPk(id);
+    if (!row) return null;
+    await row.destroy();
+    await this.deleteCache(id);
+    return row.toJSON() as IEvent;
   }
 
-  @MethodCacheSync<Record<string, IBaseUser>>({
-    cacheGetter: getEventUsersCache,
-    cacheSetter: setEventUsersCache,
-    customCacheKey: (...args) => `${args[0]}:${args[1]}`,
-  })
   async getEventUsers(
     eventId: string,
     type: "participants" | "verifiers",
     userIds: string[]
   ) {
+    const key = `${eventId}:${type}`;
+    const cached = await getEventUsersCache(key);
+    if (cached) return { users: cached, type, eventId };
+
     const { items } = await this.userService.getAll(
       { id: userIds },
       { limit: 1000 },
@@ -265,6 +259,7 @@ class EventService {
       acc[user.id] = user;
       return acc;
     }, {} as Record<string, IBaseUser>);
+    await setEventUsersCache(key, userMap);
     return { users: userMap, type, eventId };
   }
 
@@ -367,7 +362,7 @@ class EventService {
     media.delete(mediaId);
     await this.update({
       existing: event,
-      data: { media: Array.from(media) } as any,
+      data: { media: Array.from(media) } as Partial<IEvent>,
     });
     await this.deleteCache(eventId);
     return true;
