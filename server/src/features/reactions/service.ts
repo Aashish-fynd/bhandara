@@ -14,9 +14,9 @@ class ReactionService {
     this.userService = new UserService();
   }
 
-  async getById(id: string) {
+  async getById(id: string): Promise<IReaction | null> {
     const res = await Reaction.findByPk(id, { raw: true });
-    return res as any;
+    return res as IReaction | null;
   }
 
   async getAll(
@@ -27,39 +27,32 @@ class ReactionService {
     return findAllWithPagination(Reaction, where, pagination, select);
   }
 
-  async create<U extends Partial<Omit<IReaction, "id" | "updatedAt">>>(
-    data: U
-  ) {
+  async create<U extends Partial<Omit<IReaction, "id" | "updatedAt">>>(data: U) {
     const res = await validateReactionCreate(data, async (validData) => {
-      const row = await Reaction.create(validData as any);
-      return row.toJSON() as any;
+      const row = await Reaction.create(validData as Partial<IReaction>);
+      return row.toJSON() as IReaction;
     });
-    return res;
+    return res as IReaction;
   }
 
-  async update<U extends Partial<IReaction>>(id: string, data: U) {
+  async update<U extends Partial<IReaction>>(id: string, data: U): Promise<IReaction> {
     const res = await validateReactionUpdate(data, async (validData) => {
-      const [count, rows] = await Reaction.update(validData as any, {
-        where: { id },
-        returning: true,
-      });
-      if (count === 0) throw new Error("Reaction not found");
-      return rows[0];
+      const row = await Reaction.findByPk(id);
+      if (!row) throw new Error("Reaction not found");
+      await row.update(validData as Partial<IReaction>);
+      return row.toJSON() as IReaction;
     });
-    return res;
+    return res as IReaction;
   }
 
-  delete(id: string, skipGet = false) {
-    return (async () => {
-      if (skipGet) {
-        const result = await Reaction.destroy({ where: { id } });
-        return result;
-      }
-      const row = await Reaction.findByPk(id);
-      if (!row) return null;
-      await row.destroy();
-      return row.toJSON() as any;
-    })();
+  async delete(id: string, skipGet = false): Promise<IReaction | number | null> {
+    if (skipGet) {
+      return Reaction.destroy({ where: { id } });
+    }
+    const row = await Reaction.findByPk(id);
+    if (!row) return null;
+    await row.destroy();
+    return row.toJSON() as IReaction;
   }
 
   async getReactions(contentId: string, userId?: string) {

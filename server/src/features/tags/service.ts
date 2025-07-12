@@ -3,7 +3,6 @@ import { findAllWithPagination } from "@utils/dbUtils";
 import { validateTagCreate, validateTagUpdate } from "./validation";
 import { Tag } from "./model";
 import { Event } from "../events/model";
-import { MethodCacheSync } from "@decorators";
 import {
   getTagCache,
   setTagCache,
@@ -24,10 +23,12 @@ class TagService {
 
   constructor() {}
 
-  @MethodCacheSync({})
-  async getById(id: string) {
+  async getById(id: string): Promise<ITag | null> {
+    const cached = await this.getCache(id);
+    if (cached) return cached;
     const res = await Tag.findByPk(id, { raw: true });
-    return res as any;
+    if (res) await this.setCache(id, res);
+    return res;
   }
 
   async getAll(
@@ -38,9 +39,9 @@ class TagService {
     return findAllWithPagination(Tag, where, pagination, select);
   }
 
-  async _getByIdNoCache(id: string) {
+  async _getByIdNoCache(id: string): Promise<ITag | null> {
     const res = await Tag.findByPk(id, { raw: true });
-    return res as any;
+    return res;
   }
 
   async getRootTags() {
@@ -53,13 +54,12 @@ class TagService {
     return results as ITag[];
   }
 
-  @MethodCacheSync<ITag>({
-    cacheGetter: getEventTagsCache,
-    cacheSetter: setEventTagsCache,
-    cacheDeleter: deleteEventTagsCache,
-    customCacheKey: (event: IEvent) => event.id,
-  })
   async getAllEventTags(event?: IEvent) {
+    const cacheKey = event?.id as string;
+    if (cacheKey) {
+      const cached = await getEventTagsCache(cacheKey);
+      if (cached) return cached;
+    }
     const tagIds = event?.tags || [];
 
     if (!tagIds.length) return [];
@@ -70,39 +70,42 @@ class TagService {
       { limit: tagIds.length }
     );
 
-    return data.items;
+    const items = data.items;
+    if (cacheKey && items) {
+      await setEventTagsCache(cacheKey, items);
+    }
+    return items;
   }
 
-  @MethodCacheSync<ITag>()
   async create<U extends Partial<Omit<ITag, "id" | "updatedAt">>>(data: U) {
     const res = await validateTagCreate(data, async (validatedData: U) => {
-      const row = await Tag.create(validatedData as any);
-      return row.toJSON() as any;
+      const row = await Tag.create(validatedData as Partial<ITag>);
+      return row.toJSON() as ITag;
     });
+    const created = res as ITag;
+    if (created) {
+      await this.setCache(created.id, created);
+    }
     return res;
   }
 
-  @MethodCacheSync<ITag>()
-  async update<U extends Partial<ITag>>(id: string, data: U) {
+  async update<U extends Partial<ITag>>(id: string, data: U): Promise<ITag> {
     const res = await validateTagUpdate(data, async (validatedData: U) => {
-      const [count, rows] = await Tag.update(validatedData as any, {
-        where: { id },
-        returning: true,
-      });
-      if (count === 0) throw new Error("Tag not found");
-      return rows[0];
+      const row = await Tag.findByPk(id);
+      if (!row) throw new Error("Tag not found");
+      await row.update(validatedData as Partial<ITag>);
+      return row.toJSON() as ITag;
     });
-    return res;
+    await this.deleteCache(id);
+    return res as ITag;
   }
 
-  @MethodCacheSync<ITag>()
-  delete(id: string) {
-    return (async () => {
-      const row = await Tag.findByPk(id);
-      if (!row) return null;
-      await row.destroy();
-      return row.toJSON() as any;
-    })();
+  async delete(id: string): Promise<ITag | null> {
+    const row = await Tag.findByPk(id);
+    if (!row) return null;
+    await row.destroy();
+    await this.deleteCache(id);
+    return row.toJSON() as ITag;
   }
 
   async dissociateTag(eventId: string, tagId: string) {
@@ -118,17 +121,16 @@ class TagService {
     return true;
   }
 
-  @MethodCacheSync<ITag>({
-    cacheGetter: getSubTagsCache,
-    cacheSetter: setSubTagsCache,
-    cacheDeleter: deleteSubTagsCache,
-  })
-  getSubTags(tagId: string, limit?: number) {
-    return findAllWithPagination(
+  async getSubTags(tagId: string, limit?: number) {
+    const cached = await getSubTagsCache(tagId);
+    if (cached) return cached;
+    const res = await findAllWithPagination(
       Tag,
       { parentId: tagId },
       limit ? { limit } : {}
     );
+    if (res.items) await setSubTagsCache(tagId, res.items as ITag[]);
+    return res;
   }
 }
 
