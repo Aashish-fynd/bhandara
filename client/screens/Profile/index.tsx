@@ -19,7 +19,7 @@ import { SpinningLoader } from "@/components/ui/Loaders";
 import { formatDateToLongString } from "@/utils/date.utils";
 import useSocketListener from "@/hooks/useSocketListener";
 import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
-import { uploadFile } from "@/common/utils/file.utils";
+import { uploadFile, validateFileSize } from "@/common/utils/file.utils";
 import { EMediaType } from "@/definitions/enums";
 
 const Profile = () => {
@@ -79,13 +79,13 @@ const Profile = () => {
     try {
       setIsUploading(true);
       const { uri, type, mimeType, fileName, fileSize } = result.assets[0];
-      if (!fileSize) return;
+      validateFileSize(AVATAR_BUCKET, fileSize);
       const mediaRow = await uploadFile(
         {
           name: fileName!,
           type: type as EMediaType,
           mimeType: mimeType!,
-          size: fileSize,
+          size: fileSize!,
           uri
         },
         () => {},

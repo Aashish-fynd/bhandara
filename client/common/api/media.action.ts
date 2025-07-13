@@ -1,9 +1,8 @@
 import { Platform } from "react-native";
 import axiosClient from "./base";
 import { base64ToBlob, uriToBlob, compressFile } from "@/utils";
-import { MEDIA_BUCKET_CONFIG } from "@/constants/media";
 import axios from "axios";
-import { IBaseResponse, IMedia, IPaginatedDataResponse } from "@/definitions/types";
+import { IBaseResponse, IMedia } from "@/definitions/types";
 import { EMediaType } from "@/definitions/enums";
 
 export interface IPickerAsset {
@@ -14,6 +13,12 @@ export interface IPickerAsset {
   name: string;
 }
 
+function getFileFormat(fileName: string): string {
+  const parts = fileName.split(".");
+  if (parts.length < 2) return "unknown";
+  return parts.pop()!.toLowerCase();
+}
+
 export const uploadPickerAsset = async (
   asset: IPickerAsset,
   options: { bucket: string; compressionPercentage: number; onProgress?: (progress: number) => void } & Record<
@@ -22,13 +27,11 @@ export const uploadPickerAsset = async (
   >
 ) => {
   const { bucket, compressionPercentage, onProgress, customName, parentPath, ...rest } = options;
-  const config = MEDIA_BUCKET_CONFIG[bucket];
-  if (!config) throw new Error("Invalid bucket");
 
   const { uri, mimeType, name, size: fileSize, type } = asset;
+  const fileFormat = getFileFormat(name);
 
-  const parsedName = (customName || name).replace(`.${type}`, "");
-  if (fileSize > config.maxSize) throw new Error("File size exceeds bucket limit");
+  const parsedName = (customName || name).replace(`.${fileFormat}`, "");
 
   onProgress?.(10);
   let progress = 10;
@@ -41,8 +44,6 @@ export const uploadPickerAsset = async (
   onProgress?.(Math.max(progress, 30));
   const newSize = compressed.size ?? fileSize;
 
-  if (newSize > config.maxSize) throw new Error("File size exceeds bucket limit");
-
   const response = await axiosClient.post("/media/get-signed-upload-url", {
     path: name,
     bucket,
@@ -51,6 +52,7 @@ export const uploadPickerAsset = async (
     name: parsedName,
     type,
     parentPath,
+    format: fileFormat,
     ...rest
   });
 

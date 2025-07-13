@@ -118,7 +118,7 @@ export const InputGroup = ({
   error: any;
   placeHolder: string;
   name: string;
-  label: string;
+  label?: string;
   rightLabel?: string;
   onChange?: (value: any) => void;
   inputProps?: React.ComponentProps<typeof Input>;
@@ -128,10 +128,12 @@ export const InputGroup = ({
 }) => {
   return (
     <InputGroupWrapper {...(containerProps || {})}>
-      <InputLabelWrapper>
-        <InputLabel>{label}</InputLabel>
-        {rightLabel && <InputLabelRightText>{rightLabel}</InputLabelRightText>}
-      </InputLabelWrapper>
+      {(label || rightLabel) && (
+        <InputLabelWrapper>
+          {label && <InputLabel>{label}</InputLabel>}
+          {rightLabel && <InputLabelRightText>{rightLabel}</InputLabelRightText>}
+        </InputLabelWrapper>
+      )}
       <Controller
         control={control}
         name={name}

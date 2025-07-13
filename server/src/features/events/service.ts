@@ -19,7 +19,6 @@ import { isEmpty } from "@utils";
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { getDistanceInMeters } from "@helpers";
 import { Event } from "./model";
-import { Thread } from "../threads/model";
 import MessageService from "@features/messages/service";
 
 class EventService {
@@ -132,7 +131,7 @@ class EventService {
 
   async getEventData(id: string) {
     const event = await this.getById(id);
-    return await this.populateEvent(event, true);
+    return this.populateEvent(event, true);
   }
 
   async createEvent(body: Partial<IEvent>) {

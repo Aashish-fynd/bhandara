@@ -37,4 +37,5 @@ export function initializeMediaRealtime() {
       }
     )
     .subscribe();
+  return channel;
 }

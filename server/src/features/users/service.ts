@@ -55,9 +55,7 @@ class UserService {
     return findAllWithPagination(User, where, pagination, select);
   }
 
-  async create(
-    data: Partial<IBaseUser>
-  ): Promise<IBaseUser | null> {
+  async create(data: Partial<IBaseUser>): Promise<IBaseUser | null> {
     const res = await validateUserCreate(data, async (d) => {
       const row = await User.create({
         ...d,
@@ -119,7 +117,7 @@ class UserService {
 
       const isUsernameChanged = username && username !== userData.username;
       if (isUsernameChanged) {
-      const usernameData = await this.getUserByUsername(username);
+        const usernameData = await this.getUserByUsername(username);
         if (!isEmpty(usernameData.items))
           throw new BadRequestError("Username already exists");
       }
@@ -147,18 +145,17 @@ class UserService {
   }
 
   async getById(id: string): Promise<IBaseUser | null> {
-    const cached = await this.getCache(id);
-    if (cached) return cached;
-
-    const data = (await User.findByPk(id, { raw: true })) as IBaseUser | null;
-    if (!data) return null;
-    if (data.mediaId) {
-      const media = await this.mediaService.getById(data.mediaId as string);
-      (data as IBaseUser).media = media as IMedia;
+    let _user = await this.getCache(id);
+    if (!_user)
+      _user = (await User.findByPk(id, { raw: true })) as IBaseUser | null;
+    if (!_user) return null;
+    if (_user.mediaId) {
+      const media = await this.mediaService.getById(_user.mediaId as string);
+      (_user as IBaseUser).media = media as IMedia;
     }
 
-    await this.setCache(id, data as IBaseUser);
-    return data;
+    await this.setCache(id, _user as IBaseUser);
+    return _user;
   }
 
   async getUserByEmail(email: string) {
@@ -166,13 +163,24 @@ class UserService {
     if (cached) return cached;
     const data = await findAllWithPagination(User, { email }, { limit: 1 });
     if (data.items.length === 0) return null;
-    await setUserCacheByEmail(email, data.items[0]);
-    return data.items[0];
+    const user = data.items[0];
+    if (user.mediaId) {
+      const media = await this.mediaService.getById(user.mediaId as string);
+      user.media = media as IMedia;
+    }
+    await setUserCacheByEmail(email, user);
+    return user;
   }
 
-  async getUserByUsername(username: string): Promise<PaginatedResult<IBaseUser>> {
+  async getUserByUsername(
+    username: string
+  ): Promise<PaginatedResult<IBaseUser>> {
     const cached = await getUserCacheByUsername(username);
-    if (cached) return { items: [cached], pagination: null } as PaginatedResult<IBaseUser>;
+    if (cached)
+      return {
+        items: [cached],
+        pagination: null,
+      } as PaginatedResult<IBaseUser>;
     const data = await findAllWithPagination(User, { username }, { limit: 1 });
     if (!isEmpty(data.items)) {
       await setUserCacheByUsername(username, data.items[0]);

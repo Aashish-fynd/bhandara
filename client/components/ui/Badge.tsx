@@ -62,7 +62,15 @@ export const BadgeFrame = styled(YStack, {
     "outline-danger": {
       true: {
         bg: "$red3",
-        borderColor: "$red8"
+        borderColor: "$red8",
+        color: "$red8"
+      }
+    },
+    "outline-warning": {
+      true: {
+        bg: "$yellow3",
+        borderColor: "$yellow9",
+        color: "$yellow9"
       }
     }
   } as const,
@@ -75,7 +83,7 @@ export const BadgeFrame = styled(YStack, {
 export const BadgeText = styled(Text, {
   name: "BadgeText",
   context: BadgeContext,
-  // color: "$color1",
+  fontSize: "$2",
   variants: {
     color: {}
   }

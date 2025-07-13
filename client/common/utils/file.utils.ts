@@ -1,11 +1,4 @@
-import { EVENT_MEDIA_BUCKET } from "@/constants/global";
-import {
-  getMediaPublicURLs,
-  IPickerAsset,
-  uploadPickerAsset,
-  getPublicUploadSignedURL,
-  updateMedia
-} from "../api/media.action";
+import { getMediaPublicURLs, IPickerAsset, uploadPickerAsset, getPublicUploadSignedURL } from "../api/media.action";
 import axiosClient from "../api/base";
 
 import { isEmpty } from "@/utils";
@@ -13,6 +6,7 @@ import { EMediaType } from "@/definitions/enums";
 import { IMedia } from "@/definitions/types";
 import { generateImageVariants } from "@/utils/compression";
 import axios from "axios";
+import { MEDIA_BUCKET_CONFIG } from "@/constants/media";
 
 export interface IAttachedFile extends Omit<IPickerAsset, "uri"> {
   error?: string;
@@ -24,6 +18,13 @@ export interface IAttachedFile extends Omit<IPickerAsset, "uri"> {
   uri?: string;
 }
 
+export const validateFileSize = (bucket: string, size?: number) => {
+  if (!size) throw new Error("File is corrupt or empty");
+  const config = MEDIA_BUCKET_CONFIG[bucket];
+  if (!config) throw new Error("Invalid bucket");
+  if (size > config.maxSize) throw new Error("File size exceeds bucket limit");
+};
+
 export const uploadFile = async (
   file: IPickerAsset,
   setAttachedFiles: React.Dispatch<React.SetStateAction<IAttachedFile[]>>,
@@ -31,8 +32,6 @@ export const uploadFile = async (
 ) => {
   const { uri, mimeType = "", name = "", size = 0 } = file;
   const type = (mimeType?.split("/")[0] || "") as EMediaType;
-
-  console.log("uri", uri);
 
   // Create a retryCallback function
   const retryCallback = () => {
@@ -144,11 +143,19 @@ export const processPickedFiles = async ({
   files,
   setAttachedFiles,
   opts
-}: HandleFilePickProps): Promise<{ successCount: number; errorCount: number }> => {
+}: HandleFilePickProps): Promise<{ successCount: number; errorMessages: string[] }> => {
   const promises = [];
+  const errorMessages: Array<string> = [];
+  const successCountFiles: Array<IMedia> = [];
 
   for (const _file of files) {
     const { name = "", size } = _file;
+    try {
+      validateFileSize(opts.bucket, size);
+    } catch (error: any) {
+      errorMessages.push(error?.message || "Something went wrong");
+      continue;
+    }
 
     // Add file to state first
     setAttachedFiles((prev) => [
@@ -165,21 +172,18 @@ export const processPickedFiles = async ({
     ]);
 
     // Process files in parallel but handle errors individually
-    promises.push(
-      uploadFile(_file, setAttachedFiles, opts).catch((error) => {
-        // Individual file errors are already handled in uploadFile function
-        // Just return null to continue with other uploads
-        return null;
-      })
-    );
+    promises.push(uploadFile(_file, setAttachedFiles, opts));
   }
 
   // Wait for all uploads to complete
   const results = await Promise.allSettled(promises);
-  const successCountFiles = results
-    .filter((result) => result.status === "fulfilled")
-    .map((result) => result.value)
-    .filter(Boolean);
+  results.forEach((result) => {
+    if (result.status === "fulfilled") {
+      successCountFiles.push(result.value);
+    } else {
+      errorMessages.push(result.reason?.message || "Something went wrong");
+    }
+  });
 
   const successCount = successCountFiles.length;
 
@@ -205,5 +209,5 @@ export const processPickedFiles = async ({
       .catch((error) => {
         console.error("error", error);
       });
-  return { successCount, errorCount: promises.length - successCount };
+  return { successCount, errorMessages };
 };

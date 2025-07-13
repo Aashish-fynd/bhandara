@@ -95,8 +95,8 @@ export const CircleBgWrapper = styled(View, {
     size: {
       "...size": (size, { tokens }) => {
         return {
-          width: (tokens.size as any)[size] ?? size,
-          height: (tokens.size as any)[size] ?? size
+          width: (tokens.size as any)[size] || size,
+          height: (tokens.size as any)[size] || size
         };
       }
     }

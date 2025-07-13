@@ -1,5 +1,5 @@
 import { IBaseUser, ITag } from "@/definitions/types";
-import { H4, Text, Theme, View, XStack, YStack } from "tamagui";
+import { H4, Text, Theme, View, XStack, XStackProps, YStack } from "tamagui";
 import CustomAvatar from "../CustomAvatar";
 import ProfileAvatarPreview from "./ProfileAvatarPreview";
 import { Fragment } from "react";
@@ -23,11 +23,13 @@ export const TagPreviewTooltip = ({ tag }: { tag: ITag }) => {
 export const UserCluster = ({
   users,
   maxLimit = 3,
-  avatarSize = 30
+  avatarSize = 30,
+  containerStyles
 }: {
   users: IBaseUser[];
   maxLimit?: number;
   avatarSize?: number;
+  containerStyles?: XStackProps;
 }) => {
   const _users = users.slice(0, maxLimit);
   const remainingUsers = users.length - maxLimit;
@@ -44,6 +46,7 @@ export const UserCluster = ({
   return (
     <XStack
       position={"relative"}
+      {...containerStyles}
       height={avatarSize}
     >
       {_users.map((user, index) => {
@@ -149,13 +152,13 @@ export const IdentityCard = ({
     {!onlyImage && (
       <YStack gap={"$1"}>
         <Text
-          fontSize={"$4"}
+          fontSize={0.45 * size}
           fontWeight={"bold"}
         >
           {title}
         </Text>
         <Text
-          fontSize={"$3"}
+          fontSize={0.35 * size}
           color={"$color11"}
         >
           {subtitle}
@@ -221,7 +224,6 @@ export const BackButtonHeader = ({
 
       {children && (
         <View
-          width={"$3"}
           height={"$3"}
           position={"absolute"}
           r={0}

@@ -1,13 +1,13 @@
-import { ScrollView, SizableText } from "tamagui";
+import { ScrollView, SizableText, XStack } from "tamagui";
 
 import { kebabCase } from "@/utils";
 import { Tabs } from "tamagui";
+import React from "react";
 
 interface IProps {
   tabs: {
     label: string;
-    icon: React.ReactNode;
-    href: string;
+    icon?: React.ReactElement;
     content: React.ReactNode;
   }[];
   defaultValue: string;
@@ -21,9 +21,6 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
       defaultValue={defaultValue}
       orientation={orientation}
       flexDirection={orientation !== "horizontal" ? "row" : "column"}
-      $gtMd={{ maxW: 500 }}
-      width={350}
-      maxW={350}
       flex={1}
       gap={"$5"}
     >
@@ -31,11 +28,14 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
         disablePassBorderRadius="bottom"
         aria-label="Manage your account"
         flex={1}
-        width={"100%"}
         rounded={"$4"}
+        $gtMd={{ maxW: 500 }}
+        width={350}
+        maxW={350}
         borderWidth={"$0.25"}
         borderColor="$borderColor"
         overflow="hidden"
+        self={"center"}
       >
         {tabs.map((tab) => {
           return (
@@ -51,12 +51,21 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
                 cb?.(kebabCase(tab.label));
               }}
             >
-              <SizableText
-                fontFamily="$body"
-                text="center"
+              <XStack
+                gap={"$2"}
+                items={"center"}
               >
-                {tab.label}
-              </SizableText>
+                {tab.icon &&
+                  React.cloneElement(tab.icon, {
+                    size: 16
+                  })}
+                <SizableText
+                  fontFamily="$body"
+                  text="center"
+                >
+                  {tab.label}
+                </SizableText>
+              </XStack>
             </Tabs.Tab>
           );
         })}
@@ -67,6 +76,7 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
           <Tabs.Content
             flex={1}
             value={kebabCase(tab.label)}
+            items={"stretch"}
           >
             <ScrollView
               flex={1}

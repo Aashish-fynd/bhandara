@@ -31,15 +31,16 @@ import { getUUIDv7 } from "@/helpers";
 import { GestureResponderEvent } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { EEventStatus, EEventType, EMediaType } from "@/definitions/enums";
-import { isEmpty } from "@/utils";
+import { isEmpty, startCase } from "@/utils";
 import AssetPreviewDialog from "@/screens/EventDetails/AssetPreviewDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import InterestsDialog from "@/components/InterestsDialog";
-import { createEvent, disassociateMediaFromEvent, getEventById } from "@/common/api/events.action";
+import { createEvent, disassociateMediaFromEvent, getEventById, updateEvent } from "@/common/api/events.action";
 import { EVENT_MEDIA_BUCKET } from "@/constants/global";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { getNavState } from "@/lib/navigationStore";
 import { useDataLoader } from "@/hooks";
+import { Badge } from "@/components/ui/Badge";
 
 interface IFormData {
   name: string;
@@ -112,12 +113,12 @@ const NewEvent = () => {
   const [selectedTags, setSelectedTags] = useState<ITag[]>([]);
   const toastController = useToastController();
 
-  const tEventId = getUUIDv7();
+  const tEventId = useRef(getUUIDv7());
   const { user } = useAuth();
   const currentSelectedMediaRef = useRef<string | undefined>();
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { loading: isEventLoading } = useDataLoader({
+  const { loading: isEventLoading, data } = useDataLoader({
     promiseFunction: handleFetchEvent,
     enabled: !!params.id
   });
@@ -158,7 +159,9 @@ const NewEvent = () => {
           type: m.type
         }))
       );
+      tEventId.current = data.id;
     }
+    return data;
   }
 
   useEffect(() => {
@@ -274,20 +277,18 @@ const NewEvent = () => {
         .filter((f) => f.size) // keep only files with size
         .filter((f, idx, arr) => arr.findIndex((_f) => _f.name === f.name) === idx); // remove duplicates by name
 
-      const { successCount, errorCount } = await processPickedFiles({
+      const { successCount, errorMessages } = await processPickedFiles({
         files,
-        opts: { pPath: tEventId, bucket: EVENT_MEDIA_BUCKET },
+        opts: { pPath: tEventId.current, bucket: EVENT_MEDIA_BUCKET },
         setAttachedFiles
       });
 
       if (successCount > 0) {
         toastController.show(`Uploaded ${successCount} ${successCount === 1 ? "file" : "files"} successfully`);
       }
-      if (errorCount > 0) {
-        toastController.show(
-          `${errorCount} ${errorCount === 1 ? "file" : "files"} failed to upload. You can retry uploading them.`
-        );
-      }
+      errorMessages.forEach((error) => {
+        toastController.show(error);
+      });
     } catch (error: any) {
       toastController.show(error?.message || "Something went wrong");
     }
@@ -300,36 +301,40 @@ const NewEvent = () => {
       user
     }));
 
+  const validateAndFormEventData = (validatedData: IFormData) => {
+    if (!selectedTags.length) {
+      return setError("tags", { message: "Please add tag(s)." });
+    }
+    const startTime = selectedScheduleRef.current?.[0];
+    let eventStatus = EEventStatus.Cancelled;
+    const today = new Date();
+
+    if (new Date(startTime!) > today) eventStatus = EEventStatus.Upcoming;
+    if (new Date(startTime!) < today) eventStatus = EEventStatus.Ongoing;
+
+    const payload = {
+      location: {
+        ...validatedData.location,
+        address: validatedData._location
+      },
+      capacity: validatedData.capacity ? validatedData.num_capacity : undefined,
+      createdBy: user?.id,
+      media: previewableMedias.map((i) => i.id),
+      tags: selectedTags.map((i) => i.id),
+      name: validatedData.name,
+      description: validatedData.description,
+      timings: { start: selectedScheduleRef.current?.[0], end: selectedScheduleRef.current?.[1] },
+      type: EEventType.Custom,
+      status: eventStatus
+    };
+
+    return payload;
+  };
+
   const handleEventCreate = async (validatedData: IFormData) => {
     try {
-      if (!selectedTags.length) {
-        return setError("tags", { message: "Please add tag(s)." });
-      }
-      const startTime = selectedScheduleRef.current?.[0];
-      let eventStatus = EEventStatus.Cancelled;
-      const today = new Date();
-
-      if (new Date(startTime!) > today) eventStatus = EEventStatus.Upcoming;
-      if (new Date(startTime!) < today) eventStatus = EEventStatus.Ongoing;
-
-      const payload = {
-        id: tEventId,
-        location: {
-          ...validatedData.location,
-          address: validatedData._location
-        },
-        capacity: validatedData.capacity ? validatedData.num_capacity : undefined,
-        createdBy: user?.id,
-        media: previewableMedias.map((i) => i.id),
-        tags: selectedTags.map((i) => i.id),
-        name: validatedData.name,
-        description: validatedData.description,
-        timings: { start: selectedScheduleRef.current?.[0], end: selectedScheduleRef.current?.[1] },
-        type: EEventType.Custom,
-        status: eventStatus
-      };
-
-      const { data, error } = await createEvent(payload);
+      const payload = validateAndFormEventData(validatedData);
+      const { data, error } = await createEvent({ ...payload, id: tEventId.current });
 
       if (error) throw error;
       if (data?.id) router.push(`/event/${data?.id}`);
@@ -339,7 +344,24 @@ const NewEvent = () => {
     }
   };
 
+  const handleEventUpdate = async (validatedData: IFormData) => {
+    try {
+      const payload = validateAndFormEventData(validatedData);
+      const { data, error } = await updateEvent(params.id as string, { ...payload });
+      if (error) throw error;
+      if (data?.id) router.push(`/event/${data?.id}`);
+      else router.navigate("/home");
+    } catch (error: any) {
+      toastController.show(error?.message || "Unable to update event");
+    }
+  };
+
   if (isEventLoading) return <SpinningLoader />;
+  const eventBadgeMapping = {
+    [EEventStatus.Cancelled]: { "outline-danger": true },
+    [EEventStatus.Ongoing]: { "outline-success": true },
+    [EEventStatus.Upcoming]: { "outline-warning": true }
+  };
 
   return (
     <>
@@ -349,12 +371,21 @@ const NewEvent = () => {
         flex={1}
       >
         <BackButtonHeader
-          title="Create New Event"
+          title={data?.name || "Create New Event"}
           navigateTo="/home"
-        />
+        >
+          {data?.id && (
+            <Badge
+              {...eventBadgeMapping[data?.status]}
+              my={"auto"}
+            >
+              <Badge.Text>{startCase(data.status)}</Badge.Text>
+            </Badge>
+          )}
+        </BackButtonHeader>
         <YStack
           gap={"$4"}
-          mt={"$4"}
+          px={"$0.5"}
           flex={1}
           overflow="scroll"
         >
@@ -661,7 +692,7 @@ const NewEvent = () => {
           onPress={handleSubmit(handleEventCreate)}
           disabled={!!Object.keys(errors).length}
         >
-          Create Event
+          {`${data?.id ? "Update" : "Create"} Event`}
         </FilledButton>
       </YStack>
 

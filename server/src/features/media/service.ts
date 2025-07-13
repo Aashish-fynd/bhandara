@@ -1,4 +1,4 @@
-import { IEvent, IMedia, IPaginationParams } from "@/definitions/types";
+import { IEvent, IMedia } from "@/definitions/types";
 import { EMediaProvider } from "@/definitions/enums";
 import { findAllWithPagination } from "@utils/dbUtils";
 import SupabaseService from "@supabase";
@@ -9,7 +9,6 @@ import { Media } from "./model";
 import { Event } from "../events/model";
 import { isEmpty, omit } from "@utils";
 import {
-  deleteEventMediaCache,
   deleteMediaCache,
   getEventMediaCache,
   setEventMediaCache,

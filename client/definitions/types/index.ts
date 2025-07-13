@@ -25,7 +25,9 @@ export interface IBaseUser extends ITimeStamp {
   isVerified: boolean;
   password: string | null;
   meta: Record<string, any>;
-  profilePic: Record<string, any> | null;
+  profilePic: {
+    url: string;
+  } | null;
   mediaId: string | null | IMedia;
   username?: string;
   media?: IMedia;
