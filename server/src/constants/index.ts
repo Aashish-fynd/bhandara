@@ -35,6 +35,10 @@ export const CACHE_NAMESPACE_CONFIG = {
     namespace: "media-public-url",
     ttl: 3600 * 24,
   },
+  Explore: {
+    namespace: "explore-pages",
+    ttl: 3600,
+  },
 };
 
 export enum DB_CONNECTION_NAMES {
@@ -71,4 +75,5 @@ export const PLATFORM_SOCKET_EVENTS = {
 
   // USERs
   USER_UPDATED: "user:updated",
+  EXPLORE: "explore",
 };

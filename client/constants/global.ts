@@ -30,7 +30,8 @@ export const PLATFORM_SOCKET_EVENTS = {
   REACTION_DELETED: "reaction:deleted",
 
   // USERs
-  USER_UPDATED: "user:updated"
+  USER_UPDATED: "user:updated",
+  EXPLORE: "explore"
 };
 
 export const COMMON_EMOJIS = ["👍", "❤️", "😂", "🎉", "😮", "😢"];
