@@ -158,27 +158,6 @@ router.delete(
   asyncHandler(deleteEventTag)
 );
 
-/**
- * @openapi
- * /events/{eventId}/threads:
- *   get:
- *     tags: [Events]
- *     summary: Get threads for event
- *     parameters:
- *       - in: path
- *         name: eventId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: List of threads
- */
-router.get(
-  "/:eventId/threads",
-  [validateParams(["eventId"])],
-  asyncHandler(getEventThreads)
-);
 
 /**
  * @openapi
