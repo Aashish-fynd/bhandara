@@ -14,12 +14,17 @@ import {
   MessageService,
   ReactionService,
   ThreadService,
+  getExplorePage,
+  setExplorePage,
+  deleteExplorePage,
+  buildExploreSections,
 } from "@features";
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
+import { getDistanceInMeters } from "@helpers";
 import { setPlatformNamespace, emitSocketEvent } from "./emitter";
 import { EAllowedReactionTables } from "@features/reactions/constants";
-import { EAccessLevel, EThreadType } from "@definitions/enums";
+import { EAccessLevel, EThreadType, EEventStatus } from "@definitions/enums";
 
 interface CustomSocket
   extends Socket<
@@ -324,6 +329,62 @@ export function initializeSocket(server: http.Server) {
         }
       );
 
+      socket.on(PLATFORM_SOCKET_EVENTS.EXPLORE, async (request, cb) => {
+        const { latitude, longitude } = request || {};
+        if (
+          typeof latitude !== "number" ||
+          typeof longitude !== "number"
+        ) {
+          return cb?.({ error: "Invalid location" });
+        }
+
+        const abortController = new AbortController();
+        (socket as any).exploreAbort = abortController;
+
+        try {
+          let page = ((await getExplorePage(socketUserId)) || 1) as number;
+
+          while (!abortController.signal.aborted) {
+            const { items, pagination } = await eventService.getAll(
+              { status: [EEventStatus.Ongoing, EEventStatus.Upcoming] },
+              { limit: 10, page }
+            );
+
+            let radius = 100;
+            let nearby = items;
+
+            while (nearby.length === 0 && radius <= 1000 && !abortController.signal.aborted) {
+              nearby = items.filter((ev) => {
+                const { latitude: elat, longitude: elon } = ev.location || {};
+                if (typeof elat !== "number" || typeof elon !== "number") return false;
+                return (
+                  getDistanceInMeters(latitude, longitude, elat, elon) <= radius
+                );
+              });
+              if (nearby.length === 0) radius += 100;
+            }
+
+            if (nearby.length === 0) break;
+
+            const sections = buildExploreSections(nearby);
+
+            for (const section of sections) {
+              if (abortController.signal.aborted) break;
+              socket.emit(PLATFORM_SOCKET_EVENTS.EXPLORE, { data: section, error: null });
+            }
+
+            await setExplorePage(socketUserId, page);
+            page += 1;
+
+            if (!pagination.hasNext) break;
+          }
+          cb?.({ data: true });
+        } catch (err) {
+          logger.error("Explore event failed", err);
+          cb?.({ error: err?.message || "Something went wrong" });
+        }
+      });
+
       socket.on(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, async (request, cb) => {
         try {
           const { eventId, ...messageData } = request || {};
@@ -379,7 +440,11 @@ export function initializeSocket(server: http.Server) {
         }
       });
 
-      socket.on(PLATFORM_SOCKET_EVENTS.DISCONNECT, async () => {});
+      socket.on(PLATFORM_SOCKET_EVENTS.DISCONNECT, async () => {
+        const ctrl = (socket as any).exploreAbort;
+        if (ctrl) ctrl.abort();
+        await deleteExplorePage(socketUserId);
+      });
     }
   );
 
