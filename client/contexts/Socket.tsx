@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect } from "react";
 import SocketManager from "../common/socket";
 
 const socketInstance = SocketManager.getInstance();
-const SocketContext = createContext<typeof SocketManager>(socketInstance);
+const SocketContext = createContext<SocketManager>(socketInstance);
 
 export const SocketProvider = ({ session, children }: { session: string; children: React.ReactNode }) => {
   useEffect(() => {

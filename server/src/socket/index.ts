@@ -83,19 +83,21 @@ export function initializeSocket(server: http.Server) {
             throw new NotFoundError("Thread not found");
 
           const message = await messageService.create(messageData);
-          const media = (message.data.content?.media || []) as string[];
+          const media = (message.content?.media || []) as string[];
 
           if (!isEmpty(media)) {
             const mediaData = await mediaService.getMediaByIds(media);
             const populatedMedia = media.map((i) => mediaData.data[i]);
-            message.data.content.media = populatedMedia;
+            message.content.media = populatedMedia;
           }
 
-          if (message.data) {
-            (message.data as any).thread = threadResponse.data;
-            (message.data as any).user = socket.request.user;
+          if (message) {
+            (message as any).thread = threadResponse;
+            (message as any).user = socket.request.user;
           }
-          emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, message);
+          emitSocketEvent(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, {
+            data: message,
+          });
           cb({ data: true });
         } catch (error) {
           logger.error(`Error sending new message`, error);
@@ -164,10 +166,7 @@ export function initializeSocket(server: http.Server) {
               userId: socketUserId,
             };
 
-            const { data: newReaction, error: newReactionError } =
-              await reactionService.create(creationData);
-
-            if (newReactionError) throw newReactionError;
+            const newReaction = await reactionService.create(creationData);
 
             newReaction.user = getSafeUser(socket.request.user);
 
@@ -233,12 +232,12 @@ export function initializeSocket(server: http.Server) {
                 `Reaction not found ${reaction} for user`
               );
 
-            const { data: updatedReaction, error: newReactionError } =
-              await reactionService.update(previousReaction.id, {
+            const updatedReaction = await reactionService.update(
+              previousReaction.id,
+              {
                 emoji: reaction,
-              });
-
-            if (newReactionError) throw newReactionError;
+              }
+            );
 
             updatedReaction.user = getSafeUser(socket.request.user);
 
@@ -304,10 +303,10 @@ export function initializeSocket(server: http.Server) {
                 `Reaction not found ${reaction} for user`
               );
 
-            const { data: deletedReaction, error: newReactionError } =
-              await reactionService.delete(previousReaction.id, true);
-
-            if (newReactionError) throw newReactionError;
+            const deletedReaction = await reactionService.delete(
+              previousReaction.id,
+              true
+            );
 
             emitSocketEvent(PLATFORM_SOCKET_EVENTS.REACTION_DELETED, {
               data: {
@@ -330,11 +329,9 @@ export function initializeSocket(server: http.Server) {
       );
 
       socket.on(PLATFORM_SOCKET_EVENTS.EXPLORE, async (request, cb) => {
-        const { latitude, longitude } = request || {};
-        if (
-          typeof latitude !== "number" ||
-          typeof longitude !== "number"
-        ) {
+        const { filter: { location } = {} } = request || {};
+        const { latitude, longitude } = location || {};
+        if (typeof latitude !== "number" || typeof longitude !== "number") {
           return cb?.({ error: "Invalid location" });
         }
 
@@ -353,10 +350,15 @@ export function initializeSocket(server: http.Server) {
             let radius = 100;
             let nearby = items;
 
-            while (nearby.length === 0 && radius <= 1000 && !abortController.signal.aborted) {
+            while (
+              nearby.length === 0 &&
+              radius <= 1000 &&
+              !abortController.signal.aborted
+            ) {
               nearby = items.filter((ev) => {
                 const { latitude: elat, longitude: elon } = ev.location || {};
-                if (typeof elat !== "number" || typeof elon !== "number") return false;
+                if (typeof elat !== "number" || typeof elon !== "number")
+                  return false;
                 return (
                   getDistanceInMeters(latitude, longitude, elat, elon) <= radius
                 );
@@ -370,7 +372,10 @@ export function initializeSocket(server: http.Server) {
 
             for (const section of sections) {
               if (abortController.signal.aborted) break;
-              socket.emit(PLATFORM_SOCKET_EVENTS.EXPLORE, { data: section, error: null });
+              emitSocketEvent(PLATFORM_SOCKET_EVENTS.EXPLORE, {
+                data: section,
+                error: null,
+              });
             }
 
             await setExplorePage(socketUserId, page);
@@ -394,7 +399,7 @@ export function initializeSocket(server: http.Server) {
 
           const eventResponse = await eventService.getById(eventId);
 
-          if (isEmpty(eventResponse.data))
+          if (isEmpty(eventResponse))
             throw new NotFoundError("Event not found");
 
           const newThread = await threadService.create({
@@ -410,24 +415,24 @@ export function initializeSocket(server: http.Server) {
           messageData.threadId = newThread.data.id;
 
           const message = await messageService.create(messageData);
-          const media = (message.data.content?.media || []) as string[];
+          const media = (message.content?.media || []) as string[];
 
           if (!isEmpty(media)) {
             const mediaData = await mediaService.getMediaByIds(media);
             const populatedMedia = media.map((i) => mediaData.data[i]);
-            message.data.content.media = populatedMedia;
+            message.content.media = populatedMedia;
           }
 
-          if (message.data) {
-            (message.data as any).thread = eventResponse.data;
-            (message.data as any).user = socket.request.user;
+          if (message) {
+            (message as any).thread = eventResponse;
+            (message as any).user = socket.request.user;
           }
 
-          newThread.data.messages = [message.data];
+          newThread.data.messages = [message];
           newThread.data.creator = socket.request.user;
 
           emitSocketEvent(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, {
-            data: { ...newThread.data, event: eventResponse.data },
+            data: { ...newThread.data, event: eventResponse },
             error: null,
           });
           cb({ data: true });

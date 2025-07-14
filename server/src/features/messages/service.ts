@@ -199,7 +199,7 @@ class MessageService {
     if (populate && msg) {
       msg = await this.getById(msg.id, populate);
     }
-    return msg;
+    return msg as IMessage;
   }
 
   async update<U extends Partial<IMessage>>(

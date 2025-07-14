@@ -5,7 +5,6 @@ import { Plus, RotateCw, SendHorizontal, X } from "@tamagui/lucide-icons";
 import { FilledButton, OutlineButton } from "../ui/Buttons";
 import { TextareaField } from "../Form";
 import { Platform } from "react-native";
-import * as Clipboard from "expo-clipboard";
 import { PopoverWrapper } from "../PopoverWrapper";
 import AddPopoverContents from "./AddPopoverContents";
 import { deleteMedia } from "@/common/api/media.action";

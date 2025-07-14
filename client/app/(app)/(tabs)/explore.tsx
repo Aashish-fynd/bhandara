@@ -3,11 +3,15 @@ import HorizontalTabs from "@/components/CustomTabs";
 import { InputGroup } from "@/components/Form";
 import PulsatingDot from "@/components/PulsatingDot";
 import { Badge } from "@/components/ui/Badge";
+import { OutlineButton } from "@/components/ui/Buttons";
 import { IdentityCard, TagListing, UserCluster } from "@/components/ui/common-components";
 import { CardWrapper, CircleBgWrapper } from "@/components/ui/common-styles";
+import { SpinningLoader } from "@/components/ui/Loaders";
+import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
+import { useSocket } from "@/contexts/Socket";
 import { IAddress, IBaseUser, ITag } from "@/definitions/types";
 import { formatDistance } from "@/helpers";
-import { kebabCase, startCase } from "@/utils";
+import { isEmpty, kebabCase, startCase } from "@/utils";
 import { formatDateWithTimeString } from "@/utils/date.utils";
 import { askForLocation, haversineDistanceInM } from "@/utils/location";
 import {
@@ -20,6 +24,7 @@ import {
   Menu,
   MessageCircle,
   Moon,
+  RotateCcw,
   Search,
   Sun,
   Users
@@ -154,7 +159,7 @@ const EventCard = ({ event, width = 140, children }: { event: any; width?: numbe
             color="$color10"
             ellipsizeMode="tail"
           >
-            {event.location}
+            {event.location?.city} | {event.location?.country}
           </Text>
         </XStack>
       </YStack>
@@ -216,28 +221,51 @@ const CommonHeader = ({
   );
 };
 
-const TasteCalendar = ({ payload, filters }: { payload: ITasteCalendarPayload; filters: string[] }) => {
+const TasteCalendar = ({ payload, filters }: { payload: ITasteCalendarPayload[]; filters: string[] }) => {
   const iconMapping = {
     morning: <Sun size={16} />,
     evening: <CloudSun size={16} />,
     night: <Moon size={16} />
   };
 
+  const renderTabContent = (filter: string) => {
+    const filteredPayload = payload.filter((item) => item.filter.includes(filter));
+
+    if (isEmpty(filteredPayload)) {
+      return (
+        <YStack
+          height={150}
+          justify={"center"}
+          items={"center"}
+          width={"100%"}
+          flex={1}
+        >
+          <Text>No events found</Text>
+        </YStack>
+      );
+    }
+
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+        <XStack
+          gap={"$2"}
+          flexDirection="row"
+        >
+          {filteredPayload.map((item) => (
+            <EventCard event={item} />
+          ))}
+        </XStack>
+      </ScrollView>
+    );
+  };
+
   const tabs = filters.map((filter) => ({
     label: startCase(filter),
     icon: iconMapping[filter as keyof typeof iconMapping],
-    content: (
-      <XStack
-        gap={"$2"}
-        flexDirection="row"
-      >
-        {payload.filter
-          .filter((item) => item.includes(filter))
-          .map((item) => (
-            <EventCard event={item} />
-          ))}
-      </XStack>
-    )
+    content: renderTabContent(filter)
   }));
 
   return (
@@ -261,7 +289,10 @@ const FoodieFeed = ({
   userLocation: LocationObjectCoords | null;
 }) => {
   return (
-    <ScrollView>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+    >
       <XStack gap={"$4"}>
         {payload.map((item) => {
           const distanceAway = userLocation
@@ -277,6 +308,7 @@ const FoodieFeed = ({
               gap={"$2"}
               items={"center"}
               position="relative"
+              maxW={150}
             >
               <Badge
                 position="absolute"
@@ -299,7 +331,6 @@ const FoodieFeed = ({
               />
               <Text
                 fontSize={"$3"}
-                maxW={"$6"}
                 ellipsizeMode="tail"
                 numberOfLines={1}
               >
@@ -389,7 +420,7 @@ const Reels = ({ payload }: { payload: IReelsPayload[] }) => {
                 fontSize={"$2"}
                 color={"$color10"}
               >
-                {item.location}
+                {item.location?.city} {item.location?.country}
               </Text>
 
               <XStack
@@ -462,6 +493,7 @@ const Collaborations = ({
                 <XStack
                   justify={"space-between"}
                   items={"center"}
+                  gap={"$4"}
                 >
                   <XStack gap={"$2"}>
                     <MapPin size={16} />
@@ -469,7 +501,9 @@ const Collaborations = ({
                       gap={"$1"}
                       items={"center"}
                     >
-                      <Text fontSize={"$2"}>{item.location}</Text>
+                      <Text fontSize={"$2"}>
+                        {item.location?.city} | {item.location?.country}
+                      </Text>
                       <Text
                         fontSize={"$2"}
                         color={"$color10"}
@@ -478,9 +512,12 @@ const Collaborations = ({
                       </Text>
                     </XStack>
                   </XStack>
-                  <XStack gap={"$2"}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                  >
                     <TagListing tags={item.tags} />
-                  </XStack>
+                  </ScrollView>
                 </XStack>
 
                 <XStack
@@ -611,6 +648,8 @@ const explore = () => {
     formState: { errors }
   } = useForm({});
 
+  const socket = useSocket();
+
   const handleFilterPress = () => {
     console.log("filter pressed");
   };
@@ -620,6 +659,32 @@ const explore = () => {
   const [sections, setSections] = useState<IExploreSection[]>([]);
 
   useEffect(() => {
+    handleLocationAccess();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUserLocation) return;
+
+    socket.emit(PLATFORM_SOCKET_EVENTS.EXPLORE, {
+      filter: {
+        location: {
+          latitude: currentUserLocation?.latitude,
+          longitude: currentUserLocation?.longitude
+        }
+      }
+    });
+
+    socket.on(PLATFORM_SOCKET_EVENTS.EXPLORE, ({ data, error }) => {
+      console.log("data", data);
+      if (error) {
+        toastController.show(error);
+      } else {
+        setSections((prev) => [...prev, data]);
+      }
+    });
+  }, [!!currentUserLocation, socket]);
+
+  function handleLocationAccess() {
     askForLocation().then((location) => {
       if (location) {
         setCurrentUserLocation(location.coords);
@@ -627,7 +692,31 @@ const explore = () => {
         toastController.show("Failed to get your location");
       }
     });
-  }, []);
+  }
+
+  if (!currentUserLocation) {
+    return (
+      <YStack
+        flex={1}
+        justify={"center"}
+        items={"center"}
+        gap={"$4"}
+      >
+        <Text
+          maxW={400}
+          text={"center"}
+        >
+          Oh no! We need your location to create your personalized feed.
+        </Text>
+        <OutlineButton
+          onPress={handleLocationAccess}
+          icon={<RotateCcw size={16} />}
+        >
+          <Text>Allow location access</Text>
+        </OutlineButton>
+      </YStack>
+    );
+  }
 
   return (
     <YStack
@@ -651,30 +740,41 @@ const explore = () => {
           />
         }
       />
-      <ScrollView flex={1}>
-        <YStack gap={"$5"}>
-          {sections.map((section) => {
-            if (section.component in mapping) {
-              const Component = mapping[section.component].component;
-              return (
-                <YStack gap={"$3"}>
-                  <CommonHeader
-                    heading={section.title}
-                    subHeading={section.subtitle}
-                    handleSeeAllPress={() => {}}
-                  />
-                  <Component
-                    payload={section.payload as any}
-                    userLocation={currentUserLocation}
-                    filters={(mapping[section.component] as any)?.filters || []}
-                  />
-                </YStack>
-              );
-            }
-            return null;
-          })}
+
+      {!sections.length ? (
+        <YStack
+          flex={1}
+          justify={"center"}
+          items={"center"}
+        >
+          <SpinningLoader />
         </YStack>
-      </ScrollView>
+      ) : (
+        <ScrollView flex={1}>
+          <YStack gap={"$5"}>
+            {sections.map((section) => {
+              if (section.component in mapping) {
+                const Component = mapping[section.component].component;
+                return (
+                  <YStack gap={"$3"}>
+                    <CommonHeader
+                      heading={section.title}
+                      subHeading={section.subtitle}
+                      handleSeeAllPress={() => {}}
+                    />
+                    <Component
+                      payload={section.payload as any}
+                      userLocation={currentUserLocation}
+                      filters={(mapping[section.component] as any)?.filters || []}
+                    />
+                  </YStack>
+                );
+              }
+              return null;
+            })}
+          </YStack>
+        </ScrollView>
+      )}
     </YStack>
   );
 };

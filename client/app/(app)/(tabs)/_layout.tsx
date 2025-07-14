@@ -1,6 +1,9 @@
 import TabsHeader from "@/components/TabsHeader";
+import { BottomTabBar } from "@react-navigation/bottom-tabs";
 import { House, Plus, UserRound } from "@tamagui/lucide-icons";
+import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
+import { Platform } from "react-native";
 import { getTokenValue, useTheme, View } from "tamagui";
 
 export default function TabLayout() {
@@ -25,9 +28,24 @@ export default function TabLayout() {
           borderTopWidth: 0,
           backdropFilter: "blur(10px)",
           borderRadius: 100,
-          width: 300,
+          width: 320,
           marginHorizontal: "auto",
-          marginBottom
+          marginBottom,
+          position: "absolute"
+        },
+        tabBarBackground: () => {
+          return (
+            <BlurView
+              intensity={80}
+              tint={Platform.OS === "ios" ? "light" : "dark"}
+              style={{
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                overflow: "hidden",
+                position: "absolute"
+              }}
+            />
+          );
         }
       }}
     >
@@ -37,7 +55,7 @@ export default function TabLayout() {
           title: "Home",
           tabBarIcon: ({ color }) => (
             <House
-              size={20}
+              size={16}
               color={color as any}
             />
           )
@@ -77,7 +95,7 @@ export default function TabLayout() {
           title: "Profile",
           tabBarIcon: ({ color }) => (
             <UserRound
-              size={20}
+              size={16}
               color={color as any}
             />
           )

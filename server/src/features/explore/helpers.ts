@@ -6,11 +6,14 @@ const exploreCache = new RedisCache({
   defaultTTLSeconds: CACHE_NAMESPACE_CONFIG.Explore.ttl,
 });
 
-export const getExplorePage = (userId: string) => exploreCache.getItem<number>(userId);
+export const getExplorePage = (userId: string) =>
+  exploreCache.getItem<number>(userId);
 
-export const setExplorePage = (userId: string, page: number) => exploreCache.setItem(userId, page);
+export const setExplorePage = (userId: string, page: number) =>
+  exploreCache.setItem(userId, page);
 
-export const deleteExplorePage = (userId: string) => exploreCache.deleteItem(userId);
+export const deleteExplorePage = (userId: string) =>
+  exploreCache.deleteItem(userId);
 
 export enum EExploreComponents {
   TasteCalendar = "taste-calendar",
@@ -71,7 +74,8 @@ export const componentMeta: Record<
 };
 
 const toBasePayload = (ev: any): BasePayload => {
-  const firstMedia = Array.isArray(ev.media) && ev.media.length ? ev.media[0] : null;
+  const firstMedia =
+    Array.isArray(ev.media) && ev.media.length ? ev.media[0] : null;
   return {
     id: ev.id,
     title: ev.name,
@@ -108,12 +112,15 @@ export const buildExploreSections = (events: any[]): ExploreSection[] => {
     filter: [getTimeOfDay(ev.timings?.start)],
   }));
 
-const foodieFeedPayload = baseEvents.filter(
+  const foodieFeedPayload = baseEvents.filter(
     (ev) => ev.status === "ongoing" || ev.status === "upcoming"
   );
 
   const reelsPayload = events
-    .filter((ev) => Array.isArray(ev.media) && ev.media.some((m) => m.type === "video"))
+    .filter(
+      (ev) =>
+        Array.isArray(ev.media) && ev.media.some((m) => m.type === "video")
+    )
     .map((ev) => ({
       ...toBasePayload(ev),
       likes: (ev.reactions || []).length || 0,

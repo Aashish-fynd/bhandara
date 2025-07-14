@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSocket } from "@/contexts/Socket";
 
 // Map to store sets of unique handlers per event
@@ -13,7 +13,8 @@ const registerSocketHandler = (event: string, handler: (...args: any[]) => void)
     socketEventRegistry.set(event, new Set());
   }
   const handlers = socketEventRegistry.get(event)!;
-  handlers.add(handler); // Set ensures uniqueness by reference
+  handlers.add(handler);
+  socketEventRegistry.set(event, handlers);
 };
 
 // Function to unregister a handler from an event
@@ -24,6 +25,7 @@ const unregisterSocketHandler = (event: string, handler: (...args: any[]) => voi
     if (handlers.size === 0) {
       socketEventRegistry.delete(event);
     }
+    socketEventRegistry.set(event, handlers);
   }
 };
 
@@ -40,10 +42,14 @@ const useSocketListener = (event: string, handler: (...args: any[]) => void) => 
     if (!socket) return;
 
     registerSocketHandler(event, handler);
+
     if (!initializedEvents.has(event)) {
       socket.on(event, (...args: any[]) => {
+        console.log("🔌 SOCKET EVENT RECEIVED:", event, args);
         const handlers = getSocketHandlers(event);
-        handlers.forEach((h) => h(...args));
+        handlers.forEach((h) => {
+          h(...args);
+        });
       });
       initializedEvents.add(event);
     }
@@ -51,7 +57,7 @@ const useSocketListener = (event: string, handler: (...args: any[]) => void) => 
     return () => {
       unregisterSocketHandler(event, handler);
     };
-  }, [socket, event]);
+  }, [socket, event, handler]);
 };
 
 export default useSocketListener;

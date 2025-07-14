@@ -65,7 +65,7 @@ export const UserCluster = ({
             <_Wrapper user={user}>
               <CustomAvatar
                 size={avatarSize}
-                src={user.profilePic?.publicUrl}
+                src={user.profilePic?.url || ""}
                 alt={user.name}
                 fallbackGenerator={(alt) => {
                   if (user.id === "remaining") {
@@ -246,7 +246,10 @@ export const TagListing = ({ tags }: { tags: ITag[] }) => {
       {tags?.map((tag: ITag) => (
         <CustomTooltip
           trigger={
-            <Badge cursor="pointer">
+            <Badge
+              cursor="pointer"
+              size="sm"
+            >
               <Badge.Text fontSize={"$3"}>{tag.name}</Badge.Text>
             </Badge>
           }

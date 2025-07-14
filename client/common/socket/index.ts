@@ -8,7 +8,7 @@ class SocketManager {
   private socket: Socket | null = null;
   private connected = false;
 
-  public getInstance(): SocketManager {
+  public static getInstance(): SocketManager {
     if (!SocketManager.instance) {
       SocketManager.instance = new SocketManager();
     }
@@ -17,6 +17,8 @@ class SocketManager {
 
   public connect(session: string) {
     if (this.connected || this.socket) return;
+
+    console.log("🔌 Connecting to socket with session:", session);
 
     this.socket = io(`${config.server.baseURL}/platform`, {
       transports: ["websocket"],
@@ -32,23 +34,31 @@ class SocketManager {
       this.connected = false;
       console.log("🔌 Socket disconnected");
     });
+
+    this.socket.on("error", (error) => {
+      console.error("🔌 Socket error:", error);
+    });
   }
 
   public disconnect() {
+    console.log("🔌 Disconnecting socket");
     this.socket?.disconnect();
     this.socket = null;
     this.connected = false;
   }
 
   public on(event: string, callback: EventCallback) {
+    console.log("🔌 Registering listener for event:", event);
     this.socket?.on(event, callback);
   }
 
   public off(event: string, callback?: EventCallback) {
+    console.log("🔌 Removing listener for event:", event);
     this.socket?.off(event, callback);
   }
 
   public emit(event: string, payload: any, cb?: EventCallback) {
+    console.log("🔌 Emitting event:", event, payload);
     this.socket?.emit(event, payload, cb);
   }
 
@@ -57,4 +67,4 @@ class SocketManager {
   }
 }
 
-export default new SocketManager();
+export default SocketManager;
