@@ -409,10 +409,10 @@ export function initializeSocket(server: http.Server) {
             visibility: EAccessLevel.Public,
           });
 
-          if (isEmpty(newThread.data))
+          if (isEmpty(newThread))
             throw new Error("Unable able to create thread");
 
-          messageData.threadId = newThread.data.id;
+          messageData.threadId = newThread.id;
 
           const message = await messageService.create(messageData);
           const media = (message.content?.media || []) as string[];
@@ -428,11 +428,11 @@ export function initializeSocket(server: http.Server) {
             (message as any).user = socket.request.user;
           }
 
-          newThread.data.messages = [message];
-          newThread.data.creator = socket.request.user;
+          newThread.messages = [message];
+          newThread.creator = socket.request.user;
 
           emitSocketEvent(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, {
-            data: { ...newThread.data, event: eventResponse },
+            data: { ...newThread, event: eventResponse },
             error: null,
           });
           cb({ data: true });

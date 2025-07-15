@@ -3,7 +3,7 @@ import { UserCluster } from "@/components/ui/common-components";
 import { CardWrapper } from "@/components/ui/common-styles";
 import { useAuth } from "@/contexts/AuthContext";
 import { IBaseUser, IMedia, IMessage, IReaction } from "@/definitions/types";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, ScrollView, TamaguiElement, Text, View, XStack, YStack } from "tamagui";
 import React from "react";
 import { formatDateWithTimeString } from "@/utils/date.utils";
@@ -51,6 +51,54 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
   const { open, close, RenderContent } = useDialog();
   const currentSelectedMediaRef = useRef<undefined | string>();
 
+  useEffect(() => {
+    if (!socket) return;
+    socket.on(
+      PLATFORM_SOCKET_EVENTS.REACTION_DELETED,
+      ({
+        data,
+        error
+      }: {
+        data: { id: string; contentPath: string; reaction: IReaction; parentId: string };
+        error: any;
+      }) => {
+        if (error || !data.parentId || data.id !== message.id) return;
+
+        setReactions((prev) => prev.filter((f) => f.id !== data.reaction.id));
+      }
+    );
+
+    socket.on(
+      PLATFORM_SOCKET_EVENTS.REACTION_CREATED,
+      ({
+        data,
+        error
+      }: {
+        data: { id: string; contentPath: string; reaction: IReaction; parentId: string };
+        error: any;
+      }) => {
+        if (error || !data.parentId || data.id !== message.id) return;
+
+        setReactions((prev) => [data.reaction, ...prev]);
+      }
+    );
+
+    socket.on(
+      PLATFORM_SOCKET_EVENTS.REACTION_UPDATED,
+      ({
+        data,
+        error
+      }: {
+        data: { id: string; contentPath: string; reaction: IReaction; parentId: string };
+        error: any;
+      }) => {
+        if (error || !data.parentId || data.id !== message.id) return;
+
+        setReactions((prev) => prev.map((f) => (f.id === data.reaction.id ? { ...data.reaction } : f)));
+      }
+    );
+  }, [socket]);
+
   const handleReactionPress = (e: string) => {
     // if it is current user reaction update with current one
     socket?.emit(
@@ -75,51 +123,6 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
   const handleHoverOut = () => {
     setShowActions(false);
   };
-
-  useSocketListener(
-    PLATFORM_SOCKET_EVENTS.REACTION_DELETED,
-    ({
-      data,
-      error
-    }: {
-      data: { id: string; contentPath: string; reaction: IReaction; parentId: string };
-      error: any;
-    }) => {
-      if (error || !data.parentId || data.id !== message.id) return;
-
-      setReactions((prev) => prev.filter((f) => f.id !== data.reaction.id));
-    }
-  );
-
-  useSocketListener(
-    PLATFORM_SOCKET_EVENTS.REACTION_CREATED,
-    ({
-      data,
-      error
-    }: {
-      data: { id: string; contentPath: string; reaction: IReaction; parentId: string };
-      error: any;
-    }) => {
-      if (error || !data.parentId || data.id !== message.id) return;
-
-      setReactions((prev) => [data.reaction, ...prev]);
-    }
-  );
-
-  useSocketListener(
-    PLATFORM_SOCKET_EVENTS.REACTION_UPDATED,
-    ({
-      data,
-      error
-    }: {
-      data: { id: string; contentPath: string; reaction: IReaction; parentId: string };
-      error: any;
-    }) => {
-      if (error || !data.parentId || data.id !== message.id) return;
-
-      setReactions((prev) => prev.map((f) => (f.id === data.reaction.id ? { ...data.reaction } : f)));
-    }
-  );
 
   const handleAssetClick = (e: IMedia) => {
     currentSelectedMediaRef.current = e.id;

@@ -7,7 +7,7 @@ import { useSocket } from "@/contexts/Socket";
 import { IBaseThread, IBaseUser, IEvent, IMessage, IPaginationResponse } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
 import useSocketListener from "@/hooks/useSocketListener";
-import { memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useDebounce, View, YStack, YStackProps } from "tamagui";
 import MessageCard from "./MessageCard";
 import { FlatList } from "react-native";
@@ -101,24 +101,27 @@ const MessageView = memo(({ threadId, parentId, messageId, onBack, handleClick, 
   }
 
   const { data, loading, setData } = useDataLoader({ promiseFunction: () => methodExecutor(currentView) });
+  const socket = useSocket();
 
-  useSocketListener(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, ({ data, error }: { data: AddMessageProp; error: any }) => {
-    if (error) return;
-    if (data.threadId === threadId) {
-      const { thread, ...rest } = data;
-      setData((prev: IMessage[]) => [rest, ...prev]);
-    }
-  });
-  useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, ({ data, error }: { data: IBaseThread; error: any }) => {
-    console.log({ data, error });
-    if (error) return;
+  useEffect(() => {
+    socket.on(PLATFORM_SOCKET_EVENTS.MESSAGE_CREATED, ({ data, error }: { data: AddMessageProp; error: any }) => {
+      if (error) return;
+      if (data.threadId === threadId) {
+        const { thread, ...rest } = data;
+        setData((prev: IMessage[]) => [rest, ...prev]);
+      }
+    });
+    socket.on(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, ({ data, error }: { data: IBaseThread; error: any }) => {
+      console.log({ data, error });
+      if (error) return;
 
-    if (data.eventId === eventId) {
-      const messages = data.messages;
-      setData((prev: IMessage[]) => [...(messages || []), ...(prev || [])]);
-      setCurrentView(ViewTypes.Thread);
-    }
-  });
+      if (data.eventId === eventId) {
+        const messages = data.messages;
+        setData((prev: IMessage[]) => [...(messages || []), ...(prev || [])]);
+        setCurrentView(ViewTypes.Thread);
+      }
+    });
+  }, [socket]);
 
   const lastFetchedNext = useRef<string | null>(null);
 

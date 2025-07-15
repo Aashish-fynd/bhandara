@@ -48,17 +48,14 @@ class SocketManager {
   }
 
   public on(event: string, callback: EventCallback) {
-    console.log("🔌 Registering listener for event:", event);
     this.socket?.on(event, callback);
   }
 
   public off(event: string, callback?: EventCallback) {
-    console.log("🔌 Removing listener for event:", event);
     this.socket?.off(event, callback);
   }
 
   public emit(event: string, payload: any, cb?: EventCallback) {
-    console.log("🔌 Emitting event:", event, payload);
     this.socket?.emit(event, payload, cb);
   }
 

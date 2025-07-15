@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { getEventById, getEventThreads } from "@/common/api/events.action";
 import { BackButtonHeader, IdentityCard, TagListing, UserCluster } from "@/components/ui/common-components";
@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/Badge";
 import Carousel from "@/components/Carousel";
 import { ZoomableImage } from "./ZoomableImage";
 import Video from "react-native-video";
+import { useSocket } from "@/contexts/Socket";
 
 export const VerifiersListing = ({ verifiers }: { verifiers: IEvent["verifiers"] }) => {
   // sort the latest ones first
@@ -162,45 +163,48 @@ const EventDetails: React.FC = () => {
     addMessage: (data: IMessageViewAddMessageProp) => void;
     handleClick: (data: Record<string, any>) => void;
   }>(null);
+  const socket = useSocket();
 
-  useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, ({ data }) => {
-    if (!data || data.eventId !== id || !data.type) return;
-    delete data.event;
-    setThreads((prev) => [data, ...(prev || [])]);
-  });
-
-  useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_UPDATED, ({ data }) => {
-    if (!data) return;
-    setThreads((prev) => {
-      if (!prev) return prev;
-      return prev.map((f) => (f.id === data.thread.id ? { ...f, ...data.thread } : f));
+  useEffect(() => {
+    socket.on(PLATFORM_SOCKET_EVENTS.THREAD_CREATED, ({ data }) => {
+      if (!data || data.eventId !== id || !data.type) return;
+      delete data.event;
+      setThreads((prev) => [data, ...(prev || [])]);
     });
-  });
 
-  useSocketListener(PLATFORM_SOCKET_EVENTS.THREAD_DELETED, ({ data }) => {
-    if (!data) return;
-    setThreads((prev) => {
-      if (!prev) return prev;
-      return prev.filter((f) => f.id !== data.thread.id);
+    socket.on(PLATFORM_SOCKET_EVENTS.THREAD_UPDATED, ({ data }) => {
+      if (!data) return;
+      setThreads((prev) => {
+        if (!prev) return prev;
+        return prev.map((f) => (f.id === data.thread.id ? { ...f, ...data.thread } : f));
+      });
     });
-  });
 
-  useSocketListener(PLATFORM_SOCKET_EVENTS.USER_UPDATED, ({ data }) => {
-    if (!data) return;
-    setEvent((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev } as any;
-      if (updated.creator?.id === data.id) {
-        updated.creator = { ...updated.creator, ...data };
-      }
-      if (updated.participants) {
-        updated.participants = updated.participants.map((p: { user: IBaseUser }) =>
-          p.user?.id === data.id ? { ...p, user: { ...p.user, ...data } } : p
-        );
-      }
-      return updated;
+    socket.on(PLATFORM_SOCKET_EVENTS.THREAD_DELETED, ({ data }) => {
+      if (!data) return;
+      setThreads((prev) => {
+        if (!prev) return prev;
+        return prev.filter((f) => f.id !== data.thread.id);
+      });
     });
-  });
+
+    socket.on(PLATFORM_SOCKET_EVENTS.USER_UPDATED, ({ data }) => {
+      if (!data) return;
+      setEvent((prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev } as any;
+        if (updated.creator?.id === data.id) {
+          updated.creator = { ...updated.creator, ...data };
+        }
+        if (updated.participants) {
+          updated.participants = updated.participants.map((p: { user: IBaseUser }) =>
+            p.user?.id === data.id ? { ...p, user: { ...p.user, ...data } } : p
+          );
+        }
+        return updated;
+      });
+    });
+  }, []);
 
   const [sheetStack, setSheetStack] = useState<Array<IMessageViewBaseProps>>([]);
 

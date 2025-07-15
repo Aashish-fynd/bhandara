@@ -1,11 +1,11 @@
 import { getAllEvents } from "@/common/api/events.action";
 import CustomTooltip from "@/components/CustomTooltip";
-import { FilledButton, OutlineButton } from "@/components/ui/Buttons";
+import { FilledButton } from "@/components/ui/Buttons";
 import { CircularFillIndicator, IdentityCard, TagPreviewTooltip, UserCluster } from "@/components/ui/common-components";
 import { SpinningLoader } from "@/components/ui/Loaders";
 import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import images from "@/constants/images";
-import { EEventType, EMediaType } from "@/definitions/enums";
+import { EMediaType } from "@/definitions/enums";
 import { IBaseUser, IEvent } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
 import useSocketListener from "@/hooks/useSocketListener";
@@ -13,12 +13,13 @@ import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
 import { Calendar, Check, Clock, MapPin } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import { H5, Image, ScrollView, Text, XStack, YStack } from "tamagui";
 
 import { View } from "tamagui";
 import VerifyEvent from "@/components/VerifyEvent";
 import { Badge } from "@/components/ui/Badge";
+import { useSocket } from "@/contexts/Socket";
 
 const EventCard = ({ event }: { event: IEvent }) => {
   const [localEvent, setLocalEvent] = React.useState<IEvent>(event);
@@ -250,48 +251,52 @@ const HomeScreen = () => {
   };
 
   const { data: paginatedEvents, loading, error, setData } = useDataLoader({ promiseFunction: fetchEvents });
+  const socket = useSocket();
 
-  useSocketListener(PLATFORM_SOCKET_EVENTS.EVENT_CREATED, ({ data }) => {
-    if (!data) return;
-    setData((prev) => {
-      if (!prev?.data) return prev;
-      return {
-        ...prev,
-        data: {
-          ...prev.data,
-          items: [data, ...(prev.data.items || [])]
-        }
-      };
+  useEffect(() => {
+    if (!socket) return;
+    socket.on(PLATFORM_SOCKET_EVENTS.EVENT_CREATED, ({ data }) => {
+      if (!data) return;
+      setData((prev) => {
+        if (!prev?.data) return prev;
+        return {
+          ...prev,
+          data: {
+            ...prev.data,
+            items: [data, ...(prev.data.items || [])]
+          }
+        };
+      });
     });
-  });
 
-  useSocketListener(PLATFORM_SOCKET_EVENTS.EVENT_UPDATED, ({ data }) => {
-    if (!data) return;
-    setData((prev) => {
-      if (!prev?.data) return prev;
-      return {
-        ...prev,
-        data: {
-          ...prev.data,
-          items: prev.data.items.map((e) => (e.id === data.id ? data : e))
-        }
-      };
+    socket.on(PLATFORM_SOCKET_EVENTS.EVENT_UPDATED, ({ data }) => {
+      if (!data) return;
+      setData((prev) => {
+        if (!prev?.data) return prev;
+        return {
+          ...prev,
+          data: {
+            ...prev.data,
+            items: prev.data.items.map((e) => (e.id === data.id ? data : e))
+          }
+        };
+      });
     });
-  });
 
-  useSocketListener(PLATFORM_SOCKET_EVENTS.EVENT_DELETED, ({ data }) => {
-    if (!data) return;
-    setData((prev) => {
-      if (!prev?.data) return prev;
-      return {
-        ...prev,
-        data: {
-          ...prev.data,
-          items: prev.data.items.filter((e) => e.id !== data.id)
-        }
-      };
+    socket.on(PLATFORM_SOCKET_EVENTS.EVENT_DELETED, ({ data }) => {
+      if (!data) return;
+      setData((prev) => {
+        if (!prev?.data) return prev;
+        return {
+          ...prev,
+          data: {
+            ...prev.data,
+            items: prev.data.items.filter((e) => e.id !== data.id)
+          }
+        };
+      });
     });
-  });
+  }, [socket]);
 
   return (
     <ScrollView>

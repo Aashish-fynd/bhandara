@@ -71,14 +71,16 @@ class ThreadsService {
       return row.toJSON() as any;
     });
     let thread =
-      (created as any)?.dataValues || (created as any)?.[0]?.dataValues || created;
+      (created as any)?.dataValues ||
+      (created as any)?.[0]?.dataValues ||
+      created;
     if (thread) {
       await this.setCache((thread as any).id, thread as any);
     }
     if (populate && thread) {
       thread = await this.getById(thread.id);
     }
-    return thread;
+    return thread as IBaseThread;
   }
 
   async getById(id: string) {
