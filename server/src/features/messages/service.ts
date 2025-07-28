@@ -9,9 +9,8 @@ import { Message } from "./model";
 import MediaService from "@features/media/service";
 import { isEmpty } from "@utils";
 import UserService from "@features/users/service";
-import { BadRequestError, ForbiddenError } from "@exceptions";
+import { BadRequestError } from "@exceptions";
 import ReactionService from "@features/reactions/service";
-import ThreadsService from "@features/threads/service";
 
 // Note: Thread data is intentionally not populated here to avoid
 // circular dependencies between services. Controllers should fetch
@@ -20,7 +19,6 @@ class MessageService {
   private readonly mediaService: MediaService;
   private readonly userService: UserService;
   private readonly reactionService: ReactionService;
-  private readonly threadsService: ThreadsService;
 
   private readonly populateFields = ["user", "reactions", "media"];
 
@@ -28,7 +26,6 @@ class MessageService {
     this.mediaService = new MediaService();
     this.userService = new UserService();
     this.reactionService = new ReactionService();
-    this.threadsService = new ThreadsService();
   }
 
   private async populateMessage(message: IMessage, fields: string[]) {
@@ -183,14 +180,6 @@ class MessageService {
     data: U,
     populate?: boolean | string[]
   ) {
-    // Check if the thread (or its parent chain) is locked before creating a message
-    if (data.threadId) {
-      const lockStatus = await this.threadsService.isThreadChainLocked(data.threadId);
-      if (lockStatus.isLocked) {
-        throw new ForbiddenError("Cannot add messages to a locked thread or its children");
-      }
-    }
-
     const created = await validateMessageCreate(data, async (validData) => {
       if (validData.parentId) {
         const parent = await this.getById(validData.parentId);
@@ -218,15 +207,6 @@ class MessageService {
     data: U,
     populate?: boolean | string[]
   ) {
-    // Get the message to check its thread
-    const existingMessage = await this.getById(id);
-    if (existingMessage && existingMessage.threadId) {
-      const lockStatus = await this.threadsService.isThreadChainLocked(existingMessage.threadId);
-      if (lockStatus.isLocked) {
-        throw new ForbiddenError("Cannot edit messages in a locked thread or its children");
-      }
-    }
-
     const updated = await validateMessageUpdate(data, async (validData) => {
       if (validData.parentId) {
         const parent = await this.getById(validData.parentId);
