@@ -27,7 +27,6 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
       <Tabs.List
         disablePassBorderRadius="bottom"
         aria-label="Manage your account"
-        flex={1}
         rounded={"$4"}
         $gtMd={{ maxW: 500 }}
         width={350}
@@ -38,6 +37,7 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
         self={"center"}
       >
         {tabs.map((tab) => {
+          const _uniqueKey = kebabCase(tab.label);
           return (
             <Tabs.Tab
               focusStyle={{
@@ -46,10 +46,11 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
               flex={1}
               width={"100%"}
               height={"$3"}
-              value={kebabCase(tab.label)}
+              value={_uniqueKey}
               onPress={() => {
-                cb?.(kebabCase(tab.label));
+                cb?.(_uniqueKey);
               }}
+              key={_uniqueKey}
             >
               <XStack
                 gap={"$2"}
@@ -77,6 +78,7 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
             flex={1}
             value={kebabCase(tab.label)}
             items={"stretch"}
+            key={kebabCase(tab.label)}
           >
             <ScrollView
               flex={1}

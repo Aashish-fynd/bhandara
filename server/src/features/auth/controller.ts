@@ -128,9 +128,25 @@ const googleCallback = async (req: Request, res: Response) => {
 };
 
 export const signInWithIdToken = async (req: Request, res: Response) => {
+  const clientIds = {
+    android: config.google.androidClientId,
+    ios: config.google.iosClientId,
+    web: config.google.webClientId,
+  };
+
+  const clientPlatform = req.headers[
+    "x-client-platform"
+  ] as keyof typeof clientIds;
+
+  const clientId =
+    clientIds[req.headers["x-client-platform"] as keyof typeof clientIds] ||
+    config.google.webClientId;
+
   const queryParams = new URLSearchParams();
-  queryParams.set("client_id", config.google.clientId);
-  queryParams.set("client_secret", config.google.clientSecret);
+  queryParams.set("client_id", clientId);
+  if (clientPlatform === "web")
+    queryParams.set("client_secret", config.google.clientSecret);
+
   queryParams.set("code", req.body.code);
   queryParams.set("grant_type", "authorization_code");
   queryParams.set("code_verifier", req.body.codeVerifier);

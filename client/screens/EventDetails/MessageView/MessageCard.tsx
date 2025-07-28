@@ -34,7 +34,7 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
   const userName = currentUserProfile?.id === message?.user?.id ? "You" : message?.user?.name || "";
   const childMessages = message?.children?.items;
   const totalChildMessages = message?.children?.pagination?.total || 0;
-  const [reactions, setReactions] = useState(() => message.reactions || []);
+  const [reactions, setReactions] = useState(() => message?.reactions || []);
 
   const childMessagesUser = (childMessages || []).map((ch) => ch.user).filter((i) => !!i);
 
@@ -107,7 +107,7 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
           ? PLATFORM_SOCKET_EVENTS.REACTION_DELETED
           : PLATFORM_SOCKET_EVENTS.REACTION_UPDATED
         : PLATFORM_SOCKET_EVENTS.REACTION_CREATED,
-      { contentId: message.id, contentPath: "messages", reaction: e, parentId: thread.id },
+      { contentId: message?.id, contentPath: "messages", reaction: e, parentId: thread?.id },
       ({ error }) => {
         if (error) toastController.show(error);
         else {
@@ -178,7 +178,7 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
                 {formatDateWithTimeString(new Date(message?.createdAt))}
               </Text>
             </XStack>
-            {message.content.text && (
+            {message?.content?.text && (
               <Text
                 fontSize={"$3"}
                 color="$color11"
@@ -195,11 +195,14 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
                   {media.map((m) => {
                     if (isEmpty(m)) return null;
                     return (
-                      <View onPress={() => handleAssetClick(m)}>
+                      <View
+                        onPress={() => handleAssetClick(m)}
+                        key={m?.id}
+                      >
                         <AssetPreview
-                          key={m.id}
-                          type={m.type}
-                          publicLink={m.publicUrl}
+                          key={m?.id}
+                          type={m?.type}
+                          publicLink={m?.publicUrl}
                           size={100}
                         />
                       </View>
@@ -222,7 +225,7 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
                   rounded={0}
                   borderColor={"transparent"}
                   cursor="pointer"
-                  onPress={() => handleClick({ parentId: message.id, threadId: thread.id })}
+                  onPress={() => handleClick({ parentId: message?.id, threadId: thread?.id })}
                 >
                   <UserCluster
                     users={userForCluster as IBaseUser[]}
@@ -280,6 +283,7 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
                   <Text
                     onPress={() => handleReactionPress(e.emoji)}
                     cursor="pointer"
+                    key={e?.id}
                   >
                     {e.emoji}
                   </Text>
@@ -311,6 +315,7 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
                     cursor="pointer"
                     hoverStyle={{ transform: "translateY(-5px)" }}
                     transition="transform 0.3s ease-in"
+                    key={e}
                   >
                     {e}
                   </Text>

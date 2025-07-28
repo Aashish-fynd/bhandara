@@ -28,7 +28,11 @@ const config = {
     fileSizeLimit: "20mb",
   },
   corsOptions: {
-    origin: ["http://localhost:8081", "https://editor.swagger.io"],
+    origin: [
+      "http://localhost:8081",
+      "https://editor.swagger.io",
+      "https://brave-wren-big.ngrok-free.app",
+    ],
     optionsSuccessStatus: 200,
     credentials: true,
   },
@@ -52,8 +56,10 @@ const config = {
     maxAge: 1000 * 60 * 60 * 24 * 30,
   },
   google: {
-    clientId: process.env.GOOGLE_CLIENT_ID || "",
+    webClientId: process.env.GOOGLE_WEB_CLIENT_ID || "",
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    androidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID || "",
+    iosClientId: process.env.GOOGLE_IOS_CLIENT_ID || "",
   },
   db: {
     [DB_CONNECTION_NAMES.Default]: process.env.DATABASE_URL || "",

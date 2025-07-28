@@ -14,6 +14,7 @@ import GoogleIcon from "@/assets/svg/GoogleIcon";
 import { SpinningLoader } from "@/components/ui/Loaders";
 import { Mail } from "@tamagui/lucide-icons";
 import { EApplicableStage } from "../OnBoarding/enum";
+import { jnstringify } from "@/utils";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -82,7 +83,6 @@ const AuthOptions = ({
 
         setExistingAuthData({ isUserComingFromSocialAuth: true, user, hasOnboarded: !!user.meta?.hasOnboarded });
       } catch (error: any) {
-        console.log("error", error);
         toastController.show(error?.message || "Error signing in with Google");
       } finally {
         setIsSocialAuthenticationInProgress(false);

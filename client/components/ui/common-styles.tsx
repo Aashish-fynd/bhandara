@@ -1,4 +1,6 @@
 import { Card, Dialog, Popover, styled, View, YStack, createStyledContext, Text } from "tamagui";
+import { SpinningLoader } from "./Loaders";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export const DialogContent = styled(Dialog.Content, {
   bordered: true,
@@ -102,3 +104,15 @@ export const CircleBgWrapper = styled(View, {
     }
   } as const
 });
+
+export const FullSizeLoader = () => (
+  <View
+    items={"center"}
+    justify={"center"}
+    flex={1}
+    height={"100%"}
+    bg={"$background"}
+  >
+    <SpinningLoader />
+  </View>
+);

@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { IBaseUser, IMedia } from "@/definitions/types";
 import { getUserSession, logout as logoutApi } from "@/common/api/auth.action";
+import { jnstringify } from "@/utils";
 
 interface AuthContextType {
   user: IBaseUser | undefined;
@@ -57,7 +58,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await setAuthState(user, session);
       }
     } catch (error) {
-      console.error("Failed to check user session:", error);
+      console.log("error", error);
+      console.error("Failed to check user session:", jnstringify(error));
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (media && media.publicUrl) {
       if (!_user.profilePic) {
-        _user.profilePic = {};
+        _user.profilePic = { url: "" };
       }
       _user.profilePic.url = media.publicUrl;
       _user.media = media;

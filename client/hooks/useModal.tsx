@@ -81,7 +81,7 @@ const createDialogContent = (
           exitStyle={{ opacity: 0 }}
           onPress={() => {
             if (hideOnOutsideClick) {
-              close();
+              setIsOpen(false);
             }
           }}
           z={9999}
@@ -103,7 +103,7 @@ const createDialogContent = (
                   r={"$4"}
                   position="absolute"
                   rounded={"$2"}
-                  onPress={close}
+                  onPress={() => setIsOpen(false)}
                   iconAfter={<X />}
                 />
               </Dialog.Close>

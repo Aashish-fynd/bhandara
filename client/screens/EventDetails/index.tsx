@@ -8,7 +8,7 @@ import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import { EEventType, EMediaType } from "@/definitions/enums";
 import { IBaseThread, IBaseUser, IEvent } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
-import { ChevronRight, Plus, Share2, MoreVertical, Edit3, X, Calendar } from "@tamagui/lucide-icons";
+import { ChevronRight, Plus, Share2, MoreVertical, Edit3, X, Calendar, RotateCcw } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { H4, H6, ScrollView, Sheet, Text, View, XStack, YStack } from "tamagui";
@@ -20,7 +20,6 @@ import { EEventStatus } from "@/definitions/enums";
 import { PopoverWrapper } from "@/components/PopoverWrapper";
 import config from "@/config";
 
-import useSocketListener from "@/hooks/useSocketListener";
 import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
 import MapPreviewCard from "@/components/MapPreviewCard";
 import VerifyEvent from "@/components/VerifyEvent";
@@ -37,6 +36,7 @@ import Carousel from "@/components/Carousel";
 import { ZoomableImage } from "./ZoomableImage";
 import Video from "react-native-video";
 import { useSocket } from "@/contexts/Socket";
+import { getEventStatusFromDate } from "@/utils/event.utils";
 
 export const VerifiersListing = ({ verifiers }: { verifiers: IEvent["verifiers"] }) => {
   // sort the latest ones first
@@ -92,30 +92,15 @@ export const VerifiersListing = ({ verifiers }: { verifiers: IEvent["verifiers"]
 
 const tabs = [
   {
-    label: "Edit",
-    icon: <Edit3 />
-  },
-  {
     label: "Share",
     icon: <Share2 />
-  },
-  {
-    label: "Cancel",
-    icon: <X />,
-    color: "$red11"
-  }
-];
-
-const groups = [
-  {
-    label: "General",
-    tabs: tabs
   }
 ];
 
 const EventDetails: React.FC = () => {
   const searchParams = useLocalSearchParams();
   const id = searchParams["id"] as string;
+  const [_tabs, setTabs] = useState(tabs);
 
   const toastController = useToastController();
 
@@ -134,6 +119,24 @@ const EventDetails: React.FC = () => {
   async function fetchEventData() {
     try {
       const response = await getEventById(id as string);
+      const status = getEventStatusFromDate(response.data.timings);
+
+      if (response.data.status === EEventStatus.Cancelled && status === EEventStatus.Ongoing) {
+        setTabs((prev) => [...prev, { label: "Re-open", icon: <RotateCcw /> }]);
+      }
+      switch (status) {
+        case EEventStatus.Upcoming:
+        case EEventStatus.Ongoing:
+          setTabs((prev) => [
+            ...prev,
+            {
+              label: "Edit",
+              icon: <Edit3 />
+            },
+            { label: "Cancel", icon: <X /> }
+          ]);
+          break;
+      }
 
       return response.data;
     } catch (error: any) {}
@@ -244,7 +247,6 @@ const EventDetails: React.FC = () => {
   };
 
   const handleMenuAction = async (action: string, e?: GestureResponderEvent) => {
-    console.log({ action });
     e?.stopPropagation();
     switch (action) {
       case "edit":
@@ -265,6 +267,13 @@ const EventDetails: React.FC = () => {
     return id === user?.id;
   });
 
+  const groups = [
+    {
+      label: "General",
+      tabs: tabs
+    }
+  ];
+
   return (
     <>
       <YStack
@@ -272,6 +281,7 @@ const EventDetails: React.FC = () => {
         gap={"$4"}
         height={"100%"}
         overflow="hidden"
+        bg={"$background"}
       >
         <BackButtonHeader
           title={_event?.name ?? "Event Details"}
@@ -434,6 +444,7 @@ const EventDetails: React.FC = () => {
                         <View
                           flex={1}
                           width={"100%"}
+                          key={thread.id}
                         >
                           <ChevronRight
                             size={20}
@@ -496,18 +507,20 @@ const EventDetails: React.FC = () => {
                 }}
               />
             )}
-            <FilledButton
-              flex={1}
-              width={"50%"}
-              py={"$1"}
-            >
-              <Text
-                fontSize={"$3"}
-                color={"$color1"}
+            {(_event?.status === EEventStatus.Upcoming || _event?.status === EEventStatus.Ongoing) && (
+              <FilledButton
+                flex={1}
+                width={"50%"}
+                py={"$1"}
               >
-                Join
-              </Text>
-            </FilledButton>
+                <Text
+                  fontSize={"$3"}
+                  color={"$color1"}
+                >
+                  {_event.status === EEventStatus.Upcoming ? "Join" : "Register Now"}
+                </Text>
+              </FilledButton>
+            )}
           </XStack>
         )}
       </YStack>
@@ -550,8 +563,12 @@ const EventDetails: React.FC = () => {
 
       <RenderContent>
         <ConfirmationDialog
-          title="Cancel Event"
-          description="Are you sure you want to cancel this event?"
+          title={_event?.status === EEventStatus.Cancelled ? "Re-open Event" : "Cancel Event"}
+          description={
+            _event?.status === EEventStatus.Cancelled
+              ? "Are you sure you want to re-open this event?"
+              : "Are you sure you want to cancel this event?"
+          }
           onClose={close}
           onConfirm={handleCancelEvent}
           asDanger

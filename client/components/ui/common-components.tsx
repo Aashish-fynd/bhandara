@@ -1,5 +1,5 @@
 import { IBaseUser, ITag } from "@/definitions/types";
-import { H4, Text, Theme, View, XStack, XStackProps, YStack } from "tamagui";
+import { H4, Text, Theme, useTheme, View, XStack, XStackProps, YStack } from "tamagui";
 import CustomAvatar from "../CustomAvatar";
 import ProfileAvatarPreview from "./ProfileAvatarPreview";
 import { Fragment } from "react";
@@ -8,6 +8,7 @@ import { ArrowLeft } from "@tamagui/lucide-icons";
 import CustomTooltip from "../CustomTooltip";
 import { CardWrapper } from "./common-styles";
 import { Badge } from "./Badge";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export const TagPreviewTooltip = ({ tag }: { tag: ITag }) => {
   return (
@@ -246,10 +247,7 @@ export const TagListing = ({ tags }: { tags: ITag[] }) => {
       {tags?.map((tag: ITag) => (
         <CustomTooltip
           trigger={
-            <Badge
-              cursor="pointer"
-              size="sm"
-            >
+            <Badge cursor="pointer">
               <Badge.Text fontSize={"$3"}>{tag.name}</Badge.Text>
             </Badge>
           }
@@ -261,4 +259,10 @@ export const TagListing = ({ tags }: { tags: ITag[] }) => {
       ))}
     </XStack>
   );
+};
+
+export const CustomSafeAreaView = ({ children }: { children: React.ReactNode }) => {
+  const theme = useTheme();
+  console.log("theme", theme);
+  return <SafeAreaView style={{ flex: 1, backgroundColor: theme.background.val }}>{children}</SafeAreaView>;
 };

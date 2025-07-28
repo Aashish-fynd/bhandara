@@ -21,6 +21,7 @@ import useSocketListener from "@/hooks/useSocketListener";
 import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
 import { uploadFile, validateFileSize } from "@/common/utils/file.utils";
 import { EMediaType } from "@/definitions/enums";
+import { CustomSafeAreaView } from "@/components/ui/common-components";
 
 const Profile = () => {
   const { user, updateUser: updateUserContext } = useAuth();
@@ -109,7 +110,7 @@ const Profile = () => {
   };
 
   return (
-    <SafeAreaView>
+    <CustomSafeAreaView>
       <YStack
         bg="$background"
         width="100%"
@@ -127,7 +128,7 @@ const Profile = () => {
             width={"$10"}
           >
             <CustomAvatar
-              src={user?.profilePic?.url}
+              src={user?.profilePic?.url || ""}
               alt={user?.name}
               size={"$10"}
               bordered={false}
@@ -175,7 +176,7 @@ const Profile = () => {
           />
         </XStack>
       </YStack>
-    </SafeAreaView>
+    </CustomSafeAreaView>
   );
 };
 

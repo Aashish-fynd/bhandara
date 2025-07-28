@@ -20,6 +20,7 @@ import { View } from "tamagui";
 import VerifyEvent from "@/components/VerifyEvent";
 import { Badge } from "@/components/ui/Badge";
 import { useSocket } from "@/contexts/Socket";
+import { FullSizeLoader } from "@/components/ui/common-styles";
 
 const EventCard = ({ event }: { event: IEvent }) => {
   const [localEvent, setLocalEvent] = React.useState<IEvent>(event);
@@ -83,10 +84,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
               </XStack>
             </Badge>
             <Badge>
-              <XStack
-                gap={"$2"}
-                style={{}}
-              >
+              <XStack gap={"$2"}>
                 <Clock
                   size={16}
                   color={"$color1"}
@@ -225,6 +223,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
                     </Badge>
                   }
                   tooltipConfig={{ offset: 20 }}
+                  key={tag.id}
                 >
                   <TagPreviewTooltip tag={tag} />
                 </CustomTooltip>
@@ -298,6 +297,8 @@ const HomeScreen = () => {
     });
   }, [socket]);
 
+  if (loading) return <FullSizeLoader />;
+
   return (
     <ScrollView>
       <YStack
@@ -310,14 +311,12 @@ const HomeScreen = () => {
         scrollbarWidth="none"
         mx={"auto"}
       >
-        {loading && <SpinningLoader />}
-        {!loading &&
-          paginatedEvents?.data?.items?.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-            />
-          ))}
+        {paginatedEvents?.data?.items?.map((event) => (
+          <EventCard
+            key={event.id}
+            event={event}
+          />
+        ))}
       </YStack>
     </ScrollView>
   );

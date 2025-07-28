@@ -41,8 +41,8 @@ const createServer = () => {
   });
 
   // cors setup to allow requests from the frontend only for now
-  app.use(cors(config.corsOptions));
   app.use(helmet());
+  app.use(cors(config.corsOptions));
 
   // parse requests of content-type - application/json
   app.use(express.json({ limit: config.express.fileSizeLimit }));

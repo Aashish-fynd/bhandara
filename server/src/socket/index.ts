@@ -153,12 +153,8 @@ export function initializeSocket(server: http.Server) {
               }),
             ]);
 
-            if (isEmpty(responses[0].data))
+            if (isEmpty(responses[0]))
               throw new NotFoundError(`Reaction or Thread not found`);
-
-            responses.forEach((f) => {
-              if (f.error) throw f.error;
-            });
 
             const creationData = {
               contentId: reactionContentId,
@@ -218,14 +214,14 @@ export function initializeSocket(server: http.Server) {
               reactionService.getReactions(reactionContentId),
             ]);
 
-            const content = responses[0]?.data;
+            const content = responses[0];
 
             if (!content)
               throw new NotFoundError(
                 `Content not found with provided id:${contentId}`
               );
 
-            const previousReaction = responses[1]?.data?.[0];
+            const previousReaction = responses[1]?.[0];
 
             if (!previousReaction)
               throw new NotFoundError(
@@ -289,14 +285,14 @@ export function initializeSocket(server: http.Server) {
               reactionService.getReactions(reactionContentId),
             ]);
 
-            const content = responses[0]?.data;
+            const content = responses[0];
 
             if (!content)
               throw new NotFoundError(
                 `Content not found with provided id:${contentId}`
               );
 
-            const previousReaction = responses[1]?.data?.[0];
+            const previousReaction = responses[1]?.[0];
 
             if (!previousReaction)
               throw new NotFoundError(

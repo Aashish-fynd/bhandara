@@ -6,15 +6,21 @@ import { useAuth } from "@/contexts/AuthContext";
 import CustomAvatar from "./CustomAvatar";
 import { PopoverWrapper } from "./PopoverWrapper";
 import UserProfilePopover from "./UserProfile/PopoverContents";
+import { SafeAreaView } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TabsHeader = ({ navigation }: BottomTabHeaderProps) => {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   return (
     <XStack
       justify={"space-between"}
       p={"$3"}
       items={"center"}
+      mt={insets.top}
+      mb={insets.bottom}
+      bg={"$background"}
     >
       <XStack
         items={"center"}

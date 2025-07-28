@@ -1,6 +1,7 @@
 import config from "@/config";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 const axiosClient = axios.create({
   baseURL: config.server.url,
@@ -13,6 +14,7 @@ axiosClient.interceptors.request.use(
     if (sessionId) {
       config.headers.cookie = `bh_session=${sessionId}`;
     }
+    config.headers["x-client-platform"] = Platform.OS;
     return config;
   },
   (error) => {
