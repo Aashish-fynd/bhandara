@@ -14,7 +14,7 @@ import { Calendar, Check, Clock, MapPin } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
-import { H5, Image, ScrollView, Text, XStack, YStack } from "tamagui";
+import { H5, Image, ScrollView, Text, XStack, YStack, Button, AnimatePresence } from "tamagui";
 
 import { View } from "tamagui";
 import VerifyEvent from "@/components/VerifyEvent";
@@ -24,6 +24,8 @@ import { FullSizeLoader } from "@/components/ui/common-styles";
 
 const EventCard = ({ event }: { event: IEvent }) => {
   const [localEvent, setLocalEvent] = React.useState<IEvent>(event);
+  const [isPressed, setIsPressed] = React.useState(false);
+  const [isHovered, setIsHovered] = React.useState(false);
   const createdBy = localEvent.creator as IBaseUser;
   const router = useRouter();
 
@@ -41,6 +43,32 @@ const EventCard = ({ event }: { event: IEvent }) => {
       bg={"$color3"}
       borderWidth={"$0.5"}
       borderColor={"$color8"}
+      animation="bouncy"
+      scale={isPressed ? 0.98 : 1}
+      opacity={isPressed ? 0.9 : 1}
+      y={isPressed ? 2 : 0}
+      shadowColor="$shadowColor"
+      shadowOffset={{ width: 0, height: isHovered ? 8 : 4 }}
+      shadowOpacity={isHovered ? 0.3 : 0.2}
+      shadowRadius={isHovered ? 12 : 8}
+      elevation={isHovered ? 8 : 4}
+      pressStyle={{
+        scale: 0.98,
+        opacity: 0.9,
+        y: 2
+      }}
+      hoverStyle={{
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+        borderColor: "$color9"
+      }}
+      onPressIn={() => setIsPressed(true)}
+      onPressOut={() => setIsPressed(false)}
+      onHoverIn={() => setIsHovered(true)}
+      onHoverOut={() => setIsHovered(false)}
+      cursor="pointer"
     >
       <View
         height={250}
@@ -56,10 +84,11 @@ const EventCard = ({ event }: { event: IEvent }) => {
           width={"100%"}
           height={250}
           objectFit="cover"
+          animation="lazy"
           $group-hover={{
-            scale: 1.01
+            scale: 1.05
           }}
-          transition={"transform 0.2s ease-in-out"}
+          transition={"transform 0.3s ease-out"}
         />
         <YStack
           gap={"$3"}
@@ -71,10 +100,17 @@ const EventCard = ({ event }: { event: IEvent }) => {
           p={"$4"}
           bg={"rgba(0, 0, 0, 0.2)"}
           backdropFilter={"blur(8px)"}
+          animation="lazy"
+          y={isHovered ? -5 : 0}
+          transition={"transform 0.2s ease-out"}
         >
           <H5>{localEvent.name}</H5>
           <XStack gap={"$4"}>
-            <Badge>
+            <Badge
+              animation="quick"
+              scale={isHovered ? 1.05 : 1}
+              transition={"transform 0.2s ease-out"}
+            >
               <XStack gap={"$2"}>
                 <Calendar
                   size={16}
@@ -83,7 +119,11 @@ const EventCard = ({ event }: { event: IEvent }) => {
                 {/* <Text fontSize={"$3"}>{formatDateToLongString(event.on)}</Text> */}
               </XStack>
             </Badge>
-            <Badge>
+            <Badge
+              animation="quick"
+              scale={isHovered ? 1.05 : 1}
+              transition={"transform 0.2s ease-out"}
+            >
               <XStack gap={"$2"}>
                 <Clock
                   size={16}
@@ -106,6 +146,9 @@ const EventCard = ({ event }: { event: IEvent }) => {
           gap={"$2"}
           group={true}
           cursor={"pointer"}
+          animation="lazy"
+          scale={isHovered ? 1.02 : 1}
+          transition={"transform 0.2s ease-out"}
         >
           <View
             bg={"$color1"}
@@ -114,18 +157,23 @@ const EventCard = ({ event }: { event: IEvent }) => {
             height={"$3"}
             justify={"center"}
             items={"center"}
+            animation="bouncy"
             $group-hover={{
-              bg: "$color12"
+              bg: "$color12",
+              scale: 1.2,
+              rotate: "5deg"
             }}
-            transition={"background-color 0.2s ease-in-out"}
+            transition={"all 0.2s ease-out"}
           >
             <MapPin
               size={16}
               color={"$color12"}
+              animation="bouncy"
               $group-hover={{
-                color: "$color1"
+                color: "$color1",
+                scale: 1.1
               }}
-              transition={"color 0.2s ease-in-out"}
+              transition={"all 0.2s ease-out"}
             />
           </View>
           <Text fontSize={"$4"}>{localEvent.location.street || "data not available"}</Text>
@@ -150,6 +198,9 @@ const EventCard = ({ event }: { event: IEvent }) => {
               items={"center"}
               justify={"flex-end"}
               gap={"$3"}
+              animation="lazy"
+              scale={isHovered ? 1.05 : 1}
+              transition={"transform 0.2s ease-out"}
             >
               <YStack>
                 <Text fontSize={"$3"}>Capacity</Text>
@@ -218,6 +269,9 @@ const EventCard = ({ event }: { event: IEvent }) => {
                     <Badge
                       key={tag.id}
                       cursor="pointer"
+                      animation="quick"
+                      scale={isHovered ? 1.1 : 1}
+                      transition={"transform 0.15s ease-out"}
                     >
                       <Badge.Text fontSize={"$3"}>{tag.name}</Badge.Text>
                     </Badge>
@@ -231,7 +285,14 @@ const EventCard = ({ event }: { event: IEvent }) => {
             </XStack>
           </ScrollView>
         )}
-        <FilledButton size={"medium"}>Join Event</FilledButton>
+        <FilledButton 
+          size={"medium"}
+          animation="bouncy"
+          scale={isHovered ? 1.02 : 1}
+          transition={"transform 0.2s ease-out"}
+        >
+          Join Event
+        </FilledButton>
       </YStack>
     </YStack>
   );
