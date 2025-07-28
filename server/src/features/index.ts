@@ -11,4 +11,5 @@ export * from "./reactions/helpers";
 export { RedisCache };
 
 export * from "./users/helpers";
+export * from "./users/interactions";
 export * from "./explore/helpers";

@@ -31,7 +31,10 @@ export const PLATFORM_SOCKET_EVENTS = {
 
   // USERs
   USER_UPDATED: "user:updated",
-  EXPLORE: "explore"
+  EXPLORE: "explore",
+  
+  // INTERACTIONS
+  TRACK_INTERACTION: "track_interaction"
 };
 
 export const COMMON_EMOJIS = ["👍", "❤️", "😂", "🎉", "😮", "😢"];

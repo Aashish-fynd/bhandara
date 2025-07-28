@@ -1,5 +1,11 @@
 import { RedisCache } from "@features/cache";
 import { CACHE_NAMESPACE_CONFIG } from "@constants";
+import { 
+  getUserPreferences, 
+  calculateEventRelevanceScore, 
+  getRecentlyShownEvents, 
+  markEventsAsShown 
+} from "@features/users/interactions";
 
 const exploreCache = new RedisCache({
   namespace: CACHE_NAMESPACE_CONFIG.Explore.namespace,
@@ -104,7 +110,145 @@ const getTimeOfDay = (date?: Date | string) => {
   return "night";
 };
 
-export const buildExploreSections = (events: any[]): ExploreSection[] => {
+// Filter and sort events based on user preferences and recently shown events
+const filterAndSortEvents = async (
+  events: any[],
+  userId: string,
+  maxEvents: number = 20
+): Promise<any[]> => {
+  const preferences = await getUserPreferences(userId);
+  const recentlyShown = await getRecentlyShownEvents(userId);
+  
+  // Filter out recently shown events
+  const filteredEvents = events.filter(event => !recentlyShown.includes(event.id));
+  
+  // Calculate relevance scores and sort
+  const scoredEvents = filteredEvents.map(event => ({
+    ...event,
+    relevanceScore: calculateEventRelevanceScore(event, preferences)
+  }));
+  
+  // Sort by relevance score (descending) and then by creation date (descending)
+  scoredEvents.sort((a, b) => {
+    if (b.relevanceScore !== a.relevanceScore) {
+      return b.relevanceScore - a.relevanceScore;
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+  
+  // Take top events
+  const selectedEvents = scoredEvents.slice(0, maxEvents);
+  
+  // Mark these events as shown
+  await markEventsAsShown(userId, selectedEvents.map(e => e.id));
+  
+  return selectedEvents;
+};
+
+export const buildExploreSections = async (
+  events: any[],
+  userId?: string
+): Promise<ExploreSection[]> => {
+  // If no userId provided, use original logic
+  if (!userId) {
+    return buildExploreSectionsOriginal(events);
+  }
+  
+  // Filter and sort events based on user preferences
+  const filteredEvents = await filterAndSortEvents(events, userId);
+  
+  const baseEvents = filteredEvents.map(toBasePayload);
+
+  const tasteCalendarPayload = filteredEvents.map((ev) => ({
+    ...toBasePayload(ev),
+    filter: [getTimeOfDay(ev.timings?.start)],
+  }));
+
+  const foodieFeedPayload = baseEvents.filter(
+    (ev) => ev.status === "ongoing" || ev.status === "upcoming"
+  );
+
+  const reelsPayload = filteredEvents
+    .filter(
+      (ev) =>
+        Array.isArray(ev.media) && ev.media.some((m) => m.type === "video")
+    )
+    .map((ev) => ({
+      ...toBasePayload(ev),
+      likes: (ev.reactions || []).length || 0,
+      comments: 0,
+      user: ev.creator,
+    }));
+
+  const collaborationsPayload = filteredEvents
+    .filter((ev) => Array.isArray(ev.verifiers) && ev.verifiers.length)
+    .map((ev) => ({
+      ...toBasePayload(ev),
+      chef: ev.creator?.name || "",
+      time: ev.timings?.start,
+      going: Array.isArray(ev.participants) ? ev.participants.length : 0,
+      verifiers: ev.verifiers,
+    }));
+
+  const trendingPayload = [...filteredEvents]
+    .sort(
+      (a, b) =>
+        (Array.isArray(b.participants) ? b.participants.length : 0) -
+        (Array.isArray(a.participants) ? a.participants.length : 0)
+    )
+    .map((ev) => ({
+      ...toBasePayload(ev),
+      going: Array.isArray(ev.participants) ? ev.participants.length : 0,
+      verifiers: ev.verifiers,
+    }));
+
+  const sections: ExploreSection[] = [];
+
+  if (tasteCalendarPayload.length)
+    sections.push({
+      component: EExploreComponents.TasteCalendar,
+      title: componentMeta[EExploreComponents.TasteCalendar].title,
+      subtitle: componentMeta[EExploreComponents.TasteCalendar].subtitle,
+      payload: tasteCalendarPayload,
+    });
+
+  if (foodieFeedPayload.length)
+    sections.push({
+      component: EExploreComponents.FoodieFeed,
+      title: componentMeta[EExploreComponents.FoodieFeed].title,
+      subtitle: componentMeta[EExploreComponents.FoodieFeed].subtitle,
+      payload: foodieFeedPayload,
+    });
+
+  if (reelsPayload.length)
+    sections.push({
+      component: EExploreComponents.Reels,
+      title: componentMeta[EExploreComponents.Reels].title,
+      subtitle: componentMeta[EExploreComponents.Reels].subtitle,
+      payload: reelsPayload,
+    });
+
+  if (collaborationsPayload.length)
+    sections.push({
+      component: EExploreComponents.Collaborations,
+      title: componentMeta[EExploreComponents.Collaborations].title,
+      subtitle: componentMeta[EExploreComponents.Collaborations].subtitle,
+      payload: collaborationsPayload,
+    });
+
+  if (trendingPayload.length)
+    sections.push({
+      component: EExploreComponents.Trending,
+      title: componentMeta[EExploreComponents.Trending].title,
+      subtitle: componentMeta[EExploreComponents.Trending].subtitle,
+      payload: trendingPayload,
+    });
+
+  return sections;
+};
+
+// Original implementation for backward compatibility
+const buildExploreSectionsOriginal = (events: any[]): ExploreSection[] => {
   const baseEvents = events.map(toBasePayload);
 
   const tasteCalendarPayload = events.map((ev) => ({

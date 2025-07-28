@@ -238,7 +238,13 @@ export const BackButtonHeader = ({
   );
 };
 
-export const TagListing = ({ tags }: { tags: ITag[] }) => {
+export const TagListing = ({ 
+  tags, 
+  onTagClick 
+}: { 
+  tags: ITag[];
+  onTagClick?: (tagId: string) => void;
+}) => {
   return (
     <XStack
       flexWrap="wrap"
@@ -247,7 +253,10 @@ export const TagListing = ({ tags }: { tags: ITag[] }) => {
       {tags?.map((tag: ITag) => (
         <CustomTooltip
           trigger={
-            <Badge cursor="pointer">
+            <Badge 
+              cursor="pointer"
+              onPress={() => onTagClick?.(tag.id)}
+            >
               <Badge.Text fontSize={"$3"}>{tag.name}</Badge.Text>
             </Badge>
           }

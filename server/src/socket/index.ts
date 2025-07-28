@@ -19,6 +19,7 @@ import {
   deleteExplorePage,
   buildExploreSections,
 } from "@features";
+import { trackUserInteraction } from "@features/users/interactions";
 import { BadRequestError, NotFoundError } from "@exceptions";
 import { isEmpty } from "@utils";
 import { getDistanceInMeters } from "@helpers";
@@ -364,7 +365,7 @@ export function initializeSocket(server: http.Server) {
 
             if (nearby.length === 0) break;
 
-            const sections = buildExploreSections(nearby);
+            const sections = await buildExploreSections(nearby, socketUserId);
 
             for (const section of sections) {
               if (abortController.signal.aborted) break;
@@ -445,6 +446,28 @@ export function initializeSocket(server: http.Server) {
         const ctrl = (socket as any).exploreAbort;
         if (ctrl) ctrl.abort();
         await deleteExplorePage(socketUserId);
+      });
+
+      // Track user interactions for personalized explore recommendations
+      socket.on(PLATFORM_SOCKET_EVENTS.TRACK_INTERACTION, async (request, cb) => {
+        try {
+          const { eventId, interactionType, tagIds } = request || {};
+          
+          if (!eventId || !interactionType) {
+            return cb?.({ error: "Missing required fields" });
+          }
+
+          await trackUserInteraction(socketUserId, {
+            eventId,
+            interactionType,
+            tagIds,
+          });
+
+          cb?.({ data: true });
+        } catch (error) {
+          logger.error("Error tracking user interaction", error);
+          cb?.({ error: error?.message || "Something went wrong" });
+        }
       });
     }
   );
