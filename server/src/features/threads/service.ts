@@ -3,9 +3,9 @@ import { Thread } from "./model";
 
 import { IPaginationParams, IMessage } from "@/definitions/types";
 import { findAllWithPagination } from "@utils/dbUtils";
-import { getThreadCache, setThreadCache, deleteThreadCache } from "./helpers";
+import { getThreadCache, setThreadCache, deleteThreadCache, isThreadLocked, canUserModifyLockedThread, lockThread, unlockThread } from "./helpers";
 import { IBaseThread } from "@definitions/types";
-import { BadRequestError } from "@exceptions";
+import { BadRequestError, ForbiddenError } from "@exceptions";
 
 import MessageService from "@features/messages/service";
 
@@ -133,6 +133,84 @@ class ThreadsService {
     await row.destroy();
     await this.deleteCache(id);
     return row.toJSON() as any;
+  }
+
+  /**
+   * Lock a thread - prevents new messages and reactions
+   * @param threadId - The ID of the thread to lock
+   * @param userId - The ID of the user locking the thread
+   * @returns Promise<IBaseThread> - The updated thread
+   */
+  async lockThread(threadId: string, userId: string): Promise<IBaseThread> {
+    const thread = await this.getById(threadId);
+    if (!thread) {
+      throw new BadRequestError("Thread not found");
+    }
+
+    if (isThreadLocked(thread)) {
+      throw new BadRequestError("Thread is already locked");
+    }
+
+    // For now, allow anyone to lock. You might want to add permission checks here
+    // e.g., only moderators, thread creators, or event organizers can lock threads
+
+    const lockedThread = lockThread(thread, userId);
+    
+    const updated = await this.update(threadId, { lockHistory: lockedThread.lockHistory });
+    
+    return updated;
+  }
+
+  /**
+   * Unlock a thread - allows new messages and reactions again
+   * @param threadId - The ID of the thread to unlock
+   * @param userId - The ID of the user unlocking the thread
+   * @returns Promise<IBaseThread> - The updated thread
+   */
+  async unlockThread(threadId: string, userId: string): Promise<IBaseThread> {
+    const thread = await this.getById(threadId);
+    if (!thread) {
+      throw new BadRequestError("Thread not found");
+    }
+
+    if (!isThreadLocked(thread)) {
+      throw new BadRequestError("Thread is not locked");
+    }
+
+    // Check if user has permission to unlock
+    if (!canUserModifyLockedThread(thread, userId)) {
+      throw new ForbiddenError("You don't have permission to unlock this thread");
+    }
+
+    const unlockedThread = unlockThread(thread);
+    
+    const updated = await this.update(threadId, { lockHistory: unlockedThread.lockHistory });
+    
+    return updated;
+  }
+
+  /**
+   * Check if a thread and its parent chain is locked
+   * @param threadId - The ID of the thread to check
+   * @returns Promise<{isLocked: boolean, lockedThreadId?: string}> - Lock status and which thread is locked
+   */
+  async isThreadChainLocked(threadId: string): Promise<{isLocked: boolean, lockedThreadId?: string}> {
+    const thread = await this.getById(threadId);
+    if (!thread) {
+      return { isLocked: false };
+    }
+
+    // Check if current thread is locked
+    if (isThreadLocked(thread)) {
+      return { isLocked: true, lockedThreadId: thread.id };
+    }
+
+    // Check if parent thread is locked (recursively)
+    if (thread.parentId) {
+      return await this.isThreadChainLocked(thread.parentId);
+    }
+
+    return { isLocked: false };
   }
 }
 
