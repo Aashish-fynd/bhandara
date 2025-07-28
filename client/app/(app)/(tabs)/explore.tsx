@@ -34,6 +34,7 @@ import { LocationObjectCoords } from "expo-location";
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { H6, Image, ScrollView, Text, View, XStack, YStack } from "tamagui";
+import ExploreAssetPreview from "@/components/ExploreAssetPreview";
 
 export enum EExploreComponents {
   TasteCalendar = "taste-calendar",
@@ -221,7 +222,7 @@ const CommonHeader = ({
   );
 };
 
-const TasteCalendar = ({ payload, filters }: { payload: ITasteCalendarPayload[]; filters: string[] }) => {
+const TasteCalendar = ({ payload, filters, userLocation }: { payload: ITasteCalendarPayload[]; filters: string[]; userLocation: LocationObjectCoords | null }) => {
   const iconMapping = {
     morning: <Sun size={16} />,
     evening: <CloudSun size={16} />,
@@ -255,7 +256,21 @@ const TasteCalendar = ({ payload, filters }: { payload: ITasteCalendarPayload[];
           flexDirection="row"
         >
           {filteredPayload.map((item) => (
-            <EventCard event={item} />
+            <View key={item.id} width={140}>
+              <ExploreAssetPreview
+                media={item.media}
+                title={item.title}
+                location={item.location}
+                creator={item.creator}
+                createdAt={item.createdAt}
+                startTime={item.startTime}
+                endTime={item.endTime}
+                userLocation={userLocation}
+                tags={item.tags}
+                showPreviewButton={true}
+                previewButtonText="View"
+              />
+            </View>
           ))}
         </XStack>
       </ScrollView>
@@ -294,157 +309,48 @@ const FoodieFeed = ({
       showsHorizontalScrollIndicator={false}
     >
       <XStack gap={"$4"}>
-        {payload.map((item) => {
-          const distanceAway = userLocation
-            ? haversineDistanceInM(
-                { latitude: userLocation.latitude, longitude: userLocation.longitude },
-                { latitude: item.location.latitude, longitude: item.location.longitude }
-              )
-            : "-";
-
-          const _distanceAwayLabel = distanceAway !== "-" ? formatDistance(distanceAway) : distanceAway;
-          return (
-            <YStack
-              gap={"$2"}
-              items={"center"}
-              position="relative"
-              maxW={150}
-            >
-              <Badge
-                position="absolute"
-                t={0}
-                r={-10}
-                gap={"$2"}
-                z={100}
-              >
-                <PulsatingDot
-                  size={6}
-                  color="$color1"
-                />
-                <Badge.Text fontSize={"$1"}>Live</Badge.Text>
-              </Badge>
-
-              <CustomAvatar
-                src={item.media.thumbnailUrl}
-                alt={item.title}
-                size={"$6"}
-              />
-              <Text
-                fontSize={"$3"}
-                ellipsizeMode="tail"
-                numberOfLines={1}
-              >
-                {item.title}
-              </Text>
-
-              <Text
-                fontSize={"$2"}
-                color={"$color10"}
-              >
-                {_distanceAwayLabel}
-              </Text>
-            </YStack>
-          );
-        })}
+        {payload.map((item) => (
+          <View key={item.id} width={150}>
+            <ExploreAssetPreview
+              media={item.media}
+              title={item.title}
+              location={item.location}
+              creator={item.creator}
+              createdAt={item.createdAt}
+              startTime={item.startTime}
+              endTime={item.endTime}
+              userLocation={userLocation}
+              tags={item.tags}
+              showPreviewButton={true}
+              previewButtonText="Live"
+            />
+          </View>
+        ))}
       </XStack>
     </ScrollView>
   );
 };
 
-const Reels = ({ payload }: { payload: IReelsPayload[] }) => {
+const Reels = ({ payload, userLocation }: { payload: IReelsPayload[]; userLocation: LocationObjectCoords | null }) => {
   return (
     <ScrollView>
       <XStack gap={"$4"}>
         {payload.map((item) => (
-          <CardWrapper
-            width={160}
-            height={280}
-            rounded="$4"
-            overflow="hidden"
-            p={0}
-            cursor="pointer"
-            position="relative"
-            group
-          >
-            <Image
-              source={{ uri: item.media.thumbnailUrl }}
-              style={{ width: 160, height: 280 }}
-              objectFit="cover"
+          <View key={item.id} width={160}>
+            <ExploreAssetPreview
+              media={item.media}
+              title={item.title}
+              location={item.location}
+              creator={item.user}
+              createdAt={item.createdAt}
+              likes={item.likes}
+              comments={item.comments}
+              userLocation={userLocation}
+              tags={item.tags}
+              showPreviewButton={true}
+              previewButtonText="Watch"
             />
-            <CircleBgWrapper
-              t={8}
-              r={8}
-              position="absolute"
-              bg={"$color6"}
-              size={"$1.5"}
-            >
-              <Clapperboard
-                size={12}
-                color={"$color12"}
-              />
-            </CircleBgWrapper>
-            <YStack
-              p={"$2"}
-              gap={"$1"}
-              position="absolute"
-              b={0}
-              l={0}
-              r={0}
-              bg={"$color3"}
-              backdropFilter="blur(10px)"
-              transform={[{ translateY: "100%" }]}
-              $group-hover={{
-                transform: [{ translateY: "-100%" }],
-                transition: "transform 0.3s ease-in",
-                animation: "quick"
-              }}
-            >
-              <View mb={"$2"}>
-                <IdentityCard
-                  imageUrl={item.user?.profilePic?.url || ""}
-                  title={item?.user?.name || ""}
-                  subtitle={item?.user?.username || ""}
-                  size={30}
-                />
-              </View>
-              <Text
-                fontSize={"$3"}
-                ellipsizeMode="tail"
-                numberOfLines={1}
-              >
-                {item.title}
-              </Text>
-              <Text
-                ellipsizeMode="tail"
-                numberOfLines={1}
-                fontSize={"$2"}
-                color={"$color10"}
-              >
-                {item.location?.city} {item.location?.country}
-              </Text>
-
-              <XStack
-                items={"center"}
-                gap={"$3"}
-                mt={"$2"}
-              >
-                <XStack
-                  gap={"$1"}
-                  items={"center"}
-                >
-                  <Heart size={12} />
-                  <Text fontSize={"$1"}>{item.likes}</Text>
-                </XStack>
-                <XStack
-                  gap={"$1"}
-                  items={"center"}
-                >
-                  <MessageCircle size={12} />
-                  <Text fontSize={"$1"}>{item.comments}</Text>
-                </XStack>
-              </XStack>
-            </YStack>
-          </CardWrapper>
+          </View>
         ))}
       </XStack>
     </ScrollView>
@@ -461,152 +367,50 @@ const Collaborations = ({
   return (
     <ScrollView>
       <YStack gap={"$4"}>
-        {payload.map((item) => {
-          const distanceAway = userLocation
-            ? haversineDistanceInM(
-                { latitude: userLocation.latitude, longitude: userLocation.longitude },
-                { latitude: item.location.latitude, longitude: item.location.longitude }
-              )
-            : "-";
-
-          const _distanceAwayLabel = distanceAway !== "-" ? formatDistance(distanceAway) : distanceAway;
-
-          return (
-            <CardWrapper
-              rounded="$4"
-              overflow="hidden"
-              p={0}
-              cursor="pointer"
-              position="relative"
-              group
-            >
-              <Image
-                source={{ uri: item.media.url }}
-                style={{ width: "100%", height: 240 }}
-                objectFit="cover"
-              />
-              <YStack
-                gap={"$3"}
-                p={"$3"}
-                bg={"$color3"}
-              >
-                <XStack
-                  justify={"space-between"}
-                  items={"center"}
-                  gap={"$4"}
-                >
-                  <XStack gap={"$2"}>
-                    <MapPin size={16} />
-                    <XStack
-                      gap={"$1"}
-                      items={"center"}
-                    >
-                      <Text fontSize={"$2"}>
-                        {item.location?.city} | {item.location?.country}
-                      </Text>
-                      <Text
-                        fontSize={"$2"}
-                        color={"$color10"}
-                      >
-                        {_distanceAwayLabel}
-                      </Text>
-                    </XStack>
-                  </XStack>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                  >
-                    <TagListing tags={item.tags} />
-                  </ScrollView>
-                </XStack>
-
-                <XStack
-                  gap={"$3"}
-                  items={"center"}
-                  justify={"space-between"}
-                >
-                  <IdentityCard
-                    imageUrl={item.creator?.profilePic?.url || ""}
-                    title={item.creator?.name || ""}
-                    subtitle={item.creator?.username || ""}
-                    size={30}
-                  />
-                </XStack>
-              </YStack>
-
-              <XStack
-                gap={"$2"}
-                p={"$3"}
-                position="absolute"
-                t={180}
-                l={0}
-                r={0}
-                justify={"space-between"}
-              >
-                <YStack gap={"$1"}>
-                  <Text fontSize={"$4"}>{item.title}</Text>
-                  <Text
-                    fontSize={"$2"}
-                    color={"$color10"}
-                  >
-                    {formatDateWithTimeString(item.time)}
-                  </Text>
-                </YStack>
-
-                <Badge>
-                  <Badge.Icon>
-                    <Users size={12} />
-                  </Badge.Icon>
-                  <Badge.Text fontSize={"$1"}>{item.going} going</Badge.Text>
-                </Badge>
-              </XStack>
-            </CardWrapper>
-          );
-        })}
+        {payload.map((item) => (
+          <View key={item.id}>
+            <ExploreAssetPreview
+              media={item.media}
+              title={item.title}
+              location={item.location}
+              creator={item.creator}
+              createdAt={item.createdAt}
+              startTime={item.startTime}
+              endTime={item.endTime}
+              going={item.going}
+              userLocation={userLocation}
+              tags={item.tags}
+              showPreviewButton={true}
+              previewButtonText="View Event"
+            />
+          </View>
+        ))}
       </YStack>
     </ScrollView>
   );
 };
 
-const Trending = ({ payload }: { payload: ITrendingPayload[] }) => {
+const Trending = ({ payload, userLocation }: { payload: ITrendingPayload[]; userLocation: LocationObjectCoords | null }) => {
   return (
     <ScrollView>
       <XStack gap={"$4"}>
         {payload.map((item) => (
-          <EventCard
-            event={item}
-            width={180}
-          >
-            <Badge
-              position="absolute"
-              t={6}
-              l={6}
-            >
-              <Badge.Icon>
-                <Flame size={12} />
-              </Badge.Icon>
-              <Badge.Text fontSize={"$1"}>{item.going}+ going</Badge.Text>
-            </Badge>
-
-            <XStack
-              gap={"$2"}
-              px={"$2"}
-              pb={"$2"}
-              items={"center"}
-              justify={"space-between"}
-            >
-              <Text fontSize={"$2"}>Verified by</Text>
-              <UserCluster
-                users={item.verifiers.map((verifier) => verifier.user)}
-                maxLimit={3}
-                avatarSize={25}
-                containerStyles={{
-                  flex: 1,
-                  self: "flex-end"
-                }}
-              />
-            </XStack>
-          </EventCard>
+          <View key={item.id} width={180}>
+            <ExploreAssetPreview
+              media={item.media}
+              title={item.title}
+              location={item.location}
+              creator={item.creator}
+              createdAt={item.createdAt}
+              startTime={item.startTime}
+              endTime={item.endTime}
+              going={item.going}
+              userLocation={userLocation}
+              tags={item.tags}
+              showPreviewButton={true}
+              previewButtonText="Trending"
+            />
+          </View>
         ))}
       </XStack>
     </ScrollView>
