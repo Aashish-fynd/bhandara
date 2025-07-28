@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { styled, YStack, XStack, Text, View } from 'tamagui';
-import { AnimatePresence } from 'tamagui';
+import React from 'react';
+import { styled, YStack } from 'tamagui';
 
 interface InteractiveCardProps {
   children: React.ReactNode;
@@ -111,23 +110,6 @@ const CardContainer = styled(YStack, {
   }
 });
 
-const RippleEffect = styled(View, {
-  position: "absolute",
-  borderRadius: "$4",
-  bg: "$color12",
-  opacity: 0.3,
-  animation: "quick",
-  scale: 0,
-  enterStyle: {
-    scale: 0,
-    opacity: 0.3
-  },
-  exitStyle: {
-    scale: 4,
-    opacity: 0
-  }
-});
-
 const InteractiveCard: React.FC<InteractiveCardProps> = ({
   children,
   onPress,
@@ -136,80 +118,14 @@ const InteractiveCard: React.FC<InteractiveCardProps> = ({
   variant = 'default',
   size = 'medium'
 }) => {
-  const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number }>>([]);
-  const [isPressed, setIsPressed] = useState(false);
-
-  const handlePressIn = (event: any) => {
-    if (disabled) return;
-    
-    setIsPressed(true);
-    
-    // Create ripple effect
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    
-    const newRipple = {
-      id: Date.now(),
-      x,
-      y
-    };
-    
-    setRipples(prev => [...prev, newRipple]);
-    
-    // Remove ripple after animation
-    setTimeout(() => {
-      setRipples(prev => prev.filter(ripple => ripple.id !== newRipple.id));
-    }, 600);
-  };
-
-  const handlePressOut = () => {
-    setIsPressed(false);
-  };
-
-  const handlePress = () => {
-    if (disabled) return;
-    onPress?.();
-  };
-
-  const handleLongPress = () => {
-    if (disabled) return;
-    onLongPress?.();
-  };
-
   return (
     <CardContainer
       variant={variant}
       size={size}
       disabled={disabled}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onPress={handlePress}
-      onLongPress={handleLongPress}
-      position="relative"
+      onPress={onPress}
+      onLongPress={onLongPress}
     >
-      <AnimatePresence>
-        {ripples.map((ripple) => (
-          <RippleEffect
-            key={ripple.id}
-            position="absolute"
-            left={ripple.x - 10}
-            top={ripple.y - 10}
-            width={20}
-            height={20}
-            animation="quick"
-            enterStyle={{
-              scale: 0,
-              opacity: 0.3
-            }}
-            exitStyle={{
-              scale: 4,
-              opacity: 0
-            }}
-          />
-        ))}
-      </AnimatePresence>
-      
       {children}
     </CardContainer>
   );

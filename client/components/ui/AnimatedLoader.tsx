@@ -42,12 +42,6 @@ const Spinner = styled(View, {
   borderColor: "$color8",
   borderTopColor: "$accent1",
   animation: "lazy",
-  enterStyle: {
-    rotate: "0deg"
-  },
-  exitStyle: {
-    rotate: "360deg"
-  },
   transition: "rotate 1s linear infinite"
 });
 
@@ -97,14 +91,6 @@ const PulseCircle = styled(View, {
   borderRadius: "$12",
   bg: "$accent1",
   animation: "lazy",
-  enterStyle: {
-    scale: 0.8,
-    opacity: 0.8
-  },
-  exitStyle: {
-    scale: 1.2,
-    opacity: 0
-  },
   transition: "all 1s ease-in-out infinite",
   
   variants: {
@@ -139,12 +125,6 @@ const SkeletonLine = styled(View, {
   bg: "$color6",
   borderRadius: "$2",
   animation: "lazy",
-  enterStyle: {
-    opacity: 0.3
-  },
-  exitStyle: {
-    opacity: 0.7
-  },
   transition: "opacity 1.5s ease-in-out infinite",
   
   variants: {
@@ -188,15 +168,9 @@ const AnimatedLoader: React.FC<AnimatedLoaderProps> = ({
                 key={index}
                 size={size}
                 animation="bouncy"
-                enterStyle={{
-                  scale: 0.8,
-                  opacity: 0.5
+                style={{
+                  animationDelay: `${index * 0.2}s`
                 }}
-                exitStyle={{
-                  scale: 1.2,
-                  opacity: 1
-                }}
-                transition={`all 0.6s ease-in-out infinite ${index * 0.2}s`}
               />
             ))}
           </DotsContainer>
@@ -237,15 +211,6 @@ const AnimatedLoader: React.FC<AnimatedLoaderProps> = ({
           color="$color11"
           textAlign="center"
           animation="lazy"
-          enterStyle={{
-            opacity: 0,
-            y: 10
-          }}
-          exitStyle={{
-            opacity: 1,
-            y: 0
-          }}
-          transition="all 0.3s ease-out"
         >
           {text}
         </Text>
