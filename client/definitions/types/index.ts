@@ -191,3 +191,33 @@ export interface IBaseResponse<T> {
   data?: T;
   error?: any;
 }
+
+// Search Types
+export interface ISearchFilters {
+  types?: ('event' | 'user' | 'tag')[];
+  eventStatus?: EEventStatus[];
+  eventType?: EEventType[];
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+  location?: {
+    latitude: number;
+    longitude: number;
+    radius: number; // in kilometers
+  };
+  tags?: string[];
+  limit?: number;
+  offset?: number;
+}
+
+export interface ISearchResult {
+  id: string;
+  type: 'event' | 'user' | 'tag';
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  metadata: Record<string, any>;
+  relevanceScore: number;
+  createdAt: Date;
+}

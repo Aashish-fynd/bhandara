@@ -6,21 +6,22 @@ import { SpinningLoader } from "@/components/ui/Loaders";
 import ProfileAvatarPreview from "@/components/ui/ProfileAvatarPreview";
 import images from "@/constants/images";
 import { EMediaType } from "@/definitions/enums";
-import { IBaseUser, IEvent } from "@/definitions/types";
+import { IBaseUser, IEvent, ISearchFilters } from "@/definitions/types";
 import { useDataLoader } from "@/hooks";
 import useSocketListener from "@/hooks/useSocketListener";
 import { PLATFORM_SOCKET_EVENTS } from "@/constants/global";
-import { Calendar, Check, Clock, MapPin } from "@tamagui/lucide-icons";
+import { Calendar, Check, Clock, MapPin, Search } from "@tamagui/lucide-icons";
 import { useToastController } from "@tamagui/toast";
 import { useRouter } from "expo-router";
-import React, { useEffect } from "react";
-import { H5, Image, ScrollView, Text, XStack, YStack } from "tamagui";
+import React, { useEffect, useState } from "react";
+import { H5, Image, ScrollView, Text, XStack, YStack, Button } from "tamagui";
 
 import { View } from "tamagui";
 import VerifyEvent from "@/components/VerifyEvent";
 import { Badge } from "@/components/ui/Badge";
 import { useSocket } from "@/contexts/Socket";
 import { FullSizeLoader } from "@/components/ui/common-styles";
+import SearchModal from "@/components/SearchModal";
 
 const EventCard = ({ event }: { event: IEvent }) => {
   const [localEvent, setLocalEvent] = React.useState<IEvent>(event);
@@ -239,6 +240,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
 
 const HomeScreen = () => {
   const toastController = useToastController();
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   const fetchEvents = async () => {
     try {
@@ -300,25 +302,48 @@ const HomeScreen = () => {
   if (loading) return <FullSizeLoader />;
 
   return (
-    <ScrollView>
-      <YStack
-        bg="$background"
-        width="100%"
-        items={"center"}
-        p={"$4"}
-        gap={"$4"}
-        maxW={600}
-        scrollbarWidth="none"
-        mx={"auto"}
-      >
-        {paginatedEvents?.data?.items?.map((event) => (
-          <EventCard
-            key={event.id}
-            event={event}
-          />
-        ))}
-      </YStack>
-    </ScrollView>
+    <>
+      <ScrollView>
+        <YStack
+          bg="$background"
+          width="100%"
+          items={"center"}
+          p={"$4"}
+          gap={"$4"}
+          maxW={600}
+          scrollbarWidth="none"
+          mx={"auto"}
+        >
+          {/* Search Button */}
+          <XStack width="100%" justifyContent="center" paddingVertical="$2">
+            <Button
+              size="$4"
+              backgroundColor="$blue10"
+              color="white"
+              borderRadius="$4"
+              paddingHorizontal="$4"
+              onPress={() => setIsSearchModalOpen(true)}
+              icon={Search}
+            >
+              Search Events, Users & Tags
+            </Button>
+          </XStack>
+
+          {paginatedEvents?.data?.items?.map((event) => (
+            <EventCard
+              key={event.id}
+              event={event}
+            />
+          ))}
+        </YStack>
+      </ScrollView>
+
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+      />
+    </>
   );
 };
 
