@@ -151,8 +151,10 @@ class ThreadsService {
       throw new BadRequestError("Thread is already locked");
     }
 
-    // For now, allow anyone to lock. You might want to add permission checks here
-    // e.g., only moderators, thread creators, or event organizers can lock threads
+    // Only allow thread author to lock the thread
+    if (thread.createdBy !== userId) {
+      throw new ForbiddenError("Only the thread author can lock this thread");
+    }
 
     const lockedThread = lockThread(thread, userId);
     
@@ -177,9 +179,9 @@ class ThreadsService {
       throw new BadRequestError("Thread is not locked");
     }
 
-    // Check if user has permission to unlock
-    if (!canUserModifyLockedThread(thread, userId)) {
-      throw new ForbiddenError("You don't have permission to unlock this thread");
+    // Only allow thread author to unlock the thread
+    if (thread.createdBy !== userId) {
+      throw new ForbiddenError("Only the thread author can unlock this thread");
     }
 
     const unlockedThread = unlockThread(thread);

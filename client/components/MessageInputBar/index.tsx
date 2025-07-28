@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { CardWrapper } from "../ui/common-styles";
 import { XStack, ScrollView, View, YStack, Text } from "tamagui";
-import { Plus, RotateCw, SendHorizontal, X } from "@tamagui/lucide-icons";
+import { Plus, RotateCw, SendHorizontal, X, Lock } from "@tamagui/lucide-icons";
 import { FilledButton, OutlineButton } from "../ui/Buttons";
 import { TextareaField } from "../Form";
 import { Platform } from "react-native";
@@ -14,19 +14,25 @@ import CustomTooltip from "../CustomTooltip";
 import { EMediaType } from "@/definitions/enums";
 import { IAttachedFile } from "@/common/utils/file.utils";
 import { Badge } from "../ui/Badge";
+import { IBaseThread } from "@/definitions/types";
+import { isThreadLocked } from "@/utils/thread.utils";
 
 interface IProps {
   context: Record<string, any>;
   sendButtonCb: (data: Record<string, any>, onSuccess?: () => void) => void;
+  thread?: IBaseThread; // Add thread prop to check lock status
 }
 
-const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
+const MessageInputBar = ({ context, sendButtonCb, thread }: IProps) => {
   const [message, setMessage] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<IAttachedFile[]>([]);
   const textAreaRef = useRef<any>(null);
 
   const maxAttachmentLimit = context?.maxAttachments;
   const [height, setHeight] = useState(40);
+
+  // Check if thread is locked
+  const threadLocked = thread ? isThreadLocked(thread) : false;
 
   const handleMessageChange = (text: string) => {
     setMessage(text);
@@ -175,6 +181,25 @@ const MessageInputBar = ({ context, sendButtonCb }: IProps) => {
 
   const hasValidFiles = attachedFiles.some((file) => !file.error);
   const isAddButtonDisabled = !!maxAttachmentLimit ? maxAttachmentLimit <= attachedFiles.length : false;
+
+  // If thread is locked, show a disabled state
+  if (threadLocked) {
+    return (
+      <CardWrapper
+        p={"$3"}
+        rounded={"$3"}
+        opacity={0.6}
+        backgroundColor="$color2"
+      >
+        <XStack gap="$3" alignItems="center" justifyContent="center">
+          <Lock size={16} color="$color8" />
+          <Text fontSize="$3" color="$color8" textAlign="center">
+            This thread is locked. No new messages can be added.
+          </Text>
+        </XStack>
+      </CardWrapper>
+    );
+  }
 
   return (
     <CardWrapper

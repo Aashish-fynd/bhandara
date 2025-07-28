@@ -68,7 +68,7 @@ export interface IPaginatedDataResponse<T> {
 }
 
 // Thread Lock History
-interface ILockHistory {
+export interface ILockHistory {
   lockedBy: string; // ID of the user who locked the thread
   lockedAt: Date; // Timestamp of when the thread was locked
 }
