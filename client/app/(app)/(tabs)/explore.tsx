@@ -97,13 +97,22 @@ interface IExploreSection {
   payload: ITasteCalendarPayload | IFoodieFeedPayload | IReelsPayload | ICollaborationsPayload | ITrendingPayload;
 }
 
-const EventCard = ({ event, width = 140, children }: { event: any; width?: number; children?: React.ReactNode }) => {
+const EventCard = ({ event, width = 140, children, onEventClick }: { 
+  event: any; 
+  width?: number; 
+  children?: React.ReactNode;
+  onEventClick?: (eventId: string, tagIds?: string[]) => void;
+}) => {
   const startTime = event.startTime
     ? new Date(event.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : "";
   const endTime = event.endTime
     ? new Date(event.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : "";
+
+  const handleClick = () => {
+    onEventClick?.(event.id, event.tags?.map((tag: any) => tag.id || tag));
+  };
 
   return (
     <CardWrapper
@@ -113,6 +122,7 @@ const EventCard = ({ event, width = 140, children }: { event: any; width?: numbe
       p={0}
       cursor="pointer"
       position="relative"
+      onPress={handleClick}
     >
       <YStack
         height={100}
@@ -221,7 +231,15 @@ const CommonHeader = ({
   );
 };
 
-const TasteCalendar = ({ payload, filters }: { payload: ITasteCalendarPayload[]; filters: string[] }) => {
+const TasteCalendar = ({ 
+  payload, 
+  filters, 
+  onEventClick 
+}: { 
+  payload: ITasteCalendarPayload[]; 
+  filters: string[];
+  onEventClick?: (eventId: string, tagIds?: string[]) => void;
+}) => {
   const iconMapping = {
     morning: <Sun size={16} />,
     evening: <CloudSun size={16} />,
@@ -255,7 +273,11 @@ const TasteCalendar = ({ payload, filters }: { payload: ITasteCalendarPayload[];
           flexDirection="row"
         >
           {filteredPayload.map((item) => (
-            <EventCard event={item} />
+            <EventCard 
+              key={item.id}
+              event={item} 
+              onEventClick={onEventClick}
+            />
           ))}
         </XStack>
       </ScrollView>
@@ -283,10 +305,12 @@ const TasteCalendar = ({ payload, filters }: { payload: ITasteCalendarPayload[];
 
 const FoodieFeed = ({
   payload,
-  userLocation
+  userLocation,
+  onEventClick
 }: {
   payload: IFoodieFeedPayload;
   userLocation: LocationObjectCoords | null;
+  onEventClick?: (eventId: string, tagIds?: string[]) => void;
 }) => {
   return (
     <ScrollView
@@ -328,6 +352,7 @@ const FoodieFeed = ({
                 src={item.media.thumbnailUrl}
                 alt={item.title}
                 size={"$6"}
+                onPress={() => onEventClick?.(item.id, item.tags?.map((tag: any) => tag.id || tag))}
               />
               <Text
                 fontSize={"$3"}
@@ -351,12 +376,16 @@ const FoodieFeed = ({
   );
 };
 
-const Reels = ({ payload }: { payload: IReelsPayload[] }) => {
+const Reels = ({ payload, onEventClick }: { 
+  payload: IReelsPayload[];
+  onEventClick?: (eventId: string, tagIds?: string[]) => void;
+}) => {
   return (
     <ScrollView>
       <XStack gap={"$4"}>
         {payload.map((item) => (
           <CardWrapper
+            key={item.id}
             width={160}
             height={280}
             rounded="$4"
@@ -365,6 +394,7 @@ const Reels = ({ payload }: { payload: IReelsPayload[] }) => {
             cursor="pointer"
             position="relative"
             group
+            onPress={() => onEventClick?.(item.id, item.tags?.map((tag: any) => tag.id || tag))}
           >
             <Image
               source={{ uri: item.media.thumbnailUrl }}
@@ -453,10 +483,12 @@ const Reels = ({ payload }: { payload: IReelsPayload[] }) => {
 
 const Collaborations = ({
   payload,
-  userLocation
+  userLocation,
+  onEventClick
 }: {
   payload: ICollaborationsPayload[];
   userLocation: LocationObjectCoords | null;
+  onEventClick?: (eventId: string, tagIds?: string[]) => void;
 }) => {
   return (
     <ScrollView>
@@ -473,12 +505,14 @@ const Collaborations = ({
 
           return (
             <CardWrapper
+              key={item.id}
               rounded="$4"
               overflow="hidden"
               p={0}
               cursor="pointer"
               position="relative"
               group
+              onPress={() => onEventClick?.(item.id, item.tags?.map((tag: any) => tag.id || tag))}
             >
               <Image
                 source={{ uri: item.media.url }}
@@ -516,7 +550,10 @@ const Collaborations = ({
                     horizontal
                     showsHorizontalScrollIndicator={false}
                   >
-                    <TagListing tags={item.tags} />
+                    <TagListing 
+                      tags={item.tags} 
+                      onTagClick={(tagId) => handleTagClick(item.id, tagId)}
+                    />
                   </ScrollView>
                 </XStack>
 
@@ -568,14 +605,19 @@ const Collaborations = ({
   );
 };
 
-const Trending = ({ payload }: { payload: ITrendingPayload[] }) => {
+const Trending = ({ payload, onEventClick }: { 
+  payload: ITrendingPayload[];
+  onEventClick?: (eventId: string, tagIds?: string[]) => void;
+}) => {
   return (
     <ScrollView>
       <XStack gap={"$4"}>
         {payload.map((item) => (
           <EventCard
+            key={item.id}
             event={item}
             width={180}
+            onEventClick={onEventClick}
           >
             <Badge
               position="absolute"
@@ -652,6 +694,24 @@ const explore = () => {
 
   const handleFilterPress = () => {
     console.log("filter pressed");
+  };
+
+  const handleEventClick = (eventId: string, tagIds?: string[]) => {
+    // Track user interaction with the event
+    socket.emit(PLATFORM_SOCKET_EVENTS.TRACK_INTERACTION, {
+      eventId,
+      interactionType: "click",
+      tagIds,
+    });
+  };
+
+  const handleTagClick = (eventId: string, tagId: string) => {
+    // Track user interaction with specific tag
+    socket.emit(PLATFORM_SOCKET_EVENTS.TRACK_INTERACTION, {
+      eventId,
+      interactionType: "tag_click",
+      tagIds: [tagId],
+    });
   };
 
   const [currentUserLocation, setCurrentUserLocation] = useState<LocationObjectCoords | null>(null);
@@ -766,6 +826,7 @@ const explore = () => {
                       payload={section.payload as any}
                       userLocation={currentUserLocation}
                       filters={(mapping[section.component] as any)?.filters || []}
+                      onEventClick={handleEventClick}
                     />
                   </YStack>
                 );
