@@ -2,6 +2,7 @@ import { Spinner } from "tamagui";
 import { View } from "tamagui";
 import React from "react";
 import { useTheme } from "@tamagui/core";
+import AnimatedLoader from "./AnimatedLoader";
 
 export const SpinningLoader = ({
   size = "small",
@@ -14,6 +15,25 @@ export const SpinningLoader = ({
     <Spinner
       size={size}
       color={color}
+      animation="lazy"
+    />
+  );
+};
+
+export const EnhancedSpinningLoader = ({
+  size = "medium",
+  variant = "spinner",
+  text
+}: {
+  size?: "small" | "medium" | "large";
+  variant?: "spinner" | "dots" | "pulse" | "skeleton";
+  text?: string;
+}) => {
+  return (
+    <AnimatedLoader
+      size={size}
+      variant={variant}
+      text={text}
     />
   );
 };
@@ -53,6 +73,7 @@ export const CircularProgressLoader = ({
       position="relative"
       items="center"
       justify="center"
+      animation="lazy"
     >
       <svg
         width={size}
@@ -78,7 +99,10 @@ export const CircularProgressLoader = ({
           strokeDashoffset={strokeDashoffset}
           transform={`rotate(-90 ${radius} ${radius})`}
           strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 0.3s ease" }}
+          style={{ 
+            transition: "stroke-dashoffset 0.6s ease-out",
+            animation: "lazy"
+          }}
         />
       </svg>
 
@@ -90,6 +114,7 @@ export const CircularProgressLoader = ({
           width={size}
           height={size}
           pointerEvents="none"
+          animation="lazy"
         >
           {children}
         </View>
