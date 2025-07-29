@@ -41,8 +41,7 @@ const Spinner = styled(View, {
   borderWidth: 2,
   borderColor: "$color8",
   borderTopColor: "$accent1",
-  animation: "lazy",
-  transition: "rotate 1s linear infinite"
+  animation: "lazy"
 });
 
 const DotsContainer = styled(XStack, {
@@ -91,7 +90,6 @@ const PulseCircle = styled(View, {
   borderRadius: "$12",
   bg: "$accent1",
   animation: "lazy",
-  transition: "all 1s ease-in-out infinite",
   
   variants: {
     size: {
@@ -125,7 +123,6 @@ const SkeletonLine = styled(View, {
   bg: "$color6",
   borderRadius: "$2",
   animation: "lazy",
-  transition: "opacity 1.5s ease-in-out infinite",
   
   variants: {
     size: {

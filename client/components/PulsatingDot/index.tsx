@@ -19,8 +19,7 @@ const PulseRing = styled(View, {
   name: "PulseRing",
   position: "absolute",
   borderRadius: "$12",
-  animation: "lazy",
-  transition: "all 1.2s ease-out infinite"
+  animation: "lazy"
 });
 
 const MainDot = styled(View, {
@@ -49,10 +48,10 @@ const PulsatingDot: React.FC<PulsatingDotProps> = ({
           width={size}
           height={size}
           bg={color}
+          animation="lazy"
           style={{
             transform: [{ scale: pulseScale }],
-            opacity: 0,
-            animation: `pulse ${duration}ms ease-out infinite`
+            opacity: 0
           }}
         />
         <MainDot

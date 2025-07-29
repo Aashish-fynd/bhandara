@@ -25,8 +25,7 @@ const InputLabel = styled(Text, {
   fontSize: "$3",
   color: "$color11",
   fontWeight: "500",
-  animation: "lazy",
-  transition: "color 0.2s ease-out"
+  animation: "lazy"
 });
 
 const StyledInput = styled(Input, {
@@ -52,7 +51,6 @@ const StyledInput = styled(Input, {
   pressStyle: {
     scale: 0.99
   },
-  transition: "all 0.2s ease-out",
   
   variants: {
     size: {
@@ -112,15 +110,7 @@ const ErrorText = styled(Text, {
   name: "ErrorText",
   fontSize: "$2",
   color: "$red9",
-  animation: "quick",
-  enterStyle: {
-    opacity: 0,
-    y: -5
-  },
-  exitStyle: {
-    opacity: 1,
-    y: 0
-  }
+  animation: "quick"
 });
 
 const SuccessText = styled(Text, {

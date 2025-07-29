@@ -67,11 +67,10 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
                 bg: "$color2",
                 scale: 1.02
               }}
-              transition="all 0.2s ease-out"
             >
               <XStack
                 gap={"$2"}
-                items={"center"}
+                alignItems={"center"}
                 animation="lazy"
               >
                 {tab.icon &&
@@ -97,7 +96,7 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
           <Tabs.Content
             flex={1}
             value={kebabCase(tab.label)}
-            items={"stretch"}
+            alignItems={"stretch"}
             key={kebabCase(tab.label)}
             animation="lazy"
             enterStyle={{
@@ -110,7 +109,6 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
               scale: 0.95,
               y: -10
             }}
-            transition="all 0.3s ease-out"
           >
             <ScrollView
               flex={1}

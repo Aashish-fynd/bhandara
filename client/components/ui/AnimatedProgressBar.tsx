@@ -47,8 +47,7 @@ const ProgressFill = styled(View, {
   name: "ProgressFill",
   bg: "$accent1",
   borderRadius: "$4",
-  animation: "lazy",
-  transition: "width 0.6s ease-out"
+  animation: "lazy"
 });
 
 const ProgressLabel = styled(Text, {

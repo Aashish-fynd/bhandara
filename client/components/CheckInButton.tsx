@@ -35,7 +35,6 @@ const CheckInButtonBase = styled(Button, {
   shadowOpacity: 0.1,
   shadowRadius: 4,
   elevation: 2,
-  transition: "all 0.2s ease-out",
   
   variants: {
     disabled: {

@@ -65,8 +65,6 @@ const EventCard = ({ event }: { event: IEvent }) => {
         height={250}
         width={"100%"}
         position={"relative"}
-        group={true}
-        cursor={"pointer"}
         overflow={"hidden"}
         onPress={handleImagePress}
       >
@@ -76,35 +74,31 @@ const EventCard = ({ event }: { event: IEvent }) => {
           height={250}
           objectFit="cover"
           animation="lazy"
-          $group-hover={{
+          hoverStyle={{
             scale: 1.05
           }}
-          transition={"transform 0.3s ease-out"}
         />
         <YStack
           gap={"$3"}
           justify={"flex-start"}
           position={"absolute"}
-          b={0}
-          l={0}
+          bottom={0}
+          left={0}
           width={"100%"}
-          p={"$4"}
+          padding={"$4"}
           bg={"rgba(0, 0, 0, 0.2)"}
-          backdropFilter={"blur(8px)"}
           animation="lazy"
-          $group-hover={{
+          hoverStyle={{
             y: -5
           }}
-          transition={"transform 0.2s ease-out"}
         >
           <H5>{localEvent.name}</H5>
           <XStack gap={"$4"}>
             <Badge
               animation="quick"
-              $group-hover={{
+              hoverStyle={{
                 scale: 1.05
               }}
-              transition={"transform 0.2s ease-out"}
             >
               <XStack gap={"$2"}>
                 <Calendar
@@ -116,10 +110,9 @@ const EventCard = ({ event }: { event: IEvent }) => {
             </Badge>
             <Badge
               animation="quick"
-              $group-hover={{
+              hoverStyle={{
                 scale: 1.05
               }}
-              transition={"transform 0.2s ease-out"}
             >
               <XStack gap={"$2"}>
                 <Clock
@@ -135,44 +128,39 @@ const EventCard = ({ event }: { event: IEvent }) => {
 
       <YStack
         gap={"$4"}
-        p={"$4"}
-        pt={0}
+        padding={"$4"}
+        paddingTop={0}
       >
         <XStack
-          items={"center"}
+          alignItems={"center"}
           gap={"$2"}
-          group={true}
-          cursor={"pointer"}
           animation="lazy"
-          $group-hover={{
+          hoverStyle={{
             scale: 1.02
           }}
-          transition={"transform 0.2s ease-out"}
         >
           <View
             bg={"$color1"}
             rounded={"$12"}
             width={"$3"}
             height={"$3"}
-            justify={"center"}
-            items={"center"}
+            justifyContent={"center"}
+            alignItems={"center"}
             animation="bouncy"
-            $group-hover={{
+            hoverStyle={{
               bg: "$color12",
               scale: 1.2,
               rotate: "5deg"
             }}
-            transition={"all 0.2s ease-out"}
           >
             <MapPin
               size={16}
               color={"$color12"}
               animation="bouncy"
-              $group-hover={{
+              hoverStyle={{
                 color: "$color1",
                 scale: 1.1
               }}
-              transition={"all 0.2s ease-out"}
             />
           </View>
           <Text fontSize={"$4"}>{localEvent.location.street || "data not available"}</Text>
@@ -180,7 +168,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
 
         <XStack
           flex={+(typeof localEvent.capacity === "number")}
-          justify={"space-between"}
+          justifyContent={"space-between"}
         >
           {/* organizer info */}
           <ProfileAvatarPreview user={createdBy}>
@@ -194,14 +182,13 @@ const EventCard = ({ event }: { event: IEvent }) => {
           {/* capacity info */}
           {typeof localEvent.capacity === "number" && (
             <XStack
-              items={"center"}
-              justify={"flex-end"}
+              alignItems={"center"}
+              justifyContent={"flex-end"}
               gap={"$3"}
               animation="lazy"
-              $group-hover={{
+              hoverStyle={{
                 scale: 1.05
               }}
-              transition={"transform 0.2s ease-out"}
             >
               <YStack>
                 <Text fontSize={"$3"}>Capacity</Text>
@@ -223,14 +210,14 @@ const EventCard = ({ event }: { event: IEvent }) => {
         {/* verifiers */}
         <YStack
           gap={"$2"}
-          items={"flex-start"}
+          alignItems={"flex-start"}
         >
           <Text fontSize={"$3"}>Verifiers</Text>
           <XStack
             gap={"$2"}
             width={"100%"}
-            justify={"space-between"}
-            items={"center"}
+            justifyContent={"space-between"}
+            alignItems={"center"}
           >
             {!!localEvent.verifiers.length ? (
               <UserCluster users={localEvent.verifiers.map((verifier) => verifier.user as IBaseUser)} />
@@ -271,10 +258,9 @@ const EventCard = ({ event }: { event: IEvent }) => {
                       key={tag.id}
                       cursor="pointer"
                       animation="quick"
-                      $group-hover={{
+                      hoverStyle={{
                         scale: 1.1
                       }}
-                      transition={"transform 0.15s ease-out"}
                     >
                       <Badge.Text fontSize={"$3"}>{tag.name}</Badge.Text>
                     </Badge>
@@ -291,10 +277,9 @@ const EventCard = ({ event }: { event: IEvent }) => {
         <FilledButton 
           size={"medium"}
           animation="bouncy"
-          $group-hover={{
+          hoverStyle={{
             scale: 1.02
           }}
-          transition={"transform 0.2s ease-out"}
         >
           Join Event
         </FilledButton>

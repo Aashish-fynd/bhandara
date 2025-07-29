@@ -18,7 +18,7 @@ export const BadgeFrame = styled(YStack, {
   height: "min-content",
   display: "flex",
   flexDirection: "row",
-  items: "center",
+  alignItems: "center",
   gap: "$1",
   animation: "quick",
   pressStyle: {
@@ -32,7 +32,6 @@ export const BadgeFrame = styled(YStack, {
     shadowRadius: 4,
     elevation: 3
   },
-  transition: "all 0.2s ease-out",
 
   variants: {
     __default: {

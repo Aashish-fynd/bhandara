@@ -35,7 +35,6 @@ const NotificationContainer = styled(YStack, {
     shadowRadius: 12,
     elevation: 6
   },
-  transition: "all 0.2s ease-out",
   
   variants: {
     type: {
@@ -119,8 +118,7 @@ const CloseButton = styled(View, {
   hoverStyle: {
     scale: 1.1,
     bg: "$color4"
-  },
-  transition: "all 0.2s ease-out"
+  }
 });
 
 const NotificationTitle = styled(Text, {
