@@ -18,26 +18,30 @@ export const GET_STARTED_TABS = [
 
 export const ONBOARDING_STAGES_TEXT = {
   [EOnboardingStages.EmailVerification]: {
-    title: "Continue with Email",
-    description: "Sign in or Sign up with your email"
+    title: "Welcome!",
+    description: "Let's get started by verifying your email address."
   },
   [EOnboardingStages.BasicInfo]: {
-    title: "Let's get started",
-    description: "Please fill out the details to continue"
+    title: "Basic Information",
+    description: "Tell us a bit about yourself to personalize your experience."
   },
   [EOnboardingStages.ProfileSetup]: {
-    title: "One more step",
-    description: "Choose an avatar and username"
+    title: "Profile Setup",
+    description: "Set up your profile to connect with other event-goers."
   },
   [EOnboardingStages.InterestSelection]: {
-    title: "Tell us your interests",
-    description: "Choose between 3 and 10 interests, and we'll curate the best events for your feed"
+    title: "Your Interests",
+    description: "Select your interests to get personalized event recommendations."
   },
   [EOnboardingStages.Login]: {
-    title: "Welcome back",
-    description: "Sign in to your account"
+    title: "Welcome Back!",
+    description: "Sign in to your account to continue."
+  },
+  [EOnboardingStages.ForgotPassword]: {
+    title: "Forgot Password",
+    description: "Enter your email address and we'll send you a link to reset your password."
   }
-};
+} as const;
 
 export const APPLICABLE_STAGES_MAP = {
   [EApplicableStage.EmailExists]: {
@@ -55,7 +59,7 @@ export const APPLICABLE_STAGES_MAP = {
 };
 
 export const getStageLevelFields = (stage: EOnboardingStages, isUserComingFromSocialAuth: boolean) => {
-  const stageFields = {
+  const fields = {
     [EOnboardingStages.EmailVerification]: ["email"],
     [EOnboardingStages.Login]: ["email", "password"],
     [EOnboardingStages.BasicInfo]: [
@@ -65,8 +69,9 @@ export const getStageLevelFields = (stage: EOnboardingStages, isUserComingFromSo
       ...(isUserComingFromSocialAuth ? [] : ["password", "verifyPassword"])
     ],
     [EOnboardingStages.ProfileSetup]: ["username", "profilePic", "location"],
-    [EOnboardingStages.InterestSelection]: ["interests"]
+    [EOnboardingStages.InterestSelection]: ["interests"],
+    [EOnboardingStages.ForgotPassword]: ["email"]
   };
 
-  return stageFields[stage] as (keyof IFormData)[];
+  return fields[stage] as (keyof IFormData)[];
 };

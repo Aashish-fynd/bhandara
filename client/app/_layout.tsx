@@ -64,6 +64,7 @@ const RootLayoutNav = () => {
             />
             <Stack.Screen name="onboarding" />
             <Stack.Screen name="map" />
+            <Stack.Screen name="reset-password" />
             <Stack.Screen name="+not-found" />
           </Stack>
 

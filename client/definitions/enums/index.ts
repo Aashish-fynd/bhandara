@@ -76,5 +76,6 @@ export enum EOnboardingStages {
   BasicInfo = "basicInfo",
   ProfileSetup = "profileSetup",
   InterestSelection = "interestSelection",
-  Login = "login"
+  Login = "login",
+  ForgotPassword = "forgotPassword"
 }

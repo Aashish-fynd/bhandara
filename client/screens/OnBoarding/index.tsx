@@ -17,7 +17,7 @@ import { useLocalSearchParams } from "expo-router";
 import { isEmpty } from "@/utils";
 import { getNavState } from "@/lib/navigationStore";
 import { SpinningLoader } from "@/components/ui/Loaders";
-import { loginWithEmailAndPassword, signupWithEmailAndPassword } from "@/common/api/auth.action";
+import { loginWithEmailAndPassword, signupWithEmailAndPassword, forgotPassword } from "@/common/api/auth.action";
 
 import { EGender, EOnboardingStages } from "@/definitions/enums";
 import AuthOptions from "../Auth/AuthOptions";
@@ -63,7 +63,8 @@ const GetStartedContents = ({
 
   const showMiniProgressBars =
     [EApplicableStage.NewUser, EApplicableStage.NotOnboarded].includes(applicableStage) &&
-    authStage !== EOnboardingStages.EmailVerification;
+    authStage !== EOnboardingStages.EmailVerification &&
+    authStage !== EOnboardingStages.ForgotPassword;
 
   const stageFields = getStageLevelFields(authStage, isUserComingFromSocialAuth);
 
@@ -94,7 +95,7 @@ const GetStartedContents = ({
     [EOnboardingStages.Login]: async ({ data }: { data: IFormData }) => {
       try {
         await loginWithEmailAndPassword(data.email, data.password);
-        // do something with the new user
+        router.push("/home");
       } catch (error: any) {
         toastController.show(error?.error?.message || "Error logging in");
       }
@@ -137,6 +138,15 @@ const GetStartedContents = ({
         router.push("/home");
       } catch (error: any) {
         toastController.show(error?.error?.message || "Error saving data");
+      }
+    },
+    [EOnboardingStages.ForgotPassword]: async ({ data }: { data: IFormData }) => {
+      try {
+        await forgotPassword(data.email);
+        toastController.show("Password reset link sent to your email");
+        setAuthStage(EOnboardingStages.Login);
+      } catch (error: any) {
+        toastController.show(error?.error?.message || "Error sending reset email");
       }
     }
   };
@@ -218,6 +228,11 @@ const GetStartedContents = ({
             cursor={"pointer"}
             onPress={() => {
               setAuthStage((prev) => {
+                // Handle ForgotPassword stage
+                if (prev === EOnboardingStages.ForgotPassword) {
+                  return EOnboardingStages.Login;
+                }
+                
                 const currentIndex = stages.indexOf(prev);
                 if (currentIndex === 0) {
                   setPosition(1);
@@ -278,9 +293,9 @@ const GetStartedContents = ({
           </XStack>
         )}
 
-        {[EOnboardingStages.EmailVerification, EOnboardingStages.BasicInfo, EOnboardingStages.Login].includes(
+        {[EOnboardingStages.EmailVerification, EOnboardingStages.BasicInfo, EOnboardingStages.Login, EOnboardingStages.ForgotPassword].includes(
           authStage
-        ) && (
+        ) && authStage !== EOnboardingStages.ForgotPassword && (
           <>
             <InputGroup
               control={control}
@@ -328,6 +343,19 @@ const GetStartedContents = ({
             }}
           />
         )}
+        
+        {authStage === EOnboardingStages.Login && !isUserComingFromSocialAuth && (
+          <Text
+            fontSize={"$2"}
+            color={"$accent1"}
+            cursor={"pointer"}
+            textAlign={"right"}
+            onPress={() => setAuthStage(EOnboardingStages.ForgotPassword)}
+          >
+            Forgot Password?
+          </Text>
+        )}
+        
         {authStage === EOnboardingStages.BasicInfo && !isUserComingFromSocialAuth && (
           <InputGroup
             control={control}
@@ -345,6 +373,30 @@ const GetStartedContents = ({
             placeHolder="Re-enter your password"
             label="Verify password"
             rightLabel="Required"
+            inputProps={{
+              secureTextEntry: true
+            }}
+          />
+        )}
+
+        {authStage === EOnboardingStages.ForgotPassword && (
+          <InputGroup
+            control={control}
+            name="email"
+            rules={{
+              required: "Email is required",
+              pattern: {
+                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                message: "Please enter a valid email address"
+              }
+            }}
+            error={errors.email}
+            placeHolder="Email address"
+            label="Email address"
+            rightLabel="Required"
+            inputProps={{
+              keyboardType: "email-address"
+            }}
           />
         )}
 
