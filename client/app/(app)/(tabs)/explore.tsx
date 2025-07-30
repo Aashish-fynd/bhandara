@@ -585,7 +585,7 @@ const explore = () => {
         break;
       case 'user':
         // Navigate to user profile
-        console.log('Navigate to user:', result.id);
+        router.push(`/profile/${result.username || result.id}`);
         break;
       case 'tag':
         // Navigate to tag page
