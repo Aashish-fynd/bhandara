@@ -242,4 +242,82 @@ export const signInWithGoogleIdToken = async (req: Request, res: Response) => {
   return res.status(200).json({ data: null, success: true });
 };
 
-export { login, logOut, session, googleAuth, googleCallback };
+export const forgotPassword = async (req: Request, res: Response) => {
+  const { email } = req.body;
+  
+  if (!email) {
+    throw new BadRequestError("Email is required");
+  }
+
+  // Check if user exists and is not a social auth user
+  const existingUser = await userService.getUserByEmail(email);
+  
+  if (!existingUser) {
+    // Don't reveal if user exists or not for security
+    return res.status(200).json({ 
+      data: { message: "If the email exists, a password reset link has been sent" }, 
+      success: true 
+    });
+  }
+
+  // Check if user is using social auth
+  const loginProvider = existingUser.meta?.auth?.authProvider;
+  if (loginProvider && loginProvider !== EAuthProvider.Email) {
+    throw new BadRequestError(
+      `This account uses ${loginProvider} authentication. Please login with ${loginProvider}.`
+    );
+  }
+
+  // Send password reset email
+  // Use the client URL for the redirect
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:8081';
+  const redirectTo = `${clientUrl}/reset-password`;
+  
+  try {
+    await authService.sendResetPasswordEmail(email, redirectTo);
+    return res.status(200).json({ 
+      data: { message: "Password reset link has been sent to your email" }, 
+      success: true 
+    });
+  } catch (error) {
+    throw new BadRequestError("Failed to send password reset email");
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  const { password, token } = req.body;
+  
+  if (!password || !token) {
+    throw new BadRequestError("Password and token are required");
+  }
+
+  try {
+    // Set the session using the token
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+      access_token: token,
+      refresh_token: token
+    });
+
+    if (sessionError) {
+      throw new BadRequestError("Invalid or expired reset token");
+    }
+
+    // Update the password for the authenticated user
+    const { error: updateError } = await supabase.auth.updateUser({ 
+      password 
+    });
+
+    if (updateError) {
+      throw new BadRequestError("Failed to update password");
+    }
+    
+    return res.status(200).json({ 
+      data: { message: "Password has been reset successfully" }, 
+      success: true 
+    });
+  } catch (error: any) {
+    throw new BadRequestError(error.message || "Failed to reset password");
+  }
+};
+
+export { login, logOut, session, googleAuth, googleCallback, forgotPassword, resetPassword };

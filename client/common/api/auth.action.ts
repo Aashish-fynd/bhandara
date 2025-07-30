@@ -40,3 +40,13 @@ export const getUserSession = async () => {
   const response = await axiosClient.get("/auth/session");
   return response.data;
 };
+
+export const forgotPassword = async (email: string) => {
+  const response = await axiosClient.post("/auth/forgot-password", { email });
+  return response.data;
+};
+
+export const resetPassword = async (password: string, token: string) => {
+  const response = await axiosClient.post("/auth/reset-password", { password, token });
+  return response.data;
+};

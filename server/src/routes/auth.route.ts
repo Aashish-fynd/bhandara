@@ -21,6 +21,8 @@ import {
   deleteSession,
   signUp,
   signInWithIdToken,
+  forgotPassword,
+  resetPassword,
 } from "@features/auth/controller";
 import { sessionParser, userParser, asyncHandler } from "@middlewares";
 
@@ -107,6 +109,50 @@ router.post("/signup", asyncHandler(signUp));
  *         description: Signin success
  */
 router.post("/oauth/signin-with-id-token", asyncHandler(signInWithIdToken));
+
+/**
+ * @openapi
+ * /auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Send password reset email
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password reset email sent
+ */
+router.post("/forgot-password", asyncHandler(forgotPassword));
+
+/**
+ * @openapi
+ * /auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Reset password with token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               password:
+ *                 type: string
+ *               token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ */
+router.post("/reset-password", asyncHandler(resetPassword));
 
 router.use([sessionParser, userParser]);
 /**
