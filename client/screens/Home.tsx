@@ -41,13 +41,30 @@ const EventCard = ({ event }: { event: IEvent }) => {
       bg={"$color3"}
       borderWidth={"$0.5"}
       borderColor={"$color8"}
+      animation="bouncy"
+      shadowColor="$shadowColor"
+      shadowOffset={{ width: 0, height: 4 }}
+      shadowOpacity={0.1}
+      shadowRadius={8}
+      elevation={4}
+      pressStyle={{
+        scale: 0.98,
+        opacity: 0.9,
+        y: 2
+      }}
+      hoverStyle={{
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+        borderColor: "$color9"
+      }}
+      cursor="pointer"
     >
       <View
         height={250}
         width={"100%"}
         position={"relative"}
-        group={true}
-        cursor={"pointer"}
         overflow={"hidden"}
         onPress={handleImagePress}
       >
@@ -56,25 +73,33 @@ const EventCard = ({ event }: { event: IEvent }) => {
           width={"100%"}
           height={250}
           objectFit="cover"
-          $group-hover={{
-            scale: 1.01
+          animation="lazy"
+          hoverStyle={{
+            scale: 1.05
           }}
-          transition={"transform 0.2s ease-in-out"}
         />
         <YStack
           gap={"$3"}
           justify={"flex-start"}
           position={"absolute"}
-          b={0}
-          l={0}
+          bottom={0}
+          left={0}
           width={"100%"}
-          p={"$4"}
+          padding={"$4"}
           bg={"rgba(0, 0, 0, 0.2)"}
-          backdropFilter={"blur(8px)"}
+          animation="lazy"
+          hoverStyle={{
+            y: -5
+          }}
         >
           <H5>{localEvent.name}</H5>
           <XStack gap={"$4"}>
-            <Badge>
+            <Badge
+              animation="quick"
+              hoverStyle={{
+                scale: 1.05
+              }}
+            >
               <XStack gap={"$2"}>
                 <Calendar
                   size={16}
@@ -83,7 +108,12 @@ const EventCard = ({ event }: { event: IEvent }) => {
                 {/* <Text fontSize={"$3"}>{formatDateToLongString(event.on)}</Text> */}
               </XStack>
             </Badge>
-            <Badge>
+            <Badge
+              animation="quick"
+              hoverStyle={{
+                scale: 1.05
+              }}
+            >
               <XStack gap={"$2"}>
                 <Clock
                   size={16}
@@ -98,34 +128,39 @@ const EventCard = ({ event }: { event: IEvent }) => {
 
       <YStack
         gap={"$4"}
-        p={"$4"}
-        pt={0}
+        padding={"$4"}
+        paddingTop={0}
       >
         <XStack
-          items={"center"}
+          alignItems={"center"}
           gap={"$2"}
-          group={true}
-          cursor={"pointer"}
+          animation="lazy"
+          hoverStyle={{
+            scale: 1.02
+          }}
         >
           <View
             bg={"$color1"}
             rounded={"$12"}
             width={"$3"}
             height={"$3"}
-            justify={"center"}
-            items={"center"}
-            $group-hover={{
-              bg: "$color12"
+            justifyContent={"center"}
+            alignItems={"center"}
+            animation="bouncy"
+            hoverStyle={{
+              bg: "$color12",
+              scale: 1.2,
+              rotate: "5deg"
             }}
-            transition={"background-color 0.2s ease-in-out"}
           >
             <MapPin
               size={16}
               color={"$color12"}
-              $group-hover={{
-                color: "$color1"
+              animation="bouncy"
+              hoverStyle={{
+                color: "$color1",
+                scale: 1.1
               }}
-              transition={"color 0.2s ease-in-out"}
             />
           </View>
           <Text fontSize={"$4"}>{localEvent.location.street || "data not available"}</Text>
@@ -133,7 +168,7 @@ const EventCard = ({ event }: { event: IEvent }) => {
 
         <XStack
           flex={+(typeof localEvent.capacity === "number")}
-          justify={"space-between"}
+          justifyContent={"space-between"}
         >
           {/* organizer info */}
           <ProfileAvatarPreview user={createdBy}>
@@ -147,9 +182,13 @@ const EventCard = ({ event }: { event: IEvent }) => {
           {/* capacity info */}
           {typeof localEvent.capacity === "number" && (
             <XStack
-              items={"center"}
-              justify={"flex-end"}
+              alignItems={"center"}
+              justifyContent={"flex-end"}
               gap={"$3"}
+              animation="lazy"
+              hoverStyle={{
+                scale: 1.05
+              }}
             >
               <YStack>
                 <Text fontSize={"$3"}>Capacity</Text>
@@ -171,14 +210,14 @@ const EventCard = ({ event }: { event: IEvent }) => {
         {/* verifiers */}
         <YStack
           gap={"$2"}
-          items={"flex-start"}
+          alignItems={"flex-start"}
         >
           <Text fontSize={"$3"}>Verifiers</Text>
           <XStack
             gap={"$2"}
             width={"100%"}
-            justify={"space-between"}
-            items={"center"}
+            justifyContent={"space-between"}
+            alignItems={"center"}
           >
             {!!localEvent.verifiers.length ? (
               <UserCluster users={localEvent.verifiers.map((verifier) => verifier.user as IBaseUser)} />
@@ -218,6 +257,10 @@ const EventCard = ({ event }: { event: IEvent }) => {
                     <Badge
                       key={tag.id}
                       cursor="pointer"
+                      animation="quick"
+                      hoverStyle={{
+                        scale: 1.1
+                      }}
                     >
                       <Badge.Text fontSize={"$3"}>{tag.name}</Badge.Text>
                     </Badge>
@@ -231,7 +274,15 @@ const EventCard = ({ event }: { event: IEvent }) => {
             </XStack>
           </ScrollView>
         )}
-        <FilledButton size={"medium"}>Join Event</FilledButton>
+        <FilledButton 
+          size={"medium"}
+          animation="bouncy"
+          hoverStyle={{
+            scale: 1.02
+          }}
+        >
+          Join Event
+        </FilledButton>
       </YStack>
     </YStack>
   );

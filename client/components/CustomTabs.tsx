@@ -23,6 +23,7 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
       flexDirection={orientation !== "horizontal" ? "row" : "column"}
       flex={1}
       gap={"$5"}
+      animation="lazy"
     >
       <Tabs.List
         disablePassBorderRadius="bottom"
@@ -35,6 +36,12 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
         borderColor="$borderColor"
         overflow="hidden"
         self={"center"}
+        animation="bouncy"
+        shadowColor="$shadowColor"
+        shadowOffset={{ width: 0, height: 2 }}
+        shadowOpacity={0.1}
+        shadowRadius={4}
+        elevation={2}
       >
         {tabs.map((tab) => {
           const _uniqueKey = kebabCase(tab.label);
@@ -51,18 +58,30 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
                 cb?.(_uniqueKey);
               }}
               key={_uniqueKey}
+              animation="quick"
+              pressStyle={{
+                scale: 0.95,
+                opacity: 0.8
+              }}
+              hoverStyle={{
+                bg: "$color2",
+                scale: 1.02
+              }}
             >
               <XStack
                 gap={"$2"}
-                items={"center"}
+                alignItems={"center"}
+                animation="lazy"
               >
                 {tab.icon &&
                   React.cloneElement(tab.icon, {
-                    size: 16
+                    size: 16,
+                    animation: "bouncy"
                   })}
                 <SizableText
                   fontFamily="$body"
                   text="center"
+                  animation="lazy"
                 >
                   {tab.label}
                 </SizableText>
@@ -77,13 +96,25 @@ const HorizontalTabs = ({ tabs, defaultValue, cb, orientation = "horizontal" }: 
           <Tabs.Content
             flex={1}
             value={kebabCase(tab.label)}
-            items={"stretch"}
+            alignItems={"stretch"}
             key={kebabCase(tab.label)}
+            animation="lazy"
+            enterStyle={{
+              opacity: 0,
+              scale: 0.95,
+              y: 10
+            }}
+            exitStyle={{
+              opacity: 0,
+              scale: 0.95,
+              y: -10
+            }}
           >
             <ScrollView
               flex={1}
               width={"100%"}
               height={"100%"}
+              animation="lazy"
             >
               {tab.content}
             </ScrollView>
