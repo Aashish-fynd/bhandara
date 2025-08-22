@@ -18,8 +18,6 @@ export const PLATFORM_SOCKET_EVENTS = {
   THREAD_CREATED: "thread:created",
   THREAD_UPDATED: "thread:updated",
   THREAD_DELETED: "thread:deleted",
-  THREAD_LOCKED: "thread:locked",
-  THREAD_UNLOCKED: "thread:unlocked",
 
   // MESSAGEs
   MESSAGE_CREATED: "message:created",

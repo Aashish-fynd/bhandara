@@ -50,13 +50,6 @@ function _Layout() {
             headerShown: false
           }}
         />
-        <Stack.Screen
-          name="profile/[username]"
-          options={{
-            headerShown: false,
-            animation: "slide_from_right"
-          }}
-        />
       </Stack>
     </SocketProvider>
   );

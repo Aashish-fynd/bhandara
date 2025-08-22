@@ -143,7 +143,7 @@ export const processPickedFiles = async ({
   files,
   setAttachedFiles,
   opts
-}: HandleFilePickProps): Promise<{ successCount: number; errorCount: number }> => {
+}: HandleFilePickProps): Promise<{ successCount: number; errorMessages: string[] }> => {
   const promises = [];
   const errorMessages: Array<string> = [];
   const successCountFiles: Array<IMedia> = [];
@@ -186,7 +186,6 @@ export const processPickedFiles = async ({
   });
 
   const successCount = successCountFiles.length;
-  const errorCount = errorMessages.length;
 
   const publicIdsFetch = successCountFiles.map((result) => result?.id);
   publicIdsFetch.length &&
@@ -210,5 +209,5 @@ export const processPickedFiles = async ({
       .catch((error) => {
         console.error("error", error);
       });
-  return { successCount, errorCount };
+  return { successCount, errorMessages };
 };
