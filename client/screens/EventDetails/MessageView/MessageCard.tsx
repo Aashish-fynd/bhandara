@@ -2,14 +2,14 @@ import CustomAvatar from "@/components/CustomAvatar";
 import { UserCluster } from "@/components/ui/common-components";
 import { CardWrapper } from "@/components/ui/common-styles";
 import { useAuth } from "@/contexts/AuthContext";
-import { IBaseUser, IMedia, IMessage, IReaction, IBaseThread } from "@/definitions/types";
+import { IBaseUser, IMedia, IMessage, IReaction } from "@/definitions/types";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, ScrollView, TamaguiElement, Text, View, XStack, YStack } from "tamagui";
 import React from "react";
 import { formatDateWithTimeString } from "@/utils/date.utils";
 import AssetPreview from "@/components/MessageInputBar/AssetPreview";
 import { isEmpty } from "@/utils";
-import { MoreVertical, Lock } from "@tamagui/lucide-icons";
+import { MoreVertical } from "@tamagui/lucide-icons";
 import WithDoubleTap from "@/components/WithDoubleTap";
 import { useSocket } from "@/contexts/Socket";
 import { COMMON_EMOJIS, PLATFORM_SOCKET_EVENTS } from "@/constants/global";
@@ -17,10 +17,9 @@ import { useToastController } from "@tamagui/toast";
 import useSocketListener from "@/hooks/useSocketListener";
 import { useDialog } from "@/hooks/useModal";
 import AssetPreviewDialog from "../AssetPreviewDialog";
-import { isThreadLocked } from "@/utils/thread.utils";
 
 interface ThreadCardProps {
-  thread: { id: string } & Partial<IBaseThread>;
+  thread: { id: string };
   message: IMessage;
   handleClick: (data: Record<string, any>) => void;
   isFirst?: boolean;
@@ -51,9 +50,6 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
   const [showActions, setShowActions] = useState(false);
   const { open, close, RenderContent } = useDialog();
   const currentSelectedMediaRef = useRef<undefined | string>();
-
-  // Check if thread is locked
-  const threadLocked = thread && 'lockHistory' in thread ? isThreadLocked(thread as IBaseThread) : false;
 
   useEffect(() => {
     if (!socket) return;
@@ -104,14 +100,6 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
   }, [socket]);
 
   const handleReactionPress = (e: string) => {
-    // Prevent reactions if thread is locked
-    if (threadLocked) {
-      toastController.show("Thread is locked", {
-        message: "Cannot add reactions to a locked thread",
-      });
-      return;
-    }
-
     // if it is current user reaction update with current one
     socket?.emit(
       currentUserReaction
@@ -130,10 +118,7 @@ function MessageCard({ thread, message, handleClick, isFirst = false }: ThreadCa
   };
 
   const handleHoverIn = () => {
-    // Don't show reaction actions if thread is locked
-    if (!threadLocked) {
-      setShowActions(true);
-    }
+    setShowActions(true);
   };
   const handleHoverOut = () => {
     setShowActions(false);

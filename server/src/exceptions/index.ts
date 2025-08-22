@@ -45,11 +45,6 @@ export const UnauthorizedError = createCustomErrorClass(
   401,
   "Unauthorized access"
 );
-export const ForbiddenError = createCustomErrorClass(
-  "ForbiddenError",
-  403,
-  "Forbidden access"
-);
 
 export class SupabaseCustomError extends Error {
   status: number;

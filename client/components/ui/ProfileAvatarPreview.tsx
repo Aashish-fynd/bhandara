@@ -86,12 +86,12 @@ const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNo
           </YStack>
         </>
       )}
-      <YStack
-        p="$5"
-        pt={0}
-        gap="$2"
-      >
-        {user.id === _authenticatedUser?.id ? (
+      {user.id === _authenticatedUser?.id && (
+        <YStack
+          p="$5"
+          pt={0}
+          gap="$2"
+        >
           <Popover.Close>
             <OutlineButton
               size={"medium"}
@@ -101,18 +101,8 @@ const Preview = ({ user, children }: { user: IBaseUser; children?: React.ReactNo
               Edit Profile
             </OutlineButton>
           </Popover.Close>
-        ) : (
-          <Popover.Close>
-            <OutlineButton
-              size={"medium"}
-              width={"auto"}
-              onPress={() => router.push(`/profile/${user.username || user.id}`)}
-            >
-              View Profile
-            </OutlineButton>
-          </Popover.Close>
-        )}
-      </YStack>
+        </YStack>
+      )}
     </CardWrapper>
   );
 };
